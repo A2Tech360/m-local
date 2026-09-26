@@ -218,9 +218,9 @@ and the guest Jac session API. No Windows firewall settings were changed.
 Travis then reported: "i can verify that it works on mobile". Record this as
 **user-reported basic physical iPhone browsing success**. The requested sequence
 was Under $5 -> $3 oat latte -> Sign in to claim; individual actions, keyboard
-visibility and rotation were not separately confirmed. iPhone model, iOS version
-and actual browser/version have been requested but are not yet reported. Safari
-was the suggested browser, not an independently verified device fact.
+visibility and rotation were not separately confirmed. Travis subsequently
+reported the device/browser as **iPhone 18 Pro, Safari, v27.0**. Preserve that
+reported version as supplied; an iOS version was not separately specified.
 
 No login, real QR claim, physical scan, redemption, camera permission recovery,
 wrong-merchant rejection or expiry pass is established by this report. HTTP
