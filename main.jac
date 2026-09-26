@@ -22,7 +22,6 @@ import from services.promo {
     ActionResult,
     ClaimView
 }
-import from services.session { current_session, SessionView }
 
 import from "@jac/mobui" {
     View,
@@ -568,19 +567,6 @@ def:pub app -> JsxElement {
                     <Text style={styles.noteText}>{o.entrance_note}</Text>
                 </View>
             ) if o.entrance_note else <View />}
-            {(
-                <View style={styles.note}>
-                    <Text style={[styles.noteText, {"fontWeight": "800"}]}>{"Access context · " + o.access_context.state}</Text>
-                    {[
-                        <View key={n.id}>
-                            <Text style={styles.noteText}>{n.summary + " · " + n.publisher}</Text>
-                            <Text style={styles.noteText}>{n.entrance_instruction}</Text>
-                            <Text style={styles.small}>{"Source: " + (n.source_url if n.source_url else "simulated fixture")}</Text>
-                        </View>
-                        for n in o.access_context.notices
-                    ]}
-                </View>
-            ) if o.access_context.state != "none" else <View />}
             <View style={styles.section}>
                 <Text style={styles.body}>{o.address + (" · " + o.neighborhood if o.neighborhood else "")}</Text>
                 <View style={styles.divider} />

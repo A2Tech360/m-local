@@ -17,7 +17,6 @@ import from services.models {
     Publishes,
     Features
 }
-import from services.money { money_to_cents }
 
 
 """Create one restaurant (with location, menu and offers) from a plain record.
@@ -56,10 +55,7 @@ def import_restaurant(record: dict[str, any]) -> Restaurant {
     offers: list[dict[str, any]] = record.get("offers", []);
     for m in menu {
         item = MenuItem(
-            name=m["name"],
-            price=float(m.get("price", 0)),
-            price_cents=money_to_cents(str(m.get("price", 0))),
-            dietary=m.get("dietary", [])
+            name=m["name"], price=float(m.get("price", 0)), dietary=m.get("dietary", [])
         );
         r +>:Serves():+> item;
         items[m["name"]] = item;
@@ -69,9 +65,7 @@ def import_restaurant(record: dict[str, any]) -> Restaurant {
             title=o["title"],
             description=o.get("description", ""),
             price=float(o.get("price", 0)),
-            price_cents=money_to_cents(str(o.get("price", 0))),
             regular_price=float(o.get("regular_price", 0)),
-            regular_price_cents=money_to_cents(str(o.get("regular_price", 0))),
             start_ts=now + float(o.get("start_in_h", 0)) * 3600,
             end_ts=now + float(o.get("end_in_h", 4)) * 3600,
             quantity=int(o.get("quantity", 10)),

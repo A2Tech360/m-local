@@ -2,9 +2,7 @@
 offer is flagged is_demo, so nothing here can be mistaken for a real Ann Arbor
 business. Loaded through the importer, the same path real sources will use."""
 
-import time;
 import from services.importer { import_restaurant }
-import from services.context_service { upsert_access_notice }
 
 
 glob:pub DEMO_RECORDS: list[dict[str, any]] = [
@@ -158,22 +156,5 @@ def seed_demo() -> int {
     for rec in DEMO_RECORDS {
         import_restaurant(rec);
     }
-    now = time.time();
-    upsert_access_notice({
-        "source_id": "m-local-simulation",
-        "external_id": "arbor-leaf-access",
-        "source_version": "demo-1",
-        "original_evidence": "Simulated fixture; not a real public notice.",
-        "normalized_evidence": "Demo access context",
-        "summary": "Simulated entrance notice for the demo location.",
-        "publisher": "M-Local simulation",
-        "source_url": "",
-        "checked_at": now,
-        "valid_from": now - 3600,
-        "valid_until": now + 86400,
-        "location_slug": "arbor-leaf-kitchen",
-        "is_demo": True,
-        "entrance_instruction": "Use the posted entrance information; this is simulated."
-    });
     return len(DEMO_RECORDS);
 }
