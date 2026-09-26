@@ -35,6 +35,32 @@ test('offer and profile save failures keep values and enable retry',async()=>{
  }finally{ui.close();}
 });
 
+test('confirmed offer save survives a failed portal refresh and refresh can be retried',async()=>{
+ let saved=false,portalReads=0;
+ const ui=await app({role:'merchant',intercept(name){
+  if(name==='save_offer')saved=true;
+  if(name==='merchant_portal'){
+   portalReads++;
+   if(saved&&portalReads===2)throw new Error('Synthetic refresh failure after confirmed save');
+  }
+ }});
+ try{
+  ui.click('Manage');await until(()=>ui.text().includes('Restaurant profile'));
+  ui.click('New offer');await until(()=>ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
+  ui.fill('Lunch bowl for $7','Confirmed fixture bowl');ui.click('Save offer');
+  await until(()=>portalReads===2&&!ui.text().includes('Saving...'),'save completed and portal refresh failed');
+  assert.ok(ui.text().includes('Fixture offer saved'),'retain the server-confirmed save outcome when only the subsequent refresh fails');
+  assert.ok(ui.text().includes('restaurant list could not refresh'),'explain that the refresh failed after the successful save');
+  assert.ok(ui.text().includes('Use Refresh restaurant'),'give an explicit retry action');
+  assert.equal(ui.text().includes('Could not save the offer'),false,'do not invite a duplicate save after confirmed success');
+  assert.equal(ui.document.querySelector('[placeholder="Lunch bowl for $7"]'),null,'close the editor after confirmed save');
+  ui.click('Refresh restaurant');
+  await until(()=>portalReads===3&&!ui.text().includes('Loading restaurant...')&&ui.text().includes('Restaurant profile'),'explicit refresh retry');
+  assert.equal(ui.calls.filter(c=>c.name==='save_offer').length,1,'refresh retries must not resubmit the saved offer');
+  assert.deepEqual(ui.errors,[]);
+ }finally{ui.close();}
+});
+
 test('the newest filter response wins even when an earlier request arrives last',async()=>{
  let release;const slow=new Promise(r=>{release=r;});
  const ui=await app({intercept:async(name,body)=>{if(name==='list_offers'&&body.max_price==='5'){await slow;return rpc([offer({title:'Old delayed result'})]);}if(name==='list_offers'&&body.max_price==='8')return rpc([offer({title:'Latest filter result'})]);}});
