@@ -75,9 +75,11 @@ UI and owns only the added regression in `tests/ui/browser/phone-dom.test.mjs`;
 the coordinator owns production E4 files and documentation. A separate verifier
 reviews the final diff and reruns focused checks. No backend/runtime/data edits.
 
-Travis confirmed access to a laptop and iPhone. Device results remain pending
-until actually performed. The existing runtime at port 8000 belongs to a different
-checkout; it is not E4 evidence.
+Travis confirmed access to a laptop and iPhone and subsequently reported that
+the app works on mobile through the private hotspot preview. The limited
+user-reported browsing result is recorded in `docs/phone-validation.md`; it is
+not a physical camera or authenticated claim/redemption pass. The existing
+runtime at port 8000 belongs to a different checkout; it is not E4 evidence.
 
 Coordination consisted of comments on [E1 PR #1](https://github.com/CosmonautJones/m-local/pull/1#issuecomment-5850445297)
 and [E2 PR #3](https://github.com/CosmonautJones/m-local/pull/3#issuecomment-5850459996).
@@ -106,8 +108,22 @@ provisioned merchant accounts return `student`. Graph inspector privacy passes
 with 404; later claim/concurrency/redemption checks were not reached. This is
 consistent with the E2 PR #3 fix that E1 has not integrated into this branch.
 The unauthenticated money POST now returns 405. No backend ownership workaround
-was applied. Physical iPhone/webcam acceptance, Mac, artifact serving, human/Baz
-review and organizer-confirmed rules remain open gates.
+was applied. Full physical iPhone/webcam acceptance, Mac, artifact serving,
+human/Baz review and organizer-confirmed rules remain open gates.
+
+### Checkpoint closeout after mobile browsing
+
+Travis reported the private iPhone preview works on 2026-09-26. This bounded
+E4 implementation/verification checkpoint is complete; the overall E4 lane is
+not fully accepted. Remaining work is physical QR scan/preview/confirm/repeat/
+wrong-merchant/expiry/denial recovery after backend integration, then agreed
+local-context rendering and testing once its fields are available.
+
+Remote refresh at closeout: E1 runtime head `b15614e40ad1a6b58f241a001527a94783ab6b6b`
+does not include the E2 merchant fix. E2 head `fd62ab48f0c5490bda62b70e34f9236ab4f56323`
+adds `OfferView.location_id` and documents the context shape, but `access_context`
+is still pending E3 integration. Neither newer branch was merged into E4. E1
+remains the integrator; PR #2 stays draft pending integrated acceptance/review.
 
 ### Jac architecture audit requested by Travis
 

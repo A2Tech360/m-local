@@ -201,6 +201,29 @@ Raw logs are `qr-http-final.log`, `role-probe-final.log` and
 
 This does not validate claim ACLs, concurrency, redemption, saved terms over
 HTTP, or QR restart persistence. E1 must integrate the reviewed E2 fix before
-the real merchant camera sequence can proceed. Laptop guest browsing is ready;
-the private phone relay is prepared but not started pending hotspot connection.
-No public tunnel, venue-network exposure or physical-phone pass is claimed.
+the real merchant camera sequence can proceed. Laptop guest browsing is ready.
+At this earlier checkpoint, the phone relay awaited the hotspot connection;
+the subsequent limited physical-device result is recorded below. No public
+tunnel or venue-network exposure was opened.
+
+### User-reported iPhone browsing, 2026-09-26
+
+Tested checkout: `a02ce148a96402694ae4aa79023fe1d99d855cda` (frontend implementation
+unchanged from `5ea1d967bf2115a5b7c9d6f2474a29e482c782f5`). Origin supplied to
+Travis: `http://172.20.10.5:8081/`, bound only to the laptop's iPhone-hotspot
+interface and relayed to the app at `http://localhost:8100/`.
+
+At 19:20 America/New_York the laptop-side relay check returned 200 for the page
+and the guest Jac session API. No Windows firewall settings were changed.
+Travis then reported: "i can verify that it works on mobile". Record this as
+**user-reported basic physical iPhone browsing success**. The requested sequence
+was Under $5 -> $3 oat latte -> Sign in to claim; individual actions, keyboard
+visibility and rotation were not separately confirmed. iPhone model, iOS version
+and actual browser/version have been requested but are not yet reported. Safari
+was the suggested browser, not an independently verified device fact.
+
+No login, real QR claim, physical scan, redemption, camera permission recovery,
+wrong-merchant rejection or expiry pass is established by this report. HTTP
+student-phone browsing does not verify merchant-phone camera operation. No
+device screenshot or credential was collected. The local guide and relay smoke
+record remain ignored under `.jac/evidence/e4-local/`.
