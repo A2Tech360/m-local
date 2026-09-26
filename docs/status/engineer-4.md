@@ -6,7 +6,7 @@ Updated 2026-09-26. Travis confirmed he is Engineer 4. The latest explicit agent
 
 - Continue `feat/04-phone-experience`, based on runtime/QR commit `bb8fa0f466f6d1cf03ad2423244c21d318ab670c` in draft PR #1.
 - Engineer 1 owns main merges. The frontend PR is stacked on `feat/01-runtime-release` to keep the review small; retarget after the runtime PR lands.
-- This increment changes only `main.jac`, `tests/ui/browser/**`, this status file and `docs/phone-validation.md`. Backend, data, runtime configuration and dependency manifests are unchanged.
+- E4 changes stay in `main.jac`, `theme.jac`, `tests/ui/**`, this status file and `docs/phone-validation.md`. Backend, data, runtime configuration and dependency manifests are unchanged.
 - The published Engineer 3 branch is `feat/03-local-context` at `0e5a6dafa18d4ed1256f1a297bc15631ccd8f4aa`. It is not integrated here. Do not overwrite teammates' work.
 
 ## What this increment changes
@@ -24,12 +24,16 @@ Use the documented Jac **0.37.23** setup/check/build scripts first. The optional
 bash scripts/check.sh
 bash scripts/build.sh
 npm install --prefix .jac/ui-test-runtime --no-save --no-package-lock --ignore-scripts --no-audit --no-fund jsdom@26.1.0
-node --test tests/ui/browser/phone-dom.test.mjs tests/ui/*.test.mjs tests/tooling/*.test.mjs
+node --test tests/ui/browser/*.test.mjs tests/ui/*.test.mjs tests/tooling/*.test.mjs
 ```
 
 Wait for the build to finish before running DOM tests: the build replaces `.jac/client/dist`. The harness reads the actual generated bundle. `MLOCAL_UI_TEST_MODULES` can point to another isolated `node_modules` directory containing jsdom.
 
 ## Evidence and limits
+
+This section records the earlier cloud checkpoint. The Windows/WSL continuation
+and final results below add later evidence without converting that failed core
+run into a pass.
 
 Final check/build/DOM outcomes are recorded in `docs/phone-validation.md`. Source changes received independent agent review. Findings about card snapshots and insufficient retry/signout assertions were addressed before handoff.
 
@@ -45,3 +49,62 @@ Chromium download failed with truncated archives, so no real browser layout, scr
 4. Continue the E4 plan's keyboard/viewport/loading/error work, preserving snapshot and session privacy behavior. Capture real screenshots without reusable credentials. Physical iPhone Safari, Android and Mac execution need actual evidence.
 5. Wait for E2 to expose E3's `location_id` / `access_context` on OfferView, then render the agreed none/current/needs_recheck states with source, publisher, checked/valid dates and demo label. Do not invent a replacement DTO or edit another lane's production files.
 6. Keep Baz review, competition-time provenance and organizer-confirmed event/rule evidence as separate team gates. Do not claim a full MVP from this checkpoint.
+
+## Local continuation plan, 2026-09-26
+
+Starting source: `92987cfea53cfe4f08c159ef775562c20bc2e37b`. Use a managed
+`phone-validation` worktree because another active chat shares the original
+checkout. Preserve that checkout and its running server. Continue the existing
+E4 branch and stacked PR #2; E1 remains the integrator.
+
+- [x] Fetch remote state and read the current handoffs. PR #3 at `5cbb709`
+  contains E2's merchant UUID and concurrent mutation fixes, not integrated here.
+- [x] Reproduce the whole-program check and isolated core suite on Windows/WSL.
+  Check exit 0 (warnings remain); core 22 passed, exit 0. This does not prove HTTP
+  authorization or concurrency.
+- [x] Build and reproduce the compiled UI/tooling checks before frontend edits.
+- [x] Exercise this exact app in a real browser on a separate local port. Record
+  keyboard/narrow viewport/recovery observations before choosing UI changes.
+- [x] Add a regression for a confirmed offer save followed by a failed list
+  refresh; fix truthful recovery only in E4 files. Check E2's money RPC finding.
+- [x] Verify the final source independently, update E4 evidence, and publish the
+  small checkpoint to PR #2 without merging other lanes.
+
+Delegation: one agent reproduces core checks without tracked edits; one audits
+UI and owns only the added regression in `tests/ui/browser/phone-dom.test.mjs`;
+the coordinator owns production E4 files and documentation. A separate verifier
+reviews the final diff and reruns focused checks. No backend/runtime/data edits.
+
+Travis confirmed access to a laptop and iPhone. Device results remain pending
+until actually performed. The existing runtime at port 8000 belongs to a different
+checkout; it is not E4 evidence.
+
+Coordination consisted of comments on [E1 PR #1](https://github.com/CosmonautJones/m-local/pull/1#issuecomment-5850445297)
+and [E2 PR #3](https://github.com/CosmonautJones/m-local/pull/3#issuecomment-5850459996).
+The merchant-recognition fix is needed for real merchant acceptance. The location/
+access DTO reminder is later context work, not a prerequisite for phone browsing.
+
+For Windows DOM execution against this WSL-generated bundle, install the matching
+optional test binary only in the ignored test runtime (PowerShell):
+
+```powershell
+npm.cmd install --prefix .jac/ui-test-runtime --no-save --no-package-lock --ignore-scripts --no-audit --no-fund jsdom@26.1.0 @esbuild/win32-x64@0.25.12
+$env:ESBUILD_BINARY_PATH = (Resolve-Path .jac/ui-test-runtime/node_modules/@esbuild/win32-x64/esbuild.exe).Path
+node --test tests/ui/browser/*.test.mjs tests/ui/*.test.mjs tests/tooling/*.test.mjs
+```
+
+### Final local checkpoint
+
+Source `5ea1d967bf2115a5b7c9d6f2474a29e482c782f5`: stable-source check/build pass;
+independent UI/tooling suite 25/25; independent source review has no remaining
+blocking findings. Real browser Space activation and sign-in focus were verified
+at `http://localhost:8100/`; 390px and 320px viewports had no document overflow.
+Screenshots and detailed environment/result limits are in `docs/phone-validation.md`.
+
+Real authenticated HTTP acceptance **fails** at merchant membership: both
+provisioned merchant accounts return `student`. Graph inspector privacy passes
+with 404; later claim/concurrency/redemption checks were not reached. This is
+consistent with the E2 PR #3 fix that E1 has not integrated into this branch.
+The unauthenticated money POST now returns 405. No backend ownership workaround
+was applied. Physical iPhone/webcam acceptance, Mac, artifact serving, human/Baz
+review and organizer-confirmed rules remain open gates.
