@@ -1,5 +1,18 @@
 # M-Local: four-engineer hackathon mission
 
+## Yes, these are parallel assignments
+
+**All four engineers can start together. Task numbers identify ownership, not
+execution order.** Each person runs their own model in a separate clone and branch.
+Engineer 1 establishes the shared runtime while Engineers 2-4 prepare their owned
+tests, data and UI states. Once the runtime and small shared interfaces are ready,
+all four implement and verify their areas concurrently.
+
+Engineer 1 continues integration and release work throughout; nobody waits for
+that entire mission to finish before building. Only dependent changes wait for
+their specific interface, and final acceptance uses the merged application.
+See the [parallel stages and handoffs](TEAM-WORKFLOW.md#start-concurrently-without-guessing).
+
 **Mission:** Help an Ann Arbor student find an affordable restaurant offer they can
 use now, understand how to reach the business, and redeem the exact deal they claimed.
 Give the restaurant control over the offer's timing, quantity and terms.

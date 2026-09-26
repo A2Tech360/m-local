@@ -28,6 +28,10 @@ access, push to your own fork and open a PR to `CosmonautJones/m-local:main`.
 
 ## Start concurrently without guessing
 
+Start all four assignments at the same time. Keep one human/model pair per branch
+and one owner per production file. The early runtime checkpoint is a shared
+dependency, not a requirement to finish Engineer 1's whole mission first.
+
 | Stage | Engineer 1 | Engineer 2 | Engineer 3 | Engineer 4 |
 |---|---|---|---|---|
 | Runtime checkpoint | Prove version, startup, test invocation and auth hooks | Write lifecycle/identity acceptance cases and inspect graph behavior | Prepare source/fixture records and provenance | Plan loading/error/auth/context states from the contract |
@@ -45,6 +49,22 @@ means separate ownership and local tests; integration still has explicit milesto
 Engineers 2 and 3 should expose their small contract commits early, not deliver a
 single large final PR. Engineer 4 can use test fixtures until the API exists, but
 the final flow must call the real Jac server. Never present mock success as a pass.
+
+### Specific handoffs, not whole-task waits
+
+- Engineer 1 publishes the runtime pin and proved auth hooks; Engineers 2 and 4 can
+  then implement their server/client session handling against the same runtime.
+- Engineer 2 publishes the core schema and money helper; Engineer 3 can migrate
+  importer and seed constructors while the remaining transaction work continues.
+- Engineer 3 publishes the context DTO/helper; Engineer 2 can attach context to
+  offers while Engineer 3 continues refresh and freshness behavior.
+- Engineer 4 builds against these agreed shapes using isolated test fixtures where
+  necessary, then verifies against the integrated real server before claiming done.
+
+A handoff names the PR/commit, interface and passing checks. Once the integrator
+merges it, dependent owners sync main into their own branches. Models must not
+independently invent replacement interfaces or edit another owner's files to
+avoid a dependency. Use independent work from the assigned mission while waiting.
 
 ## Small PRs and one integrator
 
