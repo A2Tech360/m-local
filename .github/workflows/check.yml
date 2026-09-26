@@ -13,7 +13,10 @@ jobs:
         shell: bash
         run: bash scripts/setup.sh
       - name: Install project dependencies
-        run: jac install
+        shell: bash
+        run: |
+          source scripts/runtime.sh
+          "$JAC_BIN" install
       - name: Check Jac sources
         run: ./scripts/check.sh
       - name: Run core tests
