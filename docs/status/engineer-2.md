@@ -39,6 +39,34 @@ reference; its proven lock pattern and HTTP suite are what this branch ports.
   (redeemed once), 20 simultaneous last-unit claims (one winner), 10
   simultaneous retries (one claim), cancel, and restart persistence.
 
+## Context handoff for Engineer 4 (agreed contract)
+
+`OfferView.location_id` is populated now (the Location node id). Once
+Engineer 3's branch compiles and merges, Engineer 2 adds
+`access_context: AccessContextView` to `OfferView`, filled in `_view` with
+`get_access_context(location_id, time.time())` (server clock only). Shape,
+taken from `services/context_models.jac` on `feat/03-local-context`:
+
+```text
+AccessContextView { state: "current" | "needs_recheck" | "none",
+                    notices: list[AccessNoticeView] }
+AccessNoticeView  { id, summary, publisher, source_url, checked_at, valid_from,
+                    valid_until, state ("current" | "needs_recheck"), is_demo,
+                    entrance_instruction }
+```
+
+Render rule from the contract: `none` is not an all-clear; only a `current`
+notice may show `entrance_instruction` as definitive.
+
+## Blocker in Engineer 3's lane (reported)
+
+`feat/03-local-context` does not compile on Jac 0.37.23: Python-style
+`if ...:` blocks without braces in `services/importer.jac` (lines 52-61),
+missing `;` in `services/context.jac:29` and `services/seed.jac:180`, an
+unclosed brace in `seed.jac:195`, and bare `dict` (needs `dict[str, any]`) in
+`services/context_models.jac:21-22`. Its tests fail. Until fixed, the
+access-context attachment cannot be added or verified.
+
 ## Notes for other owners
 
 - Engineer 1: `tests/integration/qr_http.py` fails on Mac at its first line
