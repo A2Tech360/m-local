@@ -1,9 +1,16 @@
 """Authenticated offer/QR API.
 
-All writes run in Jac's served request transaction (SERIALIZABLE + conflict
-replay in 0.37.23). No credential or other external side effect leaves a losing
-attempt. Simultaneous HTTP and restart proof require a working PostgreSQL host.
+Every mutating endpoint runs inside _locked_mutation: it takes an exclusive OS
+file lock, refreshes its transaction so it sees the previous holder's commit,
+does the work, and commits before releasing. Measured on Jac 0.37.23 with the
+default worker count: without this, 20 simultaneous claims on a one-unit offer
+produced several winners; with it, exactly one. The lock serializes threads and
+worker processes on one machine only; several machines would need a shared lock.
 """
+
+import os;
+import fcntl;
+import tempfile;
 
 import time;
 import secrets;
@@ -29,6 +36,27 @@ import from services.qr_catalog { _ensure_seed }
 import from services.qr { new_qr_payload, valid_qr_payload }
 import from services.money { money_to_cents }
 import from services.session { _actor_id, _merchant_for_actor }
+
+
+glob LOCK_PATH: str = os.path.join(tempfile.gettempdir(), "m-local-mutations.lock");
+
+
+def _lock -> int {
+    fd = os.open(LOCK_PATH, os.O_CREAT | os.O_RDWR, 384);
+    fcntl.flock(fd, fcntl.LOCK_EX);
+    commit();
+    return fd;
+}
+
+
+def _unlock(fd: int) -> None {
+    try {
+        commit();
+    } finally {
+        fcntl.flock(fd, fcntl.LOCK_UN);
+        os.close(fd);
+    }
+}
 
 
 obj OfferView {
@@ -693,16 +721,29 @@ def:pub get_offer(
 
 
 def:protect claim_offer(offer_id: str) -> ActionResult {
-    _ensure_seed();
-    if _merchant() is not None {
-        return ActionResult(message="Use a student account to claim offers.");
+    fd = _lock();
+    try {
+        _ensure_seed();
+        if _merchant() is not None {
+            result = ActionResult(message="Use a student account to claim offers.");
+        } else {
+            result = _claim(offer_id, _actor_id(), time.time());
+        }
+    } finally {
+        _unlock(fd);
     }
-    return _claim(offer_id, _actor_id(), time.time());
+    return result;
 }
 
 
 def:protect cancel_claim(offer_id: str) -> ActionResult {
-    return _cancel(offer_id, _actor_id(), time.time());
+    fd = _lock();
+    try {
+        result = _cancel(offer_id, _actor_id(), time.time());
+    } finally {
+        _unlock(fd);
+    }
+    return result;
 }
 
 
@@ -723,27 +764,33 @@ def:protect update_profile(
     entrance_note: str,
     note_date: str
 ) -> MerchantView {
-    _ensure_seed();
-    r = _merchant();
-    if r is None {
-        return MerchantView(ok=False, message="This account does not own a restaurant.");
+    fd = _lock();
+    try {
+        _ensure_seed();
+        r = _merchant();
+        if r is None {
+            view = MerchantView(ok=False, message="This account does not own a restaurant.");
+        } elif not name.strip() or not address.strip() {
+            view = _portal(r, time.time(), "Name and address are required.");
+        } else {
+            r.name = name.strip();
+            r.cuisine = cuisine.strip();
+            r.blurb = blurb.strip();
+            loc = _location_of(r);
+            if loc is None {
+                loc = Location(address="");
+                r +>:HasLocation():+> loc;
+            }
+            loc.address = address.strip();
+            loc.neighborhood = neighborhood.strip();
+            loc.entrance_note = entrance_note.strip();
+            loc.note_date = note_date.strip();
+            view = _portal(r, time.time(), "Profile saved.");
+        }
+    } finally {
+        _unlock(fd);
     }
-    if not name.strip() or not address.strip() {
-        return _portal(r, time.time(), "Name and address are required.");
-    }
-    r.name = name.strip();
-    r.cuisine = cuisine.strip();
-    r.blurb = blurb.strip();
-    loc = _location_of(r);
-    if loc is None {
-        loc = Location(address="");
-        r +>:HasLocation():+> loc;
-    }
-    loc.address = address.strip();
-    loc.neighborhood = neighborhood.strip();
-    loc.entrance_note = entrance_note.strip();
-    loc.note_date = note_date.strip();
-    return _portal(r, time.time(), "Profile saved.");
+    return view;
 }
 
 
@@ -761,45 +808,57 @@ def:protect save_offer(
     dietary: str,
     menu_item: str
 ) -> ActionResult {
-    _ensure_seed();
-    r = _merchant();
-    if r is None {
-        return ActionResult(ok=False, message="This account does not own a restaurant.");
+    fd = _lock();
+    try {
+        _ensure_seed();
+        r = _merchant();
+        if r is None {
+            result = ActionResult(ok=False, message="This account does not own a restaurant.");
+        } else {
+            result = _save_offer(
+                r,
+                offer_id,
+                title,
+                description,
+                price,
+                regular_price,
+                start_local,
+                end_local,
+                quantity,
+                eligibility,
+                terms,
+                dietary,
+                menu_item,
+                time.time()
+            );
+        }
+    } finally {
+        _unlock(fd);
     }
-    return _save_offer(
-        r,
-        offer_id,
-        title,
-        description,
-        price,
-        regular_price,
-        start_local,
-        end_local,
-        quantity,
-        eligibility,
-        terms,
-        dietary,
-        menu_item,
-        time.time()
-    );
+    return result;
 }
 
 
 def:protect set_offer_status(offer_id: str, status: str) -> ActionResult {
-    _ensure_seed();
-    r = _merchant();
-    if r is None {
-        return ActionResult(ok=False, message="This account does not own a restaurant.");
+    fd = _lock();
+    try {
+        _ensure_seed();
+        r = _merchant();
+        o = _owned_offer(r, offer_id) if r is not None else None;
+        if r is None {
+            result = ActionResult(ok=False, message="This account does not own a restaurant.");
+        } elif status not in ["active", "paused"] {
+            result = ActionResult(ok=False, message="Status must be active or paused.");
+        } elif o is None {
+            result = ActionResult(ok=False, message="That offer does not belong to your restaurant.");
+        } else {
+            o.status = status;
+            result = ActionResult(ok=True, message="Offer resumed." if status == "active" else "Offer paused.");
+        }
+    } finally {
+        _unlock(fd);
     }
-    if status not in ["active", "paused"] {
-        return ActionResult(ok=False, message="Status must be active or paused.");
-    }
-    o = _owned_offer(r, offer_id);
-    if o is None {
-        return ActionResult(ok=False, message="That offer does not belong to your restaurant.");
-    }
-    o.status = status;
-    return ActionResult(ok=True, message="Offer resumed." if status == "active" else "Offer paused.");
+    return result;
 }
 
 
@@ -812,9 +871,18 @@ def:protect resolve_claim(qr_payload: str) -> ClaimPreview {
 
 
 def:protect redeem_claim(qr_payload: str) -> ActionResult {
-    r = _merchant();
-    if r is None { return ActionResult(message="This account does not own a restaurant."); }
-    return _redeem(r, qr_payload, time.time());
+    fd = _lock();
+    try {
+        r = _merchant();
+        if r is None {
+            result = ActionResult(message="This account does not own a restaurant.");
+        } else {
+            result = _redeem(r, qr_payload, time.time());
+        }
+    } finally {
+        _unlock(fd);
+    }
+    return result;
 }
 
 
