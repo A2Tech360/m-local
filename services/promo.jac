@@ -265,7 +265,7 @@ def _explain(
     window: str,
     wanted: list[str],
     now: float
-) -> tuple {
+) -> tuple[bool, list[str]] {
     # Short match tags only for the student's own filters; price, time and
     # stock are already shown on screen, so they are not repeated here.
     reasons: list[str] = [];
@@ -563,7 +563,7 @@ def _portal(r: Restaurant, now: float, message: str = "") -> MerchantView {
     loc = _location_of(r);
     offers = [o for o in [r ->:Publishes:->]];
     offers.sort(key=lambda (o: Offer) -> float { return o.start_ts; });
-    claims: list[tuple] = [];
+    claims: list[tuple[float, ClaimView]] = [];
     for o in offers {
         _sweep(o, now);
         for c in [o ->:ClaimedAs:->] {
@@ -577,7 +577,7 @@ def _portal(r: Restaurant, now: float, message: str = "") -> MerchantView {
             )));
         }
     }
-    claims.sort(key=lambda (t: tuple) -> float { return t[0]; }, reverse=True);
+    claims.sort(key=lambda (t: tuple[float, ClaimView]) -> float { return t[0]; }, reverse=True);
     return MerchantView(
         ok=True,
         message=message,
