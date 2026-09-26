@@ -1,0 +1,135 @@
+{
+  "purpose": "Read-only research, not an application integration or uptime guarantee",
+  "privacy": "No credentials, student locations, contacts, event bodies or livestream fields retained",
+  "checks": [
+    {
+      "source_id": "um-events",
+      "url": "https://events.umich.edu/list/json?v=2&max-results=5&filter=all&range=2026-09-26to2026-09-27",
+      "checked_at": "2026-09-26T20:28:11.526274+00:00",
+      "kind": "events",
+      "status": 403,
+      "outcome": "http_error",
+      "error_type": "HTTPError"
+    },
+    {
+      "source_id": "city-access",
+      "url": "https://www.a2gov.org/engineering/traffic/road-and-lane-closures/",
+      "checked_at": "2026-09-26T20:28:11.527778+00:00",
+      "kind": "html",
+      "status": 200,
+      "bytes_read": 127736,
+      "content_type": "text/html; charset=utf-8",
+      "final_url": "https://www.a2gov.org/engineering/traffic/road-and-lane-closures/",
+      "sha256": "59bf19fc65362a796df67502d6d44b372050d342c9fbb0212462940e7e3a3d7c",
+      "outcome": "checked"
+    },
+    {
+      "source_id": "nws",
+      "url": "https://api.weather.gov/points/42.2808,-83.7430",
+      "checked_at": "2026-09-26T20:28:11.528359+00:00",
+      "kind": "weather",
+      "status": 200,
+      "bytes_read": 3915,
+      "content_type": "application/geo+json",
+      "final_url": "https://api.weather.gov/points/42.2808,-83.7430",
+      "sha256": "be5476f8d76c902892640e0d5afc01faab0c6961b074e414bb049265f60e4f8c",
+      "point_metadata": {
+        "gridId": "DTX",
+        "gridX": 42,
+        "gridY": 30,
+        "forecast": "https://api.weather.gov/gridpoints/DTX/42,30/forecast",
+        "forecastHourly": "https://api.weather.gov/gridpoints/DTX/42,30/forecast/hourly",
+        "timeZone": "America/Detroit"
+      },
+      "outcome": "checked"
+    },
+    {
+      "source_id": "city-amenities",
+      "url": "https://ckan.a2gov.org/api/3/action/package_show?id=40f63488-56b8-4afc-8b9d-7aad1010de1f",
+      "checked_at": "2026-09-26T20:28:11.528755+00:00",
+      "kind": "ckan",
+      "status": 200,
+      "bytes_read": 4480,
+      "content_type": "application/json;charset=utf-8",
+      "final_url": "https://ckan.a2gov.org/api/3/action/package_show?id=40f63488-56b8-4afc-8b9d-7aad1010de1f",
+      "sha256": "b8ad1acf38066afb655f3d5bfc57daa7ef136268ac7464fdd5ed4cfe7be81de4",
+      "dataset": {
+        "id": "40f63488-56b8-4afc-8b9d-7aad1010de1f",
+        "title": "Park Amenities",
+        "license_id": "notspecified",
+        "license_title": "License not specified",
+        "license_url": null,
+        "metadata_modified": "2026-09-23T03:53:56.924459"
+      },
+      "resource_count": 4,
+      "outcome": "checked"
+    },
+    {
+      "source_id": "theride",
+      "url": "https://www.theride.org/business/software-developers",
+      "checked_at": "2026-09-26T20:28:22.772132+00:00",
+      "kind": "theride-page",
+      "status": 200,
+      "bytes_read": 318918,
+      "content_type": "text/html; charset=UTF-8",
+      "final_url": "https://www.theride.org/business/software-developers",
+      "sha256": "97c8180dff179f372f1581fd382143871d7ce355d7d87704f186e4224e0d5fad",
+      "gtfs_links": [
+        "https://www.theride.org/sites/default/files/google/google_transit.zip"
+      ],
+      "outcome": "checked"
+    },
+    {
+      "source_id": "theride",
+      "url": "https://www.theride.org/sites/default/files/google/google_transit.zip",
+      "checked_at": "2026-09-26T20:28:23.228726+00:00",
+      "kind": "gtfs",
+      "status": 200,
+      "bytes_read": 2517586,
+      "content_type": "application/zip",
+      "final_url": "https://www.theride.org/sites/default/files/google/google_transit.zip",
+      "sha256": "e809b179484b404b0add5a4c30f5d8ee021e519e52fde60df26336a6f9540e8f",
+      "files": [
+        "__MACOSX/._agency.txt",
+        "__MACOSX/._calendar.txt",
+        "__MACOSX/._calendar_dates.txt",
+        "__MACOSX/._fare_attributes.txt",
+        "__MACOSX/._fare_rules.txt",
+        "__MACOSX/._feed_info.txt",
+        "__MACOSX/._frequencies.txt",
+        "__MACOSX/._routes.txt",
+        "__MACOSX/._shapes.txt",
+        "__MACOSX/._stop_times.txt",
+        "__MACOSX/._stops.txt",
+        "__MACOSX/._transfers.txt",
+        "__MACOSX/._trips.txt",
+        "agency.txt",
+        "calendar.txt",
+        "calendar_dates.txt",
+        "fare_attributes.txt",
+        "fare_rules.txt",
+        "feed_info.txt",
+        "frequencies.txt",
+        "routes.txt",
+        "shapes.txt",
+        "stop_times.txt",
+        "stops.txt",
+        "transfers.txt",
+        "trips.txt"
+      ],
+      "calendar": {
+        "service_count": 3,
+        "earliest_start": "20260912",
+        "latest_end": "20270130"
+      },
+      "feed_info": [
+        {
+          "feed_start_date": "20260823",
+          "feed_end_date": "20270130",
+          "feed_version": "S1000302"
+        }
+      ],
+      "outcome": "checked"
+    }
+  ]
+}

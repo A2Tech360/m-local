@@ -17,6 +17,11 @@ Keep source evidence, simulated fixtures and normalized records distinguishable.
 **Spec:** [Mission](../../START-HERE.md), [contract](../../TEAM-CONTRACT.md),
 [workflow](../../TEAM-WORKFLOW.md).
 
+**Source research:** [Free local data guide](../../research/FREE-DATA-SOURCES.md)
+and [impact evidence](../../research/LOCAL-IMPACT-EVIDENCE.md). City access notices
+remain the required context type. Other sources are prioritized options, not added
+acceptance criteria; the U-M event feed is not yet verified working from this machine.
+
 ## Global constraints
 
 - Branch: `feat/03-local-context`; keep application logic in Jac.

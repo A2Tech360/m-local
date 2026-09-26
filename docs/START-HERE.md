@@ -72,6 +72,11 @@ demo records that do not automatically renew. Preserve the original snapshot.
 
 ## Impact and evidence
 
+The [free local data guide](research/FREE-DATA-SOURCES.md) ranks City, U-M, transit,
+weather and research sources, with actual access results and reuse limits. The
+[local impact brief](research/LOCAL-IMPACT-EVIDENCE.md) supplies dated facts for the
+pitch. These references support the existing scope; they do not add nine integrations.
+
 The following are **targets**, not results:
 
 | Intended benefit | Small, checkable evidence |
