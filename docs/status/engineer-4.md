@@ -108,3 +108,23 @@ consistent with the E2 PR #3 fix that E1 has not integrated into this branch.
 The unauthenticated money POST now returns 405. No backend ownership workaround
 was applied. Physical iPhone/webcam acceptance, Mac, artifact serving, human/Baz
 review and organizer-confirmed rules remain open gates.
+
+### Jac architecture audit requested by Travis
+
+At source `5ea1d96`, the UI and session adapter are Jac. The server defines real
+Restaurant, Location, MenuItem, Offer, Redemption and Reservation nodes with
+typed edges in `services/models.jac`. `services/promo.jac` traverses those edges
+for discovery and attaches claim/reservation nodes for durable state. The
+frontend consumes Jac responses; QR camera/encoding interop does not own offer
+terms, identity or redemption decisions.
+
+There are currently **no walker declarations or spawn/visit flows** in the E4
+branch's Jac sources. Graph traversal is inside ordinary Jac functions. E3's
+unintegrated context helper also uses function-based graph queries. These facts
+must not be presented as proof of a walker-driven implementation. Jac 0.37.23's
+bundled `jac-walker-patterns` guide describes the distinct walker model.
+
+Explicit walker use is an architecture review point for E2, with E3 involved for
+access-context traversal. E4 keeps the agreed OfferView boundary and does not
+rewrite backend files or invent a replacement DTO to add it. Competition rule
+compliance and any Jac-percentage claim still need their separate evidence.
