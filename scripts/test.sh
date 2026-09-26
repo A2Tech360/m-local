@@ -3,9 +3,18 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/runtime.sh"
 suite="${1:-core}"
 case "$suite" in
     core|all) ;;
-    context|integration)
-        echo "$suite suite is not implemented yet; see the team missions." >&2
+    context)
+        echo 'Context suite is not present in this checkout; see the team missions.' >&2
         exit 2 ;;
+    integration)
+        node --test tests/ui/*.test.mjs tests/tooling/*.test.mjs
+        accounts="$PROJECT_ROOT/.jac/qr-demo-accounts.json"
+        if [[ ! -f "$accounts" ]]; then
+            echo 'Integration accounts are missing. Run the local provisioning command first; no fixture success is substituted.' >&2
+            exit 2
+        fi
+        python3 tests/integration/qr_http.py --api "${MLOCAL_API_URL:-http://localhost:8001}" --accounts "$accounts"
+        exit 0 ;;
     *) echo 'Usage: scripts/test.sh core|context|integration|all' >&2; exit 2 ;;
 esac
 mkdir -p -- "$JAC_CACHE_HOME/test-runs"
@@ -19,6 +28,8 @@ echo "Isolated test workspace (retained for diagnosis): $test_root"
 cd -- "$test_root"
 "$JAC_BIN" test services/promo.jac services/qr.jac services/session.jac
 if [[ "$suite" == all ]]; then
-    echo 'Core completed; context and integration suites are not implemented. All is NOT passing.' >&2
-    exit 2
+    exit_code=0
+    bash "$PROJECT_ROOT/scripts/test.sh" context || exit_code=$?
+    bash "$PROJECT_ROOT/scripts/test.sh" integration || exit_code=$?
+    exit "$exit_code"
 fi

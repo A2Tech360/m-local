@@ -1,0 +1,24 @@
+name: checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  jac:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Jac
+        shell: bash
+        run: |
+          version="$(tr -d '[:space:]' < .jac-version)"
+          curl -fsSL https://raw.githubusercontent.com/jaseci-labs/jac/main/scripts/install.sh \
+            | bash -s -- --version "$version"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Install project dependencies
+        run: jac install
+      - name: Check Jac sources
+        run: ./scripts/check.sh
+      - name: Run core tests
+        run: ./scripts/test.sh core

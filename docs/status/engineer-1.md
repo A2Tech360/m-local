@@ -1,140 +1,22 @@
-# Engineer 1 status: local runtime checkpoint
+# Engineer 1 Status
 
-Date: 2026-09-26. Branch: `feat/01-runtime-release`.
-Base: `c64b9d82739e3d9664c15325065bc7defd180122`.
-This is the runtime checkpoint, **not completion of the full integration mission**.
+Branch: `feat/01-runtime-release`
 
-## Verified on Travis's Windows/Ubuntu WSL x86_64 machine
+## Verified
 
-| Check | Result |
-|---|---|
-| Official release | Latest stable `v0.37.23`; Linux executable and companion matched publisher SHA-256 files |
-| Local CLI/project pin | Both 0.37.23; previous user CLI backed up; independent 0.37.21 lab unchanged |
-| Real Jac MCP | Initialized stdio server; 19 tools listed; five bundled guide resources fetched via `tools/call` |
-| Whole-program check | `bash scripts/check.sh`: exit 0; compiler warnings remain |
-| Core rule tests | `bash scripts/test.sh core`: 7 passed; repeated in a second distinct workspace/store |
-| Paths containing spaces | Copied source/scripts into `path with spaces`; core wrapper returned 7 passed |
-| Missing runtime / missing integration suite | Clear diagnostic and exit 2 in both cases |
-| Production build | `bash scripts/build.sh`: exit 0; `dist/mobile-starter.jab`, 874733 bytes on this run; 5/5 server modules compiled |
-| PowerShell launch | `.\scripts\dev.ps1`: Jac API at 127.0.0.1:8001 and Vite at localhost:8000; actual page opened |
-| Browser | Five visible demo offers; $5 filter reduced to latte/slice; offer details loaded from Jac |
-| Claim and redeem | Fictional $3 latte claim generated a six-character code; stock 25 -> 24; Arbor Leaf redeemed it with visible charge/feedback |
-| Store isolation and restart | Separate core test run did not remove the claim; stopping/restarting the dev server retained its REDEEMED status |
-| Windows edit loop | Changed heading to `LOCAL JAC EDIT CHECK`, observed browser update, restored it. The content-hash bridge also triggered recompilation of a temporary callback diagnostic, then that diagnostic was removed |
-| Phone relay | Two Node tests pass: app body forwarding/admin rejection/Vite entry, and actionable stopped-upstream response. Real browser loads the Jac app and persisted redemption through localhost:8080; Vite websocket connected |
-| Mobile viewport | DOM viewport 390 x 844, document scrollWidth 390; this is not a physical Safari test |
+- Jac 0.37.23 is pinned and checksum-verified on macOS arm64.
+- `bash scripts/check.sh` passes.
+- `bash scripts/test.sh core` passes: 3 passed, 2 skipped.
+- `bash scripts/build.sh` produces `dist/mobile-starter.jab`.
+- `scripts/demo.sh` starts an isolated server and returned HTTP 200.
+- UI/tooling integration checks pass: 11 passed.
+- Runtime mismatch and missing-account failures are explicit and nonzero.
 
-Browser automation's mouse activation did not reliably trigger some MobUI
-Pressable controls. Keyboard Enter did trigger the same controls and actual Jac
-requests. Do not report a confirmed touch defect from this observation; test on
-the physical phone. Temporary Jac instrumentation was removed before the build.
+## Outstanding
 
-## Failures that informed the setup
+- Context tests are not present in this checkout.
+- QR HTTP acceptance requires private provisioned local accounts and a running server.
+- Restart/database concurrency evidence is not verified here.
+- Physical phone camera flow, second-machine setup, Baz review, deadline, and deployment authorization remain open.
 
-- The exported entry point/placement syntax and unparameterized generic types
-  failed current Jac checks. A bounded compatibility migration fixed those errors.
-- WSL DNS could not resolve GitHub/npm; Windows fetched official assets and
-  installed Linux-targeted frontend dependencies. Current Jac regenerates its
-  manifest for production; the fallback was repeated for that manifest.
-- Windows npm generated a shell launcher for Vite. Bun failed while parsing that
-  shell script. Replacing only the generated launcher with Vite's Linux symlink
-  let Jac start the frontend normally.
-- Windows saves were invisible to Linux inotify. A content-hash poller emits Linux
-  modification events, without rewriting saved source bytes. Rapid changes during
-  compilation once produced `Sources changed during preparation`; stable retry
-  recovered. Rebuilds on the mounted Windows drive can take tens of seconds.
-- A PowerShell `wslpath` call lost Windows path separators through shell parsing.
-  The launcher now uses `wsl --cd <Windows path> --exec bash ...` directly.
-- The initial phone relay blocked Vite's `index.html?html-proxy` entry module.
-  The added regression assertion failed 403 vs 200, then passed after allowing
-  that exact asset. The real page subsequently rendered through the relay.
-
-Local raw evidence remains ignored under `.jac/evidence/`: `build.log`,
-`script-check-all.log`, `script-core-tests*.log`, `path-spaces-test.log`,
-`browser-flow.log`, `dev-script.log`, `windows-npm-launcher-failure.log`,
-`phone-relay-tests.log` and `local-redemption.png`. Runtime/MCP downloads and the
-first isolated test workspace are outside the repo in sibling `m-local-runtime`.
-Do not commit local graph data, generated secrets, node_modules or compiler caches.
-
-## Still unverified or unfinished
-
-- Real Mac teammate execution and clean-clone bootstrap on every team computer.
-- Physical iPhone/Android testing on the intended network; LAN sharing is an
-  explicit `--lan` command, not an automatically opened public tunnel.
-- Running the produced `.jab` as a release server (the build itself passed).
-- Real identity/ownership, two authenticated roots sharing a catalog, concurrent
-  last-unit HTTP claims, retry guarantees and immutable claimed terms.
-- Context/integration suites, fresh authenticated `demo.sh`, CI, Baz review,
-  competition eligibility review and deployment. `test.sh all` must not appear green.
-
-## Decisions and next handoffs
-
-- The user's latest-version request authorizes the small cross-owner compatibility
-  edits; carry them into the other branches. It does not authorize redesigning
-  their domain/UI implementation in this checkpoint.
-- The roles are a hybrid platform/backend/data/frontend split. Keep file ownership,
-  publish small DTO/auth contracts early, and pair Engineers 1/2 on the auth probe.
-- Have one Mac teammate and another Windows teammate run [the checklist](../PHONE-TESTING.md).
-  Engineer 4 then records a real phone flow, including tap behavior. Engineer 2
-  should deliver the first auth/offer interface checkpoint before large UI rewrites.
-
-## ChatGPT Work QR increment — 2026-09-26
-
-Started from pushed runtime PR head `847b46a7ee626e55b64945fd3382121c8ce97551`.
-Travis then explicitly requested applying the reviewed QR changes to the repo.
-The coordinator assigned disjoint backend and frontend workers and an independent
-verifier; importer/source-data ownership was preserved. No hosted deployment,
-public tunnel, spending, business contact or hosted-model credentials were used.
-
-### Implemented
-
-- Opaque versioned 32-byte random claim credential, durable Jac claim binding,
-  original terms/price/expiry snapshots, idempotent live claim retry, cancellation,
-  owner-scoped read-only preview and separately confirmed redemption.
-- Jac authentication helpers, server-derived student identity and configured
-  restaurant ownership. Legacy client identity/merchant selectors and public
-  `redeem_code` were removed. Shared catalog queries use `root.shared`.
-- Student QR rendering, ZXing camera scanner, duplicate detection latch, denial
-  recovery, cancellation/unmount cleanup and network retry states.
-- Disabled the built-in graph inspector and redacted private claim repr output.
-- Local private account provisioning and opt-in real HTTP acceptance scripts;
-  exact setup and migration boundary in [QR-REDEMPTION](../QR-REDEMPTION.md).
-
-### Actual cloud evidence (Linux x86_64, Jac 0.37.23)
-
-| Command/check | Observed result |
-|---|---|
-| `bash scripts/setup.sh` | Official executable and companion SHA-256 verified; installed 0.37.23 |
-| `bash scripts/check.sh` | Exit 0 on final source; warnings remain |
-| `jac test services/qr.jac services/session.jac` | 5 passed (codec, money and provisioning validation) |
-| `jac test services/promo.jac -f 'pure or legacy'` | 2 passed (deadline/redaction and fail-closed legacy inventory) |
-| `node --test tests/ui/*.test.mjs tests/tooling/*.test.mjs` | 11 passed, including real QRCodeSVG pixels decoded by ZXing; controller tests use controlled browser dependencies |
-| `bash scripts/test.sh core` | Exit 1: 12 passed, 10 error; graph tests fail before assertions during embedded PostgreSQL startup (`OSError: [Errno 22] Invalid argument`, handing data directory to `nobody`) |
-| `bash scripts/build.sh` | Exit 0; 10/10 server modules compiled; `dist/mobile-starter.jab` 1,548,009 bytes on final run. Ownership-config functions fall back to Python with native lowering warnings |
-| Python provisioning/HTTP script syntax + shell wrapper syntax | Passed; remote provisioning origin rejected with exit 2 |
-| Independent source review | No remaining blocking findings after fixing hidden live claims, stable claim selection, first-store session bootstrap, and legacy inventory exposure |
-| `git diff --check` | Passed |
-
-The final build includes the JS QR bridge and scanner controller. An earlier
-build failed because Jac copied the direct JSX dependency but missed its nested
-`.mjs` import; adding an explicit used Jac import resolved that failure. Jac
-0.37.23 also rejects the retired `.cl.jac` marker, so the adapter is
-`client/session.jac`.
-
-### Explicit limits and teammate actions
-
-- The isolated graph errors mean authenticated HTTP, graph ACL behavior,
-  simultaneous last-unit claims, simultaneous redemption, and restart persistence
-  have **not passed on this increment**. Native SERIALIZABLE/replay is documented
-  by the pinned runtime; source documentation is not this app's concurrency proof.
-- Run the local provisioning and HTTP acceptance commands on a supported teammate
-  host. Use separate student/merchant browser sessions and new fictional offers.
-- All preexisting offers default to `qr_ready=False` and stay closed to new QR
-  claims. Existing rows are retained. Only newly seeded restaurants' offers and
-  newly created offers are automatically ready. No public endpoint marks an old
-  offer ready: this avoids reopening consumed stock hidden by legacy claim ACLs.
-- Physical camera, iPhone/Android taps, Mac execution and release-artifact serving
-  remain unrun. HTTP phone browsing is not a camera pass.
-- Context/integration/all wrappers, complete MVP acceptance, Baz review, event-time
-  provenance/eligibility review, final submission and hosting remain team gates.
-  This agent review does not substitute for the required Baz review or human signoff.
+No public write-enabled pilot is approved.
