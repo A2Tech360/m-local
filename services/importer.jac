@@ -31,6 +31,7 @@ def _reject_untrusted_identity_fields(record: dict) -> None {
             raise ContextValidationError("import records cannot assign " + key);
         }
     }
+}
 
 
 def _notice_location(location_slug: str) -> Location {
@@ -43,44 +44,53 @@ def _notice_location(location_slug: str) -> Location {
         raise ContextValidationError("location_slug must resolve to exactly one location");
     }
     return locations[0];
+}
 
 
 def _validate_access_notice(record: dict) -> None {
     required = ["source_id", "external_id", "location_slug", "version", "publisher",
                 "source_url", "checked_at", "valid_from", "valid_until", "summary", "is_demo"];
     for key in required {
-        if key not in record:
+        if key not in record {
             raise ContextValidationError("missing access notice field: " + key);
+        }
     }
     for key in ["source_id", "external_id", "location_slug", "version", "publisher", "summary"] {
-        if not isinstance(record[key], str) or not record[key].strip():
+        if not isinstance(record[key], str) or not record[key].strip() {
             raise ContextValidationError("access notice " + key + " must be a non-empty string");
+        }
     }
-    if not isinstance(record["is_demo"], bool):
+    if not isinstance(record["is_demo"], bool) {
         raise ContextValidationError("access notice is_demo must be boolean");
-    if not isinstance(record["source_url"], str) or (not record["is_demo"] and not record["source_url"].strip()):
-        raise ContextValidationError("source_url is required unless the fixture is explicitly simulated");
-    for key in ["checked_at", "valid_from", "valid_until"] {
-        if isinstance(record[key], bool) or not isinstance(record[key], (int, float)) or not math.isfinite(float(record[key])):
-            raise ContextValidationError("access notice " + key + " must be a finite timestamp");
     }
-    if record["valid_until"] <= record["valid_from"]:
+    if not isinstance(record["source_url"], str) or (not record["is_demo"] and not record["source_url"].strip()) {
+        raise ContextValidationError("source_url is required unless the fixture is explicitly simulated");
+    }
+    for key in ["checked_at", "valid_from", "valid_until"] {
+        if isinstance(record[key], bool) or not isinstance(record[key], (int, float)) or not math.isfinite(float(record[key])) {
+            raise ContextValidationError("access notice " + key + " must be a finite timestamp");
+        }
+    }
+    if record["valid_until"] <= record["valid_from"] {
         raise ContextValidationError("access notice validity interval must be increasing");
-    if "entrance_instruction" in record and not isinstance(record["entrance_instruction"], str):
+    }
+    if "entrance_instruction" in record and not isinstance(record["entrance_instruction"], str) {
         raise ContextValidationError("entrance_instruction must be text when present");
+    }
+}
 
 
-def upsert_access_notice(record: dict) -> str {
-    """Validate, resolve, then atomically create or refresh one source notice.
+"""Validate, resolve, then atomically create or refresh one source notice.
 
     Identity is the stable ``(source_id, external_id)`` pair. Every validation
     and location lookup happens before graph mutation, so bad input leaves the
     existing graph untouched. A source refresh failure should simply not call
     this function; that preserves the last successful checked timestamp.
-    """
+"""
+def upsert_access_notice(record: dict) -> str {
     _validate_access_notice(record);
     loc = _notice_location(record["location_slug"]);
-    matches = [root-->[?:ContextNotice, source_id == record["source_id"] and external_id == record["external_id"]]];
+    matches = [root-->[?:ContextNotice, source_id == record["source_id"], external_id == record["external_id"]]];
     if len(matches) > 1 {
         raise ContextValidationError("ambiguous source/external notice identity");
     }
@@ -120,11 +130,13 @@ def upsert_access_notice(record: dict) -> str {
         notice +>:Affects():+> loc;
     }
     return jid(notice);
+}
 
 
+"""Small reviewed-JSON adapter; callers retain failed source records separately."""
 def import_access_notices(records: list[dict]) -> list[str] {
-    """Small reviewed-JSON adapter; callers retain failed source records separately."""
     return [upsert_access_notice(record) for record in records];
+}
 
 
 """Create one restaurant (with location, menu and offers) from a plain record.
