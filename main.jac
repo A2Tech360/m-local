@@ -22,6 +22,7 @@ import from services.promo {
     ActionResult,
     ClaimView
 }
+import from services.session { current_session, SessionView }
 
 import from "@jac/mobui" {
     View,

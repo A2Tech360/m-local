@@ -11,6 +11,11 @@ Branch: `feat/01-runtime-release`
 - `scripts/demo.sh` starts an isolated server and returned HTTP 200.
 - UI/tooling integration checks pass: 11 passed.
 - Runtime mismatch and missing-account failures are explicit and nonzero.
+- PR #3 was merged as `068caf7` and pushed to this branch.
+- Real QR HTTP acceptance reached the merged server but stopped at
+	`current_session: unexpected HTTP 405`; the live `/functions` endpoint exposed
+	only `money`. This is an Engineer 4 application-wiring issue, not a runtime
+	installer failure, and was not changed by Engineer 1.
 
 ## Outstanding
 
