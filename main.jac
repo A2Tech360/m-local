@@ -96,29 +96,32 @@ def Field(
 
 
 def OfferCard(o: OfferView, onOpen: any) -> JsxElement {
+    hasSavedClaim = o.my_claim_id != "" and o.my_status in ["claimed", "redeemed"];
     saving = o.regular_price - o.price;
     live = o.state == "active";
     status = (
         "Your QR is ready" if o.my_qr_payload and o.my_status == "claimed"
+        else "Saved claim redeemed" if hasSavedClaim and o.my_status == "redeemed"
+        else "Open your saved claim" if hasSavedClaim
         else o.time_label + "  ·  " + str(o.remaining) + " left" if live
         else o.time_label if o.state == "scheduled" else o.state.capitalize()
     );
-    return <Pressable style={[styles.card, {} if live else styles.cardMuted]} onPress={onOpen}>
+    return <Pressable style={[styles.card, {} if live or hasSavedClaim else styles.cardMuted]} onPress={onOpen}>
         <View style={styles.rowBetween}>
             <Text style={styles.restaurant}>{o.restaurant.replace(" (Demo)", "")}</Text>
             {(<DemoTag />) if o.is_demo else <View />}
         </View>
-        <Text style={styles.offerTitle}>{o.title}</Text>
+        <Text style={styles.offerTitle}>{o.my_title if hasSavedClaim else o.title}</Text>
         <View style={styles.rowBetween}>
             <View style={styles.row}>
-                <Text style={styles.price}>{money(o.price)}</Text>
-                {(<Text style={styles.strike}>{money(o.regular_price)}</Text>) if saving > 0 else <View />}
+                <Text style={styles.price}>{money(o.my_price_cents / 100) if hasSavedClaim else money(o.price)}</Text>
+                {(<Text style={styles.strike}>{money(o.regular_price)}</Text>) if saving > 0 and not hasSavedClaim else <View />}
             </View>
             {(
                 <View style={styles.badge}>
                     <Text style={styles.badgeText}>{"Save " + money(saving)}</Text>
                 </View>
-            ) if saving > 0 else <View />}
+            ) if saving > 0 and not hasSavedClaim else <View />}
         </View>
         <Text style={[styles.small, {"color": C["accent"], "fontWeight": "700"} if o.my_qr_payload else {}]}>{status}</Text>
     </Pressable>;
@@ -498,6 +501,7 @@ def:pub app -> JsxElement {
         o = detail;
         claimable = o.state == "active" and o.my_status in ["", "cancelled", "expired"];
         studentSession = session and session.role == "student";
+        hasSavedClaim = o.my_claim_id != "" and o.my_status in ["claimed", "redeemed"];
         saving = o.regular_price - o.price;
         return <View style={styles.content}>
             <Pressable onPress={lambda { closeDetail(); }}>
@@ -508,20 +512,20 @@ def:pub app -> JsxElement {
                     <Text style={styles.restaurant}>{o.restaurant.replace(" (Demo)", "")}</Text>
                     {(<DemoTag />) if o.is_demo else <View />}
                 </View>
-                <Text style={styles.title}>{o.title}</Text>
-                <Text style={styles.subtitle}>{o.description}</Text>
+                <Text style={styles.title}>{o.my_title if hasSavedClaim else o.title}</Text>
+                {(<Text style={styles.subtitle}>{o.description}</Text>) if not hasSavedClaim else <View />}
             </View>
             <View style={styles.row}>
-                <Text style={styles.priceBig}>{money(o.price)}</Text>
-                {(<Text style={styles.strike}>{money(o.regular_price)}</Text>) if saving > 0 else <View />}
+                <Text style={styles.priceBig}>{money(o.my_price_cents / 100) if hasSavedClaim else money(o.price)}</Text>
+                {(<Text style={styles.strike}>{money(o.regular_price)}</Text>) if saving > 0 and not hasSavedClaim else <View />}
                 {(
                     <View style={styles.badge}><Text style={styles.badgeText}>{"Save " + money(saving)}</Text></View>
-                ) if saving > 0 else <View />}
+                ) if saving > 0 and not hasSavedClaim else <View />}
             </View>
             <View style={styles.row}>
-                <StatusPill state={o.state} />
+                <StatusPill state={o.my_status if hasSavedClaim else o.state} />
                 <Text style={styles.small}>
-                    {o.time_label + ("  ·  " + str(o.remaining) + " left" if o.state == "active" else "")}
+                    {("Hold expires " + o.my_expires if o.my_status == "claimed" else "Saved claim redeemed") if hasSavedClaim else o.time_label + ("  ·  " + str(o.remaining) + " left" if o.state == "active" else "")}
                 </Text>
             </View>
             {(
@@ -533,7 +537,7 @@ def:pub app -> JsxElement {
                         for r in o.reasons
                     ]}
                 </View>
-            ) if o.reasons else <View />}
+            ) if o.reasons and not hasSavedClaim else <View />}
             {(
                 <View style={styles.section}>
                     <Text style={styles.h2}>{"Your saved claim" if o.my_status == "claimed" else "Saved claim · " + o.my_status}</Text>
@@ -563,15 +567,18 @@ def:pub app -> JsxElement {
             <Text style={styles.small}>Prices exclude tax unless the saved terms say otherwise. The restaurant checks the stated ID requirement.</Text>
             {(
                 <View style={styles.note}>
-                    <Text style={[styles.noteText, {"fontWeight": "800"}]}>{"Getting in" + (" · updated " + o.note_date if o.note_date else "")}</Text>
+                    <Text style={[styles.noteText, {"fontWeight": "800"}]}>Unverified restaurant note</Text>
                     <Text style={styles.noteText}>{o.entrance_note}</Text>
+                    <Text style={styles.noteText}>{("Date provided: " + o.note_date + ". " if o.note_date else "") + "Not independently checked. Confirm current access with the restaurant."}</Text>
                 </View>
             ) if o.entrance_note else <View />}
             <View style={styles.section}>
                 <Text style={styles.body}>{o.address + (" · " + o.neighborhood if o.neighborhood else "")}</Text>
-                <View style={styles.divider} />
-                <Text style={styles.small}>{"For: " + o.eligibility}</Text>
-                <Text style={styles.small}>{o.terms or "No additional terms."}</Text>
+                {(<View style={{"gap": 8}}>
+                    <View style={styles.divider} />
+                    <Text style={styles.small}>{"For: " + o.eligibility}</Text>
+                    <Text style={styles.small}>{o.terms or "No additional terms."}</Text>
+                </View>) if not hasSavedClaim else <View />}
             </View>
         </View>;
     }
@@ -718,8 +725,8 @@ def:pub app -> JsxElement {
             <ScrollView style={[styles.scroll, {"height": viewport.height}]}>{SessionPanel()}{body}</ScrollView>
             <View style={styles.tabbar}>
                 {TabButton("discover", "Offers", "Student")}
-                {TabButton("merchant", "Manage", "Merchant")}
-                {TabButton("redeem", "Redeem", "Merchant")}
+                {TabButton("merchant", "Manage", "Merchant") if session and session.role == "merchant" else <View />}
+                {TabButton("redeem", "Redeem", "Merchant") if session and session.role == "merchant" else <View />}
             </View>
         </View>
     </View>;

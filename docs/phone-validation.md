@@ -26,6 +26,23 @@ Controller cases cover canonical payload validation, repeated detections, no mut
 
 The coordinator records the integrated production build, backend HTTP tests and any actual browser results separately. These focused checks do not establish the identity, stock or persistence guarantees on their own.
 
+## Engineer 4 compiled UI checkpoint, 2026-09-26
+
+Branch: `feat/04-phone-experience`, based on runtime/QR `bb8fa0f466f6d1cf03ad2423244c21d318ab670c`. The commit containing this section is the tested source checkpoint; obtain its exact revision with `git log -1 -- docs/status/engineer-4.md`.
+
+| Check | Observed result | Limit |
+|---|---|---|
+| `bash scripts/check.sh` | Exit 0; warnings remain | Whole-program compiler check |
+| `bash scripts/build.sh` | Exit 0; 10/10 server modules; `.jab` 1,553,634 bytes | Artifact built, not release-served |
+| `node --test tests/ui/browser/phone-dom.test.mjs tests/ui/*.test.mjs tests/tooling/*.test.mjs` | 21 passed, 0 failed | 10 compiled-app DOM cases, 9 QR/controller cases, 2 relay cases; synthetic RPC/camera inputs |
+| Independent source review | No remaining blocking findings after fixes | Does not substitute for execution or human review ring |
+
+The DOM cases cover saved card/detail title and price after offer edits, hidden student merchant tabs, unverified entrance-note wording, failed claim retry, failed offer/profile saves with preserved inputs and successful retries, out-of-order filtering, ignored delayed private responses after signout, removal of an already-visible QR on signout, simulated camera denial and an already-expired QR being hidden. Timer crossing the deadline was not tested by that expiry case.
+
+Reproduction and the isolated optional jsdom installation are in `docs/status/engineer-4.md`. No shared dependency manifest changed. An initial DOM invocation overlapped the build and failed because the generated bundle was being replaced; the recorded 21-pass run occurred after the final build completed. The earlier failing snapshot/navigation/note tests were fixed and rerun.
+
+Chromium installation failed with truncated download archives. Consequently there are **no actual browser screenshots, viewport/layout passes or physical camera results** from this run. Linux compiled DOM checks do not verify Mac or phone behavior. The core graph suite and authenticated HTTP acceptance gates remain blocked/unrun as described in Engineer 1/4 status; this frontend increment did not rerun or change backend tests.
+
 ## Physical device procedure — not yet executed
 
 Use distinct pre-provisioned student and merchant accounts with privately shared credentials. Keep fixture data labeled demo.

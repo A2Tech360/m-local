@@ -1,0 +1,64 @@
+// Compiled UI checks with synthetic RPC responses. No real auth, DB or camera evidence.
+import {createRequire} from 'node:module';
+import {readFileSync,readdirSync} from 'node:fs';
+import {resolve} from 'node:path';
+const root=resolve(import.meta.dirname,'../../..');
+const runtimeRequire=createRequire(resolve(process.env.MLOCAL_UI_TEST_MODULES || `${root}/.jac/ui-test-runtime/node_modules`, '../package.json'));
+const {JSDOM,VirtualConsole}=runtimeRequire('jsdom');
+const clientRequire=createRequire(`${root}/.jac/client/package.json`);
+const {transformSync}=clientRequire('esbuild');
+const dist=resolve(root,'.jac/client/dist');
+const bundle=readFileSync(resolve(dist,readdirSync(dist).find(n=>/^client\..*\.js$/.test(n))),'utf8');
+const executable=transformSync(bundle,{format:'iife',target:'es2022'}).code;
+export const qr='mlocal:v1:'+'A'.repeat(43);
+export function offer(extra={}) {return {
+ id:'fixture-offer',title:'Current bowl',description:'Fictional UI test meal',restaurant:'Fixture Kitchen (Demo)',
+ price:9,regular_price:12,address:'Fictional test address',neighborhood:'Test area',state:'active',remaining:4,quantity:5,
+ eligibility:'Student ID',terms:'Current offer terms',dietary:[],reasons:[],is_demo:true,time_label:'Until tonight',
+ my_status:'',my_claim_id:'',my_qr_payload:'',my_title:'',my_price_cents:0,my_terms:'',my_eligibility:'',my_expires:'',my_expires_ts:0,entrance_note:'',note_date:'',
+ start_input:'2026-09-26 17:00',end_input:'2026-09-26 23:00', ...extra
+};}
+export function held(extra={}) {return offer({my_claim_id:'fixture-claim',my_status:'claimed',my_qr_payload:qr,
+ my_title:'Saved bowl',my_price_cents:300,my_terms:'Saved meal terms',my_eligibility:'Saved ID condition',
+ my_expires:'8:00 PM',my_expires_ts:Date.now()/1000+1200,...extra});}
+export async function until(fn,message='condition',timeout=3000) {
+ const end=Date.now()+timeout;while(Date.now()<end){if(fn())return;await new Promise(r=>setTimeout(r,10));}throw new Error(`Timed out: ${message}`);
+}
+export async function app({role='student',item=offer(),intercept}={}) {
+ const errors=[],calls=[];let activeRole=role;
+ const virtualConsole=new VirtualConsole();virtualConsole.on('jsdomError',e=>errors.push(e.message));
+ const dom=new JSDOM(readFileSync(resolve(dist,'index.html'),'utf8'),{url:'http://localhost:8123',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole});
+ const w=dom.window;
+ w.matchMedia=()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}});
+ w.ResizeObserver=class{observe(){}unobserve(){}disconnect(){}};
+ w.TextEncoder=TextEncoder;w.TextDecoder=TextDecoder;w.Response=Response;w.Request=Request;w.Headers=Headers;
+ if(role!=='guest')w.localStorage.setItem('jac_token','synthetic-ui-token');
+ const session=()=>({authenticated:activeRole!=='guest',role:activeRole,actor_id:`fixture-${activeRole}`,restaurant_id:activeRole==='merchant'?'fixture-restaurant':'',display_name:`Fixture ${activeRole}`,is_demo:true});
+ const portal=()=>({ok:true,name:'Fixture Kitchen',cuisine:'Test cuisine',blurb:'Fixture profile',address:'Test address',neighborhood:'Test area',entrance_note:'',note_date:'',offers:[item],claims:[],is_demo:true,message:''});
+ w.fetch=async (url,options={})=>{
+  const name=String(url).split('/').at(-1),body=options.body?JSON.parse(options.body):{};
+  calls.push({name,body});
+  const override=intercept?await intercept(name,body,{window:w,calls}):undefined;
+  if(override!==undefined) return override;
+  if(name==='login'){activeRole='student';return Response.json({ok:true,data:{token:'synthetic-ui-token',root_id:'fixture-student'}});}
+  const visibleItem=w.localStorage.getItem('jac_token') ? item : Object.fromEntries(Object.entries(item).map(([key,value])=>[key,key.startsWith('my_') ? (typeof value==='number'?0:'') : value]));
+  const results={current_session:session(),list_offers:[visibleItem],get_offer:visibleItem,merchant_portal:portal(),
+   claim_offer:{ok:true,message:'Fixture claim accepted',claim_id:'fixture-claim',qr_payload:qr},
+   cancel_claim:{ok:true,message:'Fixture cancellation accepted'},
+   update_profile:portal(),save_offer:{ok:true,message:'Fixture offer saved',code:'fixture-offer'},
+   offer_defaults:['2026-09-26 17:00','2026-09-26 23:00'],set_offer_status:{ok:true,message:'Fixture status saved'}};
+  if(!(name in results))throw new Error(`Unexpected fixture endpoint ${name}`);
+  return rpc(results[name]);
+ };
+ w.addEventListener('error',e=>errors.push(e.message));
+ w.eval(executable);
+ const initialTitle=item.my_claim_id&&['claimed','redeemed'].includes(item.my_status)?item.my_title:item.title;
+ await until(()=>w.document.body.textContent.includes(initialTitle),'initial offer render');
+ return {window:w,document:w.document,calls,errors,text:()=>w.document.body.textContent,
+  find(text){return [...w.document.querySelectorAll('*')].find(n=>n.textContent===text&&n.children.length===0);},
+  click(text){const n=this.find(text);if(!n)throw new Error(`Missing control: ${text}`);n.dispatchEvent(new w.MouseEvent('click',{bubbles:true}));},
+  fill(placeholder,value){const n=w.document.querySelector(`[placeholder="${placeholder}"]`);if(!n)throw new Error(`Missing field: ${placeholder}`);const proto=n.tagName==='TEXTAREA'?w.HTMLTextAreaElement.prototype:w.HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(n,value);n.dispatchEvent(new w.Event('input',{bubbles:true}));},
+  close(){dom.window.close();}
+ };
+}
+export const rpc=value=>Response.json({ok:true,type:'response',data:{result:value,reports:[]},error:null});
