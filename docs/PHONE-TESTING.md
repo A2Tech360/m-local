@@ -4,9 +4,10 @@ The required product is a mobile web app. iPhone Safari and Android Chrome can
 use it without Xcode, Android Studio, an app-store account or native packaging.
 Native MobUI packaging remains optional and unverified.
 
-**New team decision:** redemption will use a QR code, not typed letters/numbers.
-The running baseline below still has the old entry flow. QR implementation belongs
-to Engineers 2/4 under [contract v2](TEAM-CONTRACT.md#approved-qr-decision-2026-09-26).
+**QR increment:** the runtime branch now displays student claim QRs and provides
+a merchant camera scanner with server preview and explicit confirmation. Use
+[QR setup](QR-REDEMPTION.md) to provision separate local Jac accounts.
+Physical camera and database acceptance checks below still need recorded runs.
 
 ## Each teammate's setup
 
@@ -56,9 +57,9 @@ repository and have the others pull it; do not maintain four private setup recip
 The host relay forwards the page, Jac calls and Vite reload connection through
 one port. This avoids Windows/WSL IP forwarding setup. It defaults to loopback
 without `--lan` and does not change firewall rules. Only enable LAN sharing for
-fictional demo data: the current app still uses demo identities/merchant keys.
+fictional demo data and privately provisioned test accounts.
 The relay excludes the framework admin/graph/introspection endpoints; it is
-development tooling, not a replacement for Engineer 2's authentication work.
+development tooling; the Jac API still enforces authenticated ownership.
 
 If the phone cannot connect, check that the host URL works first, then check the
 chosen Wi-Fi IP and the computer firewall's permission for Node on the intended
@@ -77,15 +78,15 @@ Loading over LAN does not make offline claims work.
 
 ## Five-minute two-device check
 
-Use fictional businesses and different test student IDs on each phone. On the
-merchant computer choose the corresponding demo merchant.
+Use fictional businesses and distinct provisioned student accounts on each phone.
+Sign in to the matching provisioned merchant account on the merchant computer.
 
 1. Phone A filters to a budget and opens a valid offer; terms and access labels fit.
 2. Phone A claims it and shows its QR. Merchant scans, checks the terms and confirms.
 3. Merchant scans again; the second redemption must be refused.
 4. Reload and restart the app with the same store; the redeemed status must remain.
-5. Phone B must not be able to impersonate Phone A once the identity mission lands.
-   The baseline's name field does **not** satisfy that check.
+5. Phone B must not be able to impersonate Phone A through any client input.
+   Verify this against the real server with separate authenticated sessions.
 
 Engineer 4 records tap behavior, keyboard overlap, errors and rotation in
 `docs/phone-validation.md`. Engineer 1 records host/commit/versions. A desktop

@@ -77,3 +77,64 @@ Do not commit local graph data, generated secrets, node_modules or compiler cach
 - Have one Mac teammate and another Windows teammate run [the checklist](../PHONE-TESTING.md).
   Engineer 4 then records a real phone flow, including tap behavior. Engineer 2
   should deliver the first auth/offer interface checkpoint before large UI rewrites.
+
+## ChatGPT Work QR increment — 2026-09-26
+
+Started from pushed runtime PR head `847b46a7ee626e55b64945fd3382121c8ce97551`.
+Travis then explicitly requested applying the reviewed QR changes to the repo.
+The coordinator assigned disjoint backend and frontend workers and an independent
+verifier; importer/source-data ownership was preserved. No hosted deployment,
+public tunnel, spending, business contact or hosted-model credentials were used.
+
+### Implemented
+
+- Opaque versioned 32-byte random claim credential, durable Jac claim binding,
+  original terms/price/expiry snapshots, idempotent live claim retry, cancellation,
+  owner-scoped read-only preview and separately confirmed redemption.
+- Jac authentication helpers, server-derived student identity and configured
+  restaurant ownership. Legacy client identity/merchant selectors and public
+  `redeem_code` were removed. Shared catalog queries use `root.shared`.
+- Student QR rendering, ZXing camera scanner, duplicate detection latch, denial
+  recovery, cancellation/unmount cleanup and network retry states.
+- Disabled the built-in graph inspector and redacted private claim repr output.
+- Local private account provisioning and opt-in real HTTP acceptance scripts;
+  exact setup and migration boundary in [QR-REDEMPTION](../QR-REDEMPTION.md).
+
+### Actual cloud evidence (Linux x86_64, Jac 0.37.23)
+
+| Command/check | Observed result |
+|---|---|
+| `bash scripts/setup.sh` | Official executable and companion SHA-256 verified; installed 0.37.23 |
+| `bash scripts/check.sh` | Exit 0 on final source; warnings remain |
+| `jac test services/qr.jac services/session.jac` | 5 passed (codec, money and provisioning validation) |
+| `jac test services/promo.jac -f 'pure or legacy'` | 2 passed (deadline/redaction and fail-closed legacy inventory) |
+| `node --test tests/ui/*.test.mjs tests/tooling/*.test.mjs` | 11 passed, including real QRCodeSVG pixels decoded by ZXing; controller tests use controlled browser dependencies |
+| `bash scripts/test.sh core` | Exit 1: 12 passed, 10 error; graph tests fail before assertions during embedded PostgreSQL startup (`OSError: [Errno 22] Invalid argument`, handing data directory to `nobody`) |
+| `bash scripts/build.sh` | Exit 0; 10/10 server modules compiled; `dist/mobile-starter.jab` 1,548,009 bytes on final run. Ownership-config functions fall back to Python with native lowering warnings |
+| Python provisioning/HTTP script syntax + shell wrapper syntax | Passed; remote provisioning origin rejected with exit 2 |
+| Independent source review | No remaining blocking findings after fixing hidden live claims, stable claim selection, first-store session bootstrap, and legacy inventory exposure |
+| `git diff --check` | Passed |
+
+The final build includes the JS QR bridge and scanner controller. An earlier
+build failed because Jac copied the direct JSX dependency but missed its nested
+`.mjs` import; adding an explicit used Jac import resolved that failure. Jac
+0.37.23 also rejects the retired `.cl.jac` marker, so the adapter is
+`client/session.jac`.
+
+### Explicit limits and teammate actions
+
+- The isolated graph errors mean authenticated HTTP, graph ACL behavior,
+  simultaneous last-unit claims, simultaneous redemption, and restart persistence
+  have **not passed on this increment**. Native SERIALIZABLE/replay is documented
+  by the pinned runtime; source documentation is not this app's concurrency proof.
+- Run the local provisioning and HTTP acceptance commands on a supported teammate
+  host. Use separate student/merchant browser sessions and new fictional offers.
+- All preexisting offers default to `qr_ready=False` and stay closed to new QR
+  claims. Existing rows are retained. Only newly seeded restaurants' offers and
+  newly created offers are automatically ready. No public endpoint marks an old
+  offer ready: this avoids reopening consumed stock hidden by legacy claim ACLs.
+- Physical camera, iPhone/Android taps, Mac execution and release-artifact serving
+  remain unrun. HTTP phone browsing is not a camera pass.
+- Context/integration/all wrappers, complete MVP acceptance, Baz review, event-time
+  provenance/eligibility review, final submission and hosting remain team gates.
+  This agent review does not substitute for the required Baz review or human signoff.

@@ -12,7 +12,7 @@ in their PR and informs the humans affected before callers are changed.
 | 1 | `jac.toml`, dependency lock/version files, `README.md`, `AGENTS.md`, `TEAM-HANDOFF.md`, `.gitignore`, `scripts/**`, `.github/workflows/**`, `tests/integration/**`, release/runtime docs |
 | 2 | `services/models.jac`, `services/promo.jac`, `services/promo.test.jac`, new `services/session.jac`, `services/session.test.jac`, `services/money.jac` |
 | 3 | `services/importer.jac`, `services/seed.jac`, new `services/context_models.jac`, `services/context.jac`, `services/context.test.jac`, `data/**`, `docs/data/**` |
-| 4 | `main.jac`, `theme.jac`, new `client/session.cl.jac`, `tests/ui/**`, `docs/phone-validation.md` |
+| 4 | `main.jac`, `theme.jac`, new `client/session.jac`, `tests/ui/**`, `docs/phone-validation.md` |
 
 Each engineer may update their own mission checklist and `docs/status/engineer-N.md`.
 Engineer 1 owns shared planning documents after this handoff. No one rewrites the
@@ -64,6 +64,7 @@ save_offer(offer_id: str, title: str, description: str, price: str,
            regular_price: str, start_local: str, end_local: str, quantity: str,
            eligibility: str, terms: str, dietary: str, menu_item: str) -> ActionResult
 set_offer_status(offer_id: str, status: str) -> ActionResult
+resolve_claim(qr_payload: str) -> ClaimPreview
 redeem_claim(qr_payload: str) -> ActionResult
 offer_defaults() -> list[str]
 ```
@@ -76,10 +77,33 @@ personal claim credentials. A student cannot become a merchant by submitting a r
 Engineer 2 coordinates the DTO migration with Engineer 4. Current `code` and
 `my_code` fields are legacy implementation details, not the approved user flow.
 
+### Frozen QR wire contract (2026-09-26)
+
+- `qr_payload` is exactly `mlocal:v1:` followed by 43 canonical unpadded
+  base64url characters encoding 32 cryptographically random bytes. It is not a
+  URL; it carries no price, actor ID, claim ID or other student information.
+- The claiming student's `OfferView` exposes `my_qr_payload`, `my_claim_id`,
+  `my_title`, `my_price_cents`, `my_terms`, `my_eligibility`, `my_status`,
+  `my_expires` and `my_expires_ts`. Guest/other-student views omit the credential.
+- `resolve_claim` is an authenticated merchant-only read. `ClaimPreview` contains
+  `ok`, `message`, `claim_id`, `title_snapshot`, `price_cents`, `terms`,
+  `eligibility`, `expires_ts`, `expires_label`, `status`, and `restaurant`.
+  It never echoes the credential or student identity. It does not redeem.
+- The merchant must explicitly confirm after preview. `redeem_claim` validates
+  the durable claim again in its own transaction; a previous preview grants no
+  right to redeem an expired or already redeemed claim.
+- `ActionResult.code` may temporarily carry a saved offer ID for the existing
+  editor. It must not be rendered or accepted as a redemption code.
+- The current scoped implementation uses local Jac accounts and the server-only
+  `MLOCAL_MERCHANT_OWNERS` map to bind restaurant slugs to authenticated root UUIDs.
+  No client or imported merchant key can assign ownership. See
+  [QR setup and acceptance](QR-REDEMPTION.md).
+
 ## Approved QR decision (2026-09-26)
 
 The team explicitly chose **QR codes instead of displaying and typing letters and
-numbers**. This decision is approved; it is not yet implemented in the runtime PR.
+numbers**. The runtime branch now contains the QR increment; device and database
+acceptance evidence is tracked separately in `docs/status/engineer-1.md`.
 
 - Student claims an offer and sees a scannable QR plus human-readable offer terms
   and expiry. Engineer 4 owns rendering, camera scanner and success/error states.
@@ -108,7 +132,8 @@ slice. Only trusted local account provisioning assigns it; record imports and pu
 profile edits cannot set it. The current `merchant_key` field is retired from access
 control. Engineer 3 removes those keys from new committed seed records.
 
-Engineer 4 supplies the client adapter `client/session.cl.jac`:
+Engineer 4 supplies the client adapter `client/session.jac` (Jac 0.37.23 retires
+the old `.cl.jac` filename marker):
 `signIn(email: str, password: str) -> SessionView`, `signOut() -> None`, and
 `loadSession() -> SessionView`. It delegates credential/session handling to the
 runtime-supported client helpers proved by Engineer 1. `loadSession` calls the

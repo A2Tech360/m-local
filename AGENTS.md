@@ -1,7 +1,8 @@
 # Working in this Jac project
 
 Current decisions and transferable context: `docs/WORK-HANDOFF.md` and
-`docs/TEAM-CONTRACT.md` v2. QR redemption is approved but not yet implemented.
+`docs/TEAM-CONTRACT.md` v2. QR redemption is implemented on the runtime branch; see docs/QR-REDEMPTION.md
+for setup and the explicit unverified database/device checks.
 Travis has authorized an agentic coordinator for his ChatGPT Work task. It may
 delegate bounded work within his lane and independent read-only review. This
 supersedes older blanket no-subagent wording for that task, not the four human
@@ -31,7 +32,7 @@ Start with `jac guide jac-core-cheatsheet` and `jac guide jac-types`.
 - `jac run <file>` -- execute a Jac script.
 - `bash scripts/dev.sh` -- start the local web app, including Windows-save support.
   This wraps `jac run --dev --host 127.0.0.1 --port 8000`; `jac start` is retired.
-- `bash scripts/test.sh core` -- run the seven existing rule tests in an isolated
+- `bash scripts/test.sh core` -- run the core, QR, and provisioning tests in an isolated
   workspace/store. Never run destructive reset commands on a shared demo database.
   Context/integration suites are pending and deliberately return nonzero.
 - `jac browse <action>` -- QA a running app in a headless browser:

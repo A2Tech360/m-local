@@ -12,8 +12,12 @@ restaurants, locations, offers, access notices and claims. Keep the scope to one
 useful context relationship before expanding into a community aggregator.
 
 **The team has decided to use QR codes instead of typed letters/numbers.** The
-running baseline still uses six-character codes. QR is approved work, not a shipped
-feature. The target API/ownership/QR rules are in `docs/TEAM-CONTRACT.md` v2.
+runtime branch now contains student QR display, merchant scanning, authenticated
+preview/confirmation endpoints and local account provisioning. Read
+`docs/QR-REDEMPTION.md` and the newest section of `docs/status/engineer-1.md` for
+actual checks and remaining database/device gates. The original checkpoint below
+is historical six-character-code evidence. API/ownership rules remain in
+`docs/TEAM-CONTRACT.md` v2 with the frozen QR wire contract.
 Mixed Windows/Mac computers and iPhone/Android browsers are required test targets.
 
 ## Start from the real code

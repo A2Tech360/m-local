@@ -17,7 +17,7 @@ while IFS= read -r -d '' source_file; do
 done < <(find . -type d \( -name .jac -o -name .git -o -name node_modules -o -name .venv \) -prune -o -type f \( -name '*.jac' -o -name jac.toml \) -print0)
 echo "Isolated test workspace (retained for diagnosis): $test_root"
 cd -- "$test_root"
-"$JAC_BIN" test services/promo.jac
+"$JAC_BIN" test services/promo.jac services/qr.jac services/session.jac
 if [[ "$suite" == all ]]; then
     echo 'Core completed; context and integration suites are not implemented. All is NOT passing.' >&2
     exit 2

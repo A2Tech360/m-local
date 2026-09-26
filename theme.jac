@@ -165,7 +165,7 @@ def:pub buildStyles(T: dict[str, str]) -> any {
                 "borderColor": T["border"],
                 "backgroundColor": T["surface"],
                 "color": T["ink"],
-                "fontSize": F["md"]
+                "fontSize": 16
             },
             "inputMulti": {"minHeight": 72, "textAlignVertical": "top"},
             "field": {"gap": 6},
@@ -203,20 +203,6 @@ def:pub buildStyles(T: dict[str, str]) -> any {
                 "padding": S["md"]
             },
             "msgBadText": {"color": T["bad"], "fontWeight": "700", "fontSize": F["md"]},
-            "codeBox": {
-                "backgroundColor": T["ink"],
-                "borderRadius": R["lg"],
-                "padding": S["xl"],
-                "alignItems": "center",
-                "gap": S["xs"]
-            },
-            "codeText": {
-                "color": T["accentText"],
-                "fontSize": 34,
-                "fontWeight": "800",
-                "letterSpacing": 6
-            },
-            "codeSub": {"color": "#d8d2c8", "fontSize": F["sm"]},
             "reason": {"flexDirection": "row", "gap": S["sm"], "alignItems": "flex-start"},
             "dot": {
                 "width": 8,
