@@ -1,5 +1,10 @@
 # M-Local / PromoPusher team handoff
 
+For the four-person build, use [the team mission and starting prompts](docs/START-HERE.md).
+That plan follows the source audit and defines work still to be implemented. The
+extraction manifest and verification report below describe the original capture;
+later documentation and engineering changes are tracked separately in Git history.
+
 ## What this repository contains
 
 The application source recovered from Travis's JacHammer project **M-Local** on

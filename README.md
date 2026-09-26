@@ -1,5 +1,12 @@
 # PromoPusher (prototype)
 
+**Hackathon team: [start here](docs/START-HERE.md).** The mission, impact goals,
+four engineering assignments and copy-ready model prompts are documented there.
+Read the [shared contract](docs/TEAM-CONTRACT.md) and
+[parallel workflow](docs/TEAM-WORKFLOW.md) before implementing. These are planned
+changes; the generated setup notes below still need the runtime verification owned
+by Engineer 1.
+
 Mobile-friendly Ann Arbor app connecting students with time-limited restaurant offers.
 One Jac source compiles to web (react-native-web) and React Native (MobUI).
 
