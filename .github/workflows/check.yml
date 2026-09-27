@@ -9,6 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Install pinned Jac
         shell: bash
         run: bash scripts/setup.sh
@@ -21,3 +24,9 @@ jobs:
         run: ./scripts/check.sh
       - name: Run core tests
         run: ./scripts/test.sh core
+      - name: Run onboarding security tests
+        run: python3 -m unittest discover -s tests/onboarding
+      - name: Build compiled app and client dependencies
+        run: ./scripts/build.sh
+      - name: Run gateway and UI unit tests
+        run: node --test tests/ui/*.test.mjs tests/tooling/*.test.mjs
