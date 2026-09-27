@@ -54,6 +54,8 @@ import from "./client/account-profile.jsx" { AccountProfile }
 import from "./client/offer-editor.jsx" { OfferEditor }
 import from "./client/qr.jsx" { ClaimQr, ClaimScanner }
 import from "./client/scan-controller.mjs" { isClaimPayload }
+import from "./client/feed-support.jsx" { useFeedRefresh }
+import from "./client/feed-validation.mjs" { validateHomeFeed }
 
 
 glob styles = buildStyles(C);
@@ -287,6 +289,11 @@ def:pub app -> JsxElement {
         pickRange: str = "";
 
     viewport = useWindowDimensions();
+    useFeedRefresh({
+        "enabled": sessionReady and audience != "" and tab == "discover" and selected == "" and not tastesOpen,
+        "onRefresh": lambda { return refresh(); },
+        "busy": loading
+    });
 
     async def openTastes() {
         found: TasteView | None = None;
@@ -356,7 +363,7 @@ def:pub app -> JsxElement {
         loading = True;
         loadError = "";
         try {
-            found = await home_feed(price, win, ",".join(ds));
+            found = validateHomeFeed(await home_feed(price, win, ",".join(ds)));
             if found and requestId == offerRequest.current and epoch == sessionEpoch.current {
                 found.items = [item for item in found.items if not item.offer.is_demo];
                 found.favorites = [place for place in found.favorites if not place.is_demo];
@@ -737,7 +744,12 @@ def:pub app -> JsxElement {
         studentSession = session and session.authenticated and session.role == "student";
         return <View style={styles.content}>
             <View style={styles.header}>
-                <Text style={styles.brand}>M-LOCAL · ANN ARBOR</Text>
+                <View style={[styles.rowBetween, {"flexWrap": "wrap", "gap": 8}]}>
+                    <Text style={styles.brand}>M-LOCAL · ANN ARBOR</Text>
+                    <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={loading} onPress={lambda { refresh(); }}>
+                        <Text style={styles.btnGhostText}>{"Refreshing..." if loading else "Refresh offers"}</Text>
+                    </Pressable>
+                </View>
                 <Text style={styles.title}>{"Picked for you, plus everything else." if home and home.personalized else "Hungry? Here is what is good nearby."}</Text>
             </View>
             {(
@@ -771,8 +783,8 @@ def:pub app -> JsxElement {
             </ScrollView>
             {(
                 <View style={styles.empty}><Text style={styles.subtitle}>Finding deals...</Text></View>
-            ) if loading else (
-                <View style={styles.msgBad}><Text style={styles.msgBadText}>{loadError}</Text><Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { refresh(); }}><Text style={styles.btnGhostText}>Refresh offers</Text></Pressable></View>
+            ) if loading and not home else (
+                <View style={styles.msgBad}><Text style={styles.msgBadText}>{loadError}</Text></View>
             ) if loadError else (
                 <View style={styles.empty}>
                     <Text style={styles.h2}>{"Nothing matches yet" if maxPrice != "" or timeWin != "any" or len(diets) > 0 else "Offers are on their way"}</Text>
