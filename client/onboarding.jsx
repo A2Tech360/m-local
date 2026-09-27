@@ -95,7 +95,7 @@ export function EmailOnboarding({kind='student',initialMode='signin',onSwitchAud
 }
 
 const empty={name:'',cuisine:'',description:'',address:'',website:'',menu_text:'',menu_url:'',image_url:'',status:'draft',image_urls:[],menu_urls:[],sources:[]};
-export function BusinessOnboarding({getDraft,importWebsite,saveDraft}) {
+export function BusinessOnboarding({getDraft,importWebsite,saveDraft,onActivated}) {
  const [draft,setDraft]=useState(empty),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[confirmed,setConfirmed]=useState(false),[ready,setReady]=useState(false),[loadFailed,setLoadFailed]=useState(false);
  const mounted=useRef(true),inFlight=useRef(false),edited=useRef(false);
  async function load(){
@@ -106,11 +106,20 @@ export function BusinessOnboarding({getDraft,importWebsite,saveDraft}) {
  }
  useEffect(()=>{mounted.current=true;load();return()=>{mounted.current=false;};},[]);
  const field=(key,value)=>{edited.current=true;setDraft(d=>({...d,[key]:value,status:'draft'}));setConfirmed(false);};
- async function run(action){if(inFlight.current)return;inFlight.current=true;setBusy(true);setMessage('');try{const reply=await action();if(!mounted.current)return;if(reply.ok){setDraft({...empty,...reply});setConfirmed(false);}setMessage(reply.message);}catch{if(mounted.current)setMessage('Could not connect. Your entries are kept; please retry.');}finally{inFlight.current=false;if(mounted.current)setBusy(false);}}
+ async function openManagement(){
+  try{const opened=await onActivated();if(!opened&&mounted.current)setMessage('Your business profile was saved, but offer management could not be opened. Check your connection and try Open offer management.');}
+  catch{if(mounted.current)setMessage('Your business profile was saved, but offer management could not be opened. Check your connection and try Open offer management.');}
+ }
+ async function retryManagement(){
+  if(inFlight.current)return;inFlight.current=true;setBusy(true);setMessage('');
+  try{await openManagement();}finally{inFlight.current=false;if(mounted.current)setBusy(false);}
+ }
+ async function run(action,activate=false){if(inFlight.current)return;inFlight.current=true;setBusy(true);setMessage('');try{const reply=await action();if(!mounted.current)return;if(reply.ok){setDraft({...empty,...reply});setConfirmed(false);}setMessage(reply.message);if(reply.ok&&reply.status==='active'&&activate)await openManagement();}catch{if(mounted.current)setMessage('Could not connect. Your entries are kept; please retry.');}finally{inFlight.current=false;if(mounted.current)setBusy(false);}}
  const imported=()=>run(()=>importWebsite(draft.website));
  return <section aria-label="Create your business profile" style={{...stack,paddingTop:16,borderTop:'1px solid #e7dfd3'}}>
-  <h3 style={{margin:0,fontSize:20}}>{draft.status==='pending_review'?'Edit your business profile':'Bring your business to M-Local'}</h3>
-  {draft.status==='pending_review'&&<p role="status" style={hint}><strong>Pending review.</strong> Your saved application is private. You can edit and resubmit it; offers remain unavailable until ownership is approved.</p>}
+  <h3 style={{margin:0,fontSize:20}}>{draft.name?'Your business profile':'Bring your business to M-Local'}</h3>
+  {draft.status==='pending_review'&&<p role="status" style={hint}>Your saved details are here. Save your business profile to start posting.</p>}
+  {draft.status==='active'&&<><p role="status" style={hint}>Your business profile is saved.</p><button style={secondary} type="button" disabled={busy} onClick={retryManagement}>{busy?'Opening offer management...':'Open offer management'}</button></>}
   {!ready&&!loadFailed&&<p role="status" style={hint}>Loading your business profile...</p>}
   {loadFailed&&<button style={secondary} type="button" onClick={load}>Retry business profile</button>}
   <p style={hint}>Start with your website. We’ll find details, menu links and image options for you to review. You can also fill this in yourself.</p>
@@ -120,10 +129,10 @@ export function BusinessOnboarding({getDraft,importWebsite,saveDraft}) {
   </form>
   <Notice>{message}</Notice>
   {draft.sources.length>0&&<div style={hint}>Sources: {draft.sources.map((url,i)=><React.Fragment key={url}>{i>0?' · ':''}<a href={url} target="_blank" rel="noopener noreferrer">{i===0?'Website':'Menu page'}</a></React.Fragment>)}</div>}
-  <form style={stack} onSubmit={e=>{e.preventDefault();run(()=>saveDraft(draft.name,draft.cuisine,draft.description,draft.address,draft.website,draft.menu_text,draft.menu_url,draft.image_url,confirmed));}}>
-   <Input title="Business name" placeholder="Business name" maxLength={160} value={draft.name} onChange={e=>field('name',e.target.value)} required disabled={busy||!ready}/>
-   <Input title="Cuisine" placeholder="Cuisine" maxLength={120} value={draft.cuisine} onChange={e=>field('cuisine',e.target.value)} disabled={busy||!ready}/>
-   <Input title="Street address" placeholder="Street address" maxLength={500} value={draft.address} onChange={e=>field('address',e.target.value)} required disabled={busy||!ready}/>
+  <form style={stack} onSubmit={e=>{e.preventDefault();run(()=>saveDraft(draft.name,draft.cuisine,draft.description,draft.address,draft.website,draft.menu_text,draft.menu_url,draft.image_url,confirmed),true);}}>
+   <Input title="Business name" placeholder="Business name" maxLength={120} value={draft.name} onChange={e=>field('name',e.target.value)} required disabled={busy||!ready}/>
+   <Input title="Cuisine" placeholder="Cuisine" maxLength={80} value={draft.cuisine} onChange={e=>field('cuisine',e.target.value)} disabled={busy||!ready}/>
+   <Input title="Street address" placeholder="Street address" maxLength={240} value={draft.address} onChange={e=>field('address',e.target.value)} required disabled={busy||!ready}/>
    <label style={label}>About your business<textarea style={{...input,minHeight:90,resize:'vertical'}} placeholder="About your business" maxLength={1000} value={draft.description} onChange={e=>field('description',e.target.value)} disabled={busy||!ready}/></label>
    <label style={label}>Menu notes to review<textarea style={{...input,minHeight:120,resize:'vertical'}} placeholder="Menu items and prices" maxLength={4000} value={draft.menu_text} onChange={e=>field('menu_text',e.target.value)} disabled={busy||!ready}/></label>
    <p style={hint}>Check item names and prices against your current menu. These notes do not create offers.</p>
@@ -133,8 +142,8 @@ export function BusinessOnboarding({getDraft,importWebsite,saveDraft}) {
    <Input title="Image link" placeholder="https://your-business.com/photo.jpg" type="url" maxLength={2048} value={draft.image_url} onChange={e=>field('image_url',e.target.value)} disabled={busy||!ready}/>
    {draft.image_url&&/^https:\/\//.test(draft.image_url)&&<a href={draft.image_url} target="_blank" rel="noopener noreferrer" style={hint}>Review selected image</a>}
    <label style={{...hint,display:'flex',gap:10,alignItems:'flex-start',minHeight:44}}><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)} disabled={busy||!ready} style={{width:20,height:20,flexShrink:0}}/>I can represent this business and have permission to use the details and selected image.</label>
-   <button style={button} disabled={busy||!ready||!confirmed}>{busy?'Saving...':'Save business for review'}</button>
-   <p style={hint}>{draft.status==='pending_review'?'Saved for review. ':''}The team must confirm business ownership before publishing or enabling offer management.</p>
+   <button style={button} disabled={busy||!ready||!confirmed}>{busy?'Saving...':'Save business profile'}</button>
+   <p style={hint}>Save your business profile to start posting. You can then create offers and edit your business details from Manage.</p>
   </form>
  </section>;
 }

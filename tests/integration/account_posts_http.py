@@ -38,7 +38,10 @@ def main():
         require(student.call('current_session')['display_name'] == saved['name'],
                 'session name survives server restart')
         require(business.call('get_business_draft')['name'] == saved['business_name'],
-                'pending business edits survive server restart')
+                'business profile edits survive server restart')
+        require(business.call('current_session')['role'] == 'merchant'
+                and business.call('current_session')['restaurant_id'] == saved['business_restaurant_id'],
+                'self-service restaurant ownership survives server restart')
         require(Api(api).call('get_offer', offer_id=saved['offer_id'])['title'] == saved['title'],
                 'published and edited offer survives server restart')
         return
@@ -85,16 +88,32 @@ def main():
 
     draft = dict(name='Fixture Company ' + run, cuisine='Cafe', description='Fictional acceptance data',
                  address='123 Fictional Way', website='', menu_text='Soup $5', menu_url='', image_url='', confirmed=True)
-    require(business.call('save_business_draft', **draft)['ok'], 'company profile signup saves')
+    require(not business.call('merchant_portal')['ok'], 'business must finish a profile before posting')
+    # An older saved application stays private until the owner explicitly saves.
+    actor = business.call('current_session')['actor_id']
+    CodeStore(ROOT / '.jac/onboarding').save_draft(actor, {**draft, 'status': 'pending_review'})
+    require(business.call('get_business_draft')['status'] == 'pending_review', 'legacy application loads before activation')
+    require(not business.call('merchant_portal')['ok'], 'reading a legacy application does not publish it')
+    require(not business.call('save_business_draft', **{**draft, 'confirmed': False})['ok'],
+            'business still confirms representation before activation')
+    activated = business.call('save_business_draft', **draft)
+    require(activated['ok'] and activated['status'] == 'active', 'company profile activates immediately on save')
+    business_restaurant_id = business.call('current_session')['restaurant_id']
+    require(business.call('current_session')['role'] == 'merchant' and business_restaurant_id,
+            'profile owner becomes a merchant without approval or restart')
+    require(business.call('merchant_portal')['name'] == draft['name'], 'activated business owns its new profile')
     draft['name'] = 'Edited Fixture Company ' + run
     require(business.call('save_business_draft', **draft)['ok'], 'existing company profile can be edited')
+    require(business.call('current_session')['restaurant_id'] == business_restaurant_id,
+            'repeated company saves preserve restaurant identity')
+    require(business.call('merchant_portal')['name'] == draft['name'], 'company edits update its live restaurant')
     require(business.call('get_business_draft')['name'] == draft['name'], 'company edit persists on reopen')
     require(other_business.call('get_business_draft')['name'] == '', 'company drafts stay private to their owner')
     require(not student.call('save_business_draft', **draft)['ok'], 'student cannot create company profile')
     require(not student.call('get_business_draft')['ok'], 'student cannot open company draft API')
     require(not student.call('import_business_website', website='https://127.0.0.1')['ok'],
             'student cannot use company website import')
-    require(not business.call('merchant_portal')['ok'], 'pending company has no merchant authority')
+    require(not other_business.call('merchant_portal')['ok'], 'another incomplete business has no merchant authority')
 
     accounts = json.loads((ROOT / '.jac/qr-demo-accounts.json').read_text())
     merchants = []
@@ -124,7 +143,27 @@ def main():
                 price='3.50', regular_price='5.00', start_local=(now-timedelta(minutes=2)).strftime('%Y-%m-%d %H:%M'),
                 end_local=(now+timedelta(hours=1)).strftime('%Y-%m-%d %H:%M'), quantity='8',
                 eligibility='Valid U-M ID', terms='One per person', dietary='vegetarian', menu_item='Fixture soup')
-    require(not business.call('save_offer', **post)['ok'], 'pending company cannot publish a post')
+    require(not other_business.call('save_offer', **post)['ok'], 'incomplete business cannot publish a post')
+    own_post = business.call('save_offer', **{**post, 'title': 'Self-service fixture ' + run})
+    require(own_post['ok'], 'newly registered company can publish immediately')
+    require(not merchant.call('save_offer', **{**post, 'offer_id': own_post['code']})['ok'],
+            'provisioned merchant cannot edit the new company post')
+    require(other_business.call('save_business_draft', **draft)['ok'], 'second company can also activate')
+    require(other_business.call('current_session')['restaurant_id'] != business_restaurant_id,
+            'identical business names never share ownership')
+    require(not other_business.call('save_offer', **{**post, 'offer_id': own_post['code']})['ok'],
+            'second self-service merchant cannot edit the first company post')
+    claim = student.call('claim_offer', offer_id=own_post['code'])
+    require(claim['ok'], 'student can claim a self-service business offer')
+    require(business.call('resolve_claim', qr_payload=claim['qr_payload'])['ok'],
+            'self-service owner can access its private claim')
+    require(not other_business.call('redeem_claim', qr_payload=claim['qr_payload'])['ok'],
+            'other self-service company cannot redeem the private claim')
+    require(business.call('redeem_claim', qr_payload=claim['qr_payload'])['ok'],
+            'self-service owner can redeem the offer')
+    require(business.call('save_business_draft', **draft)['ok']
+            and any(offer['id'] == own_post['code'] for offer in business.call('merchant_portal')['offers']),
+            'resaving company profile preserves published offers')
     require(not student.call('save_offer', **post)['ok'], 'student cannot publish a merchant post')
     require(not merchant.call('save_offer', **{**post, 'price': 'NaN'})['ok'], 'invalid post rejected before creation')
     published = merchant.call('save_offer', **post)
@@ -147,8 +186,12 @@ def main():
     require(merchant.call('set_offer_status', offer_id=post['offer_id'], status='paused')['ok'], 'merchant can pause post')
     require(Api(api).call('get_offer', offer_id=post['offer_id'])['state'] == 'paused', 'pause reaches public view')
     require(merchant.call('set_offer_status', offer_id=post['offer_id'], status='active')['ok'], 'merchant can resume post')
-    receipt = dict(student_token=student.token, business_token=business.token, name=renamed,
-                   business_name=draft['name'], offer_id=post['offer_id'], title=post['title'])
+    browser_business = verify('browser' + run + '@example.test', 'business', 'Browser fixture owner')
+    require(browser_business['ok'], 'fresh business session prepared for real browser activation')
+    receipt = dict(student_token=student.token, business_token=business.token,
+                   new_business_token=browser_business['token'], name=renamed,
+                   business_name=draft['name'], business_restaurant_id=business_restaurant_id,
+                   offer_id=post['offer_id'], title=post['title'])
     descriptor = os.open(receipt_path, os.O_CREAT | os.O_TRUNC | os.O_WRONLY, 0o600)
     with os.fdopen(descriptor, 'w') as stream:
         json.dump(receipt, stream)

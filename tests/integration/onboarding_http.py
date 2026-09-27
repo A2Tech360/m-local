@@ -53,10 +53,12 @@ def main():
     draft = dict(name='Isolated Fixture Cafe', cuisine='Test', description='Fictional test only', address='123 Fixture St',
                  website='https://example.com', menu_text='Soup $8', menu_url='', image_url='', confirmed=True)
     saved = post('save_business_draft', draft, users[1])
-    assert saved['ok'] and saved['status'] == 'pending_review'
+    assert saved['ok'] and saved['status'] == 'active'
     assert post('get_business_draft', {}, users[1])['name'] == draft['name']
     assert post('get_business_draft', {}, users[2])['name'] == ''
-    assert not post('merchant_portal', {}, users[1])['ok']
+    assert post('merchant_portal', {}, users[1])['ok']
+    assert post('current_session', {}, users[1])['role'] == 'merchant'
+    assert not post('merchant_portal', {}, users[2])['ok']
     denied = post('import_business_website', {'website': 'https://127.0.0.1'}, users[1])
     assert not denied['ok']
     try:
@@ -65,7 +67,7 @@ def main():
         assert error.code == 401
     else:
         raise AssertionError('Anonymous draft access must fail')
-    print('PASS: real Jac OTP/session, replay denial, student claim, business claim denial, private drafts, no merchant grant, anonymous denial, unsafe URL denial. No real email or model call.')
+    print('PASS: real Jac OTP/session, replay denial, student claim, business claim denial, private drafts, self-service merchant setup, account isolation, anonymous denial, unsafe URL denial. No real email or model call.')
 
 
 if __name__ == '__main__':

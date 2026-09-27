@@ -3,8 +3,11 @@
 Email onboarding increment (2026-09-26): `SessionView` adds the default-false
 `email_verified` field and `business` / `unverified` roles. A verified U-M inbox
 or an explicit demo student root is required for a new claim. Business email
-verification permits a private pending profile, not merchant authority. Existing
-merchant provisioning and `OfferView`/access-context/QR shapes stay unchanged.
+verification permits business profile setup. Update (2026-09-27): Travis removed
+the approval gate for team testing. Explicitly saving a verified business profile
+now creates its owned restaurant and grants merchant access immediately. Existing
+pending profiles activate on save. Existing merchant provisioning and
+`OfferView`/access-context/QR shapes stay unchanged.
 See [onboarding](ONBOARDING.md) for new endpoints and required demo migration.
 
 This is the target agreed by the task split, not a description of the current code.
@@ -103,6 +106,9 @@ Engineer 2 coordinates the DTO migration with Engineer 4. Current `code` and
   editor. It must not be rendered or accepted as a redemption code.
 - The current scoped implementation uses local Jac accounts and the server-only
   `MLOCAL_MERCHANT_OWNERS` map to bind restaurant slugs to authenticated root UUIDs.
+  Self-service business setup also stores server-generated slug/root bindings in
+  the private onboarding SQLite store; explicit environment bindings take
+  precedence. Keep that store with the Jac identity database when backing up.
   No client or imported merchant key can assign ownership. See
   [QR setup and acceptance](QR-REDEMPTION.md).
 

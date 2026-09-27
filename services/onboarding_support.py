@@ -97,13 +97,15 @@ def may_claim(actor: str) -> bool:
 
 
 def validate_draft(raw: dict) -> dict:
-    limits = {'name': 160, 'cuisine': 120, 'description': 1000, 'address': 500,
+    limits = {'name': 120, 'cuisine': 80, 'description': 1000, 'address': 240,
               'website': 2048, 'menu_url': 2048, 'image_url': 2048, 'menu_text': 4000}
     result = {}
     for key, limit in limits.items():
         value = raw.get(key, '')
         if not isinstance(value, str) or len(value) > limit:
             raise ValueError(f'Please shorten the {key.replace("_", " ")} field.')
+        if any((ord(char) < 32 and char not in '\t\r\n') or 127 <= ord(char) < 160 for char in value):
+            raise ValueError(f'The {key.replace("_", " ")} field contains unsupported control characters.')
         result[key] = value.strip()
     if not result['name'] or not result['address']:
         raise ValueError('Add the business name and address before saving.')
@@ -130,3 +132,20 @@ def persist_draft(actor: str, raw: dict) -> dict:
     result = validate_draft(raw)
     state.save_draft(actor, result)
     return result
+
+
+def prepare_business_activation(actor: str, raw: dict) -> dict[str, str]:
+    state = store()
+    if state.account(actor).get('kind') != 'business':
+        raise ValueError('Sign in with a verified business account to save a business profile.')
+    result = validate_draft(raw)
+    result['status'] = 'draft'
+    result['slug'] = state.reserve_business(actor)
+    return result
+
+
+def finish_business_activation(actor: str, raw: dict) -> dict[str, str]:
+    # Re-validate and retain only known metadata. Browser-selected slugs, actor
+    # IDs, roles and statuses never enter the private authority registry.
+    result = validate_draft(raw)
+    return store().activate_business(actor, result)

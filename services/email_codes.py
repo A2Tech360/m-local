@@ -16,6 +16,7 @@ import smtplib
 import sqlite3
 import ssl
 import time
+from uuid import UUID
 
 
 def account_email(value: str, kind: str) -> str:
@@ -62,6 +63,7 @@ class CodeStore:
             db.execute('CREATE TABLE IF NOT EXISTS provisioning (email TEXT PRIMARY KEY, marker TEXT, kind TEXT, name TEXT)')
             db.execute('CREATE TABLE IF NOT EXISTS drafts (actor TEXT PRIMARY KEY, body TEXT, updated REAL)')
             db.execute('CREATE TABLE IF NOT EXISTS imports (actor TEXT, at REAL)')
+            db.execute('CREATE TABLE IF NOT EXISTS business_owners (actor TEXT PRIMARY KEY, slug TEXT UNIQUE NOT NULL, active INTEGER NOT NULL DEFAULT 0)')
         os.chmod(self.path, 0o600)
 
     @contextmanager
@@ -189,9 +191,61 @@ class CodeStore:
             row = db.execute('SELECT body FROM drafts WHERE actor=?', (actor,)).fetchone()
             return json.loads(row['body']) if row else {}
 
+    def reserve_business(self, actor: str) -> str:
+        """Reserve a stable server-derived identity without granting authority."""
+        try:
+            actor = UUID(actor).hex
+        except (ValueError, TypeError, AttributeError):
+            raise ValueError('Sign in with a verified business account to save a business profile.') from None
+        slug = 'business-' + actor
+        with self.transaction() as db:
+            account = db.execute('SELECT kind FROM accounts WHERE actor=?', (actor,)).fetchone()
+            if account is None or account['kind'] != 'business':
+                raise ValueError('Sign in with a verified business account to save a business profile.')
+            db.execute('INSERT OR IGNORE INTO business_owners (actor,slug) VALUES (?,?)', (actor, slug))
+            row = db.execute('SELECT slug FROM business_owners WHERE actor=?', (actor,)).fetchone()
+            if row is None or row['slug'] != slug:
+                raise ValueError('Could not reserve this business profile. Please retry.')
+        return slug
+
+    def activate_business(self, actor: str, body: dict[str, str]) -> dict[str, str]:
+        """Finalize only after the caller has committed the restaurant graph."""
+        try:
+            actor = UUID(actor).hex
+        except (ValueError, TypeError, AttributeError):
+            raise ValueError('Sign in with a verified business account to save a business profile.') from None
+        result = {**body, 'status': 'active'}
+        with self.transaction() as db:
+            account = db.execute('SELECT kind FROM accounts WHERE actor=?', (actor,)).fetchone()
+            if account is None or account['kind'] != 'business':
+                raise ValueError('Sign in with a verified business account to save a business profile.')
+            changed = db.execute('UPDATE business_owners SET active=1 WHERE actor=? AND slug=?',
+                                 (actor, 'business-' + actor)).rowcount
+            if not changed:
+                raise ValueError('Save your business profile again to finish setting it up.')
+            db.execute('INSERT INTO drafts VALUES (?,?,?) ON CONFLICT(actor) DO UPDATE SET body=excluded.body,updated=excluded.updated',
+                       (actor, json.dumps(result), self.clock()))
+        return result
+
+    def business_owner(self, slug: str) -> str:
+        with self.transaction() as db:
+            row = db.execute('SELECT b.actor FROM business_owners b JOIN accounts a ON a.actor=b.actor '
+                             'WHERE b.slug=? AND b.active=1 AND a.kind=?', (slug, 'business')).fetchone()
+            return row['actor'] if row else ''
+
 
 def store() -> CodeStore:
     return CodeStore(Path(os.environ.get('MLOCAL_ONBOARDING_DIR', '.jac/onboarding')).resolve())
+
+
+def registered_business_owner(slug: str) -> str:
+    if not re.fullmatch(r'business-[0-9a-f]{32}', slug):
+        return ''
+    try:
+        return store().business_owner(slug)
+    except (OSError, sqlite3.Error, RuntimeError):
+        # Unavailable private state must never confer merchant authority.
+        return ''
 
 
 def delivery_ready() -> bool:

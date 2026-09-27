@@ -62,15 +62,90 @@ test('account rejection preserves input and allows a successful retry',async()=>
  }finally{ui.close();}
 });
 
-test('saved business application reopens for editing with honest pending access',async()=>{
+test('previously pending business profile reopens with its saved details and a save-to-activate prompt',async()=>{
  const draft={ok:true,name:'Saved fixture cafe',address:'123 Fixture Street',status:'pending_review',message:''};
  const ui=await app({role:'business',verified:true,intercept(name){if(name==='get_business_draft')return rpc(draft);}});
  try{
   ui.click('Business profile');await until(()=>ui.document.querySelector('[placeholder="Business name"]')?.value==='Saved fixture cafe');
-  assert.ok(ui.text().includes('Pending review'));
+  assert.ok(ui.text().includes('Save your business profile to start posting'));
+  assert.equal(ui.text().includes('Pending review'),false);
   assert.equal(ui.find('New offer'),undefined);assert.equal(ui.find('Manage'),undefined);
   ui.click('Close business profile');await until(()=>!ui.document.querySelector('[placeholder="Business name"]'));
   ui.click('Business profile');await until(()=>ui.document.querySelector('[placeholder="Business name"]')?.value==='Saved fixture cafe');
+  assert.deepEqual(ui.errors,[]);
+ }finally{ui.close();}
+});
+
+const businessSession=role=>({authenticated:true,actor_id:'fixture-business',role,restaurant_id:role==='merchant'?'owned-business':'',display_name:'Fixture owner',email_verified:true,is_demo:false});
+async function completeBusiness(ui){
+ ui.click('Business profile');await until(()=>ui.document.querySelector('[placeholder="Business name"]')&&!ui.document.querySelector('[placeholder="Business name"]').disabled);
+ ui.fill('Business name','Self-service cafe');ui.fill('Street address','123 Fixture Street');ui.document.querySelector('input[type="checkbox"]').click();
+ const submit=[...ui.document.querySelectorAll('button')].find(button=>button.textContent.startsWith('Save business'));
+ submit.click();
+}
+
+test('saving an active business profile refreshes server authority and opens offer management',async()=>{
+ let activated=false;
+ const ui=await app({role:'business',verified:true,intercept(name,body){
+  if(name==='get_business_draft')return rpc({ok:true});
+  if(name==='save_business_draft'){activated=true;return rpc({...body,ok:true,status:'active',message:'Business profile saved.'});}
+  if(name==='current_session')return rpc(businessSession(activated?'merchant':'business'));
+ }});
+ try{
+  await completeBusiness(ui);await until(()=>ui.find('New offer'),'activated business can create an offer immediately');
+  assert.ok(ui.find('Manage'));assert.ok(ui.find('Restaurant profile'));
+  assert.equal(ui.document.querySelector('[placeholder="Business name"]'),null);
+  const request=ui.calls.find(c=>c.name==='save_business_draft');
+  assert.equal(request.body.name,'Self-service cafe');assert.equal('role' in request.body,false);assert.equal('actor_id' in request.body,false);
+  assert.deepEqual(ui.errors,[]);
+ }finally{ui.close();}
+});
+
+test('saved active profile survives a session refresh failure and retries without saving twice',async()=>{
+ let activated=false,refreshes=0;
+ const ui=await app({role:'business',verified:true,intercept(name,body){
+  if(name==='get_business_draft')return rpc({ok:true});
+  if(name==='save_business_draft'){activated=true;return rpc({...body,ok:true,status:'active',message:'Business profile saved.'});}
+  if(name==='current_session'){
+   if(activated&&refreshes++===0)throw new Error('Fixture refresh failure');
+   return rpc(businessSession(activated?'merchant':'business'));
+  }
+ }});
+ try{
+  await completeBusiness(ui);await until(()=>ui.find('Open offer management'),'saved profile has an access refresh retry');
+  assert.ok(ui.text().includes('Your business profile was saved'));
+  assert.equal(ui.find('New offer'),undefined);
+  assert.equal(ui.document.querySelector('[placeholder="Business name"]').value,'Self-service cafe');
+  ui.click('Open offer management');await until(()=>ui.find('New offer'));
+  assert.equal(ui.calls.filter(c=>c.name==='save_business_draft').length,1);
+  assert.equal(refreshes,2);assert.deepEqual(ui.errors,[]);
+ }finally{ui.close();}
+});
+
+test('failed business save retains entries and does not enable offer management',async()=>{
+ const ui=await app({role:'business',verified:true,intercept(name){
+  if(name==='get_business_draft')return rpc({ok:true});
+  if(name==='save_business_draft')return rpc({ok:false,message:'Fixture activation failed.',status:'draft'});
+ }});
+ try{
+  await completeBusiness(ui);await until(()=>ui.text().includes('Fixture activation failed.'));
+  assert.equal(ui.document.querySelector('[placeholder="Business name"]').value,'Self-service cafe');
+  assert.equal(ui.find('Manage'),undefined);assert.equal(ui.find('Open offer management'),undefined);
+  assert.equal(ui.calls.filter(c=>c.name==='current_session').length,1,'failure must not request or invent merchant access');
+  assert.deepEqual(ui.errors,[]);
+ }finally{ui.close();}
+});
+
+test('active save response alone cannot invent merchant authority before session confirmation',async()=>{
+ const ui=await app({role:'business',verified:true,intercept(name,body){
+  if(name==='get_business_draft')return rpc({ok:true});
+  if(name==='save_business_draft')return rpc({...body,ok:true,status:'active',message:'Business profile saved.'});
+ }});
+ try{
+  await completeBusiness(ui);await until(()=>ui.find('Open offer management'));
+  assert.equal(ui.find('Manage'),undefined);assert.equal(ui.find('New offer'),undefined);
+  assert.equal(ui.calls.some(c=>c.name==='merchant_portal'),false);
+  assert.ok(ui.text().includes('Your business profile was saved'));
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
 });

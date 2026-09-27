@@ -1,8 +1,9 @@
-"""Private, reviewable business applications. No public listing or merchant grant."""
+"""Verified business profiles activate their own restaurant on explicit save."""
 import os;
 import from services.email_codes { store }
 import from services.website_import { collect_website }
-import from services.onboarding_support { read_draft, persist_draft }
+import from services.onboarding_support { read_draft }
+import from services.business_listing { activate_business_listing }
 import from services.session { _actor_id }
 import from services.onboarding { verified_account }
 
@@ -49,10 +50,10 @@ def:protect import_business_website(website: str) -> BusinessDraftView {
             try {
                 import from services.business_ai { extract_business }
                 facts = extract_business(str(raw.get("text", "")));
-                view.name = facts.name[:160] or view.name;
-                view.cuisine = facts.cuisine[:120] or view.cuisine;
+                view.name = facts.name[:120] or view.name;
+                view.cuisine = facts.cuisine[:80] or view.cuisine;
                 view.description = facts.description[:1000] or view.description;
-                view.address = facts.address[:500] or view.address;
+                view.address = facts.address[:240] or view.address;
                 view.menu_text = facts.menu_text[:4000] or view.menu_text;
                 view.ai_used = True;
                 view.message = "AI organized the website details. Check the facts and menu prices before saving.";
@@ -77,12 +78,10 @@ def:protect save_business_draft(name: str, cuisine: str, description: str, addre
         return BusinessDraftView(message="Confirm you may represent this business and use the selected content.");
     }
     try {
-        raw = persist_draft(_actor_id(), {"name": name, "cuisine": cuisine, "description": description,
+        raw = activate_business_listing(_actor_id(), {"name": name, "cuisine": cuisine, "description": description,
             "address": address, "website": website, "menu_text": menu_text, "menu_url": menu_url, "image_url": image_url});
-        return _draft_view(raw, "Business profile saved for review. Publishing and restaurant access remain pending.");
+        return _draft_view(raw, "Business profile saved. You can publish offers now.");
     } except ValueError as e {
         return BusinessDraftView(message=str(e));
-    } except Exception {
-        return BusinessDraftView(message="Could not save your business profile. Your entries are kept; please retry.");
     }
 }

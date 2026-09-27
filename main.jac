@@ -251,6 +251,20 @@ def:pub app -> JsxElement {
         }
     }
 
+    async def openActivatedBusiness() -> bool {
+        epoch = sessionEpoch.current;
+        fresh: SessionView | None = None;
+        try { fresh = await loadSession(); }
+        except Exception { return False; }
+        if epoch != sessionEpoch.current { return False; }
+        if fresh is None { return False; }
+        if not fresh.authenticated or fresh.role != "merchant" or not fresh.restaurant_id { return False; }
+        session = fresh; businessOpen = False; tab = "merchant";
+        await openMerchant();
+        if epoch == sessionEpoch.current { await refresh(); }
+        return True;
+    }
+
     def clearPrivate() {
         sessionEpoch.current = (sessionEpoch.current or 0) + 1;
         offerRequest.current = (offerRequest.current or 0) + 1;
@@ -489,7 +503,7 @@ def:pub app -> JsxElement {
                 <Message text={authMsg} good={False} />
                 {(<View style={{"gap": 12}}>
                     <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { businessOpen = not businessOpen; }}><Text style={styles.btnGhostText}>{"Close business profile" if businessOpen else "Business profile"}</Text></Pressable>
-                    {(<BusinessOnboarding key={session.actor_id} getDraft={get_business_draft} importWebsite={import_business_website} saveDraft={save_business_draft} />) if businessOpen else <View />}
+                    {(<BusinessOnboarding key={session.actor_id} getDraft={get_business_draft} importWebsite={import_business_website} saveDraft={save_business_draft} onActivated={openActivatedBusiness} />) if businessOpen else <View />}
                 </View>) if session.email_verified and session.role == "business" else <View />}
                 </View>
             ) if session and session.authenticated else (

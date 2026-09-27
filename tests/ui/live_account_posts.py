@@ -2,7 +2,7 @@
 
 Requires Python Playwright with Chromium installed, and the running isolated
 onboarding-check app at port 8240 after account_posts_http.py. Uses real RPCs.
-No mail is sent; the pending-company session comes from the HTTP test receipt.
+No mail is sent; the verified new-business session comes from the HTTP test receipt.
 """
 import argparse
 import json
@@ -73,26 +73,56 @@ def main():
         context.close()
 
         context = browser.new_context(viewport={'width': 390, 'height': 844})
-        context.add_init_script('localStorage.setItem("jac_token", ' + json.dumps(receipt['business_token']) +
+        context.add_init_script('localStorage.setItem("jac_token", ' + json.dumps(receipt['new_business_token']) +
                                 '); localStorage.setItem("mlocal_audience", "business");')
         page = context.new_page()
         page.on('pageerror', lambda error: errors.append(str(error)))
         page.goto(origin, wait_until='networkidle')
         page.get_by_text('Business profile', exact=True).click()
-        expect(page.get_by_placeholder('Business name')).to_have_value(receipt['business_name'])
-        description = 'Edited in Chromium ' + run
+        expect(page.get_by_placeholder('Business name')).to_have_value('')
+        business_name = 'Browser self-service cafe ' + run
+        description = 'Fictional business created in Chromium ' + run
+        page.get_by_placeholder('Business name').fill(business_name)
+        page.get_by_placeholder('Street address').fill('123 Fictional Browser Test Street')
         page.get_by_placeholder('About your business').fill(description)
         page.get_by_role('checkbox').check()
-        page.get_by_role('button', name='Save business for review', exact=True).click()
-        expect(page.get_by_text('Pending review.', exact=True)).to_be_visible()
-        page.get_by_text('Close business profile', exact=True).click()
-        page.get_by_text('Business profile', exact=True).click()
-        expect(page.get_by_placeholder('About your business')).to_have_value(description)
-        expect(page.get_by_text('Manage', exact=True)).to_have_count(0)
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Business profile overflows phone width'
         page.get_by_placeholder('Business name').scroll_into_view_if_needed()
         page.screenshot(path=str(args.screenshots / 'business-profile-390.png'))
-        print('PASS real company profile edit/reopen with pending approval and no merchant controls at 390px')
+        page.get_by_role('button', name='Save business profile', exact=True).click()
+        expect(page.get_by_text('Manage', exact=True)).to_be_visible()
+        expect(page.get_by_text('New offer', exact=True)).to_be_visible()
+        expect(page.get_by_placeholder('Business name')).to_have_count(0)
+        expect(page.get_by_placeholder('Restaurant name')).to_have_value(business_name)
+        expect(page.get_by_placeholder('Short description')).to_have_value(description)
+
+        page.get_by_text('New offer', exact=True).click()
+        business_offer = 'Self-service lunch ' + run
+        page.get_by_placeholder('Lunch bowl for $7').fill(business_offer)
+        page.get_by_placeholder('7.00', exact=True).fill('7.25')
+        page.get_by_placeholder('One per student. Dine-in only.').fill('One per student. Fictional self-service test.')
+        page.get_by_role('button', name='Publish offer', exact=True).click()
+        expect(page.get_by_placeholder('Lunch bowl for $7')).to_have_count(0)
+        expect(page.get_by_text(business_offer, exact=True)).to_have_count(1)
+        page.get_by_text('Offers', exact=True).click()
+        expect(page.get_by_text(business_offer, exact=True)).to_have_count(1)
+        page.reload(wait_until='networkidle')
+        expect(page.get_by_text(business_offer, exact=True)).to_have_count(1)
+
+        page.get_by_text('Manage', exact=True).click()
+        updated_description = 'Edited after activation in Chromium ' + run
+        page.get_by_placeholder('Short description').fill(updated_description)
+        page.get_by_text('Save profile', exact=True).click()
+        expect(page.get_by_text('Profile saved.', exact=True)).to_be_visible()
+        page.reload(wait_until='networkidle')
+        page.get_by_text('Manage', exact=True).click()
+        expect(page.get_by_placeholder('Restaurant name')).to_have_value(business_name)
+        expect(page.get_by_placeholder('Short description')).to_have_value(updated_description)
+        expect(page.get_by_text(business_offer, exact=True)).to_have_count(1)
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Activated business management overflows phone width'
+        page.get_by_placeholder('Restaurant name').scroll_into_view_if_needed()
+        page.screenshot(path=str(args.screenshots / 'business-manage-390.png'))
+        print('PASS real verified business setup, immediate Manage access, publication, and company profile edit/reload at 390px')
         context.close()
         browser.close()
         assert not errors, errors

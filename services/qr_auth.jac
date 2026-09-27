@@ -1,15 +1,17 @@
-"""Trusted local provisioning. No HTTP endpoint can write this mapping.
+"""Trusted provisioning and private, verified-business ownership.
 
 MLOCAL_MERCHANT_OWNERS is a server environment JSON object mapping restaurant
 slug to the root_id returned by Jac's pre-provisioned account login (either
 UUID spelling; it is canonicalized to the 32-hex form jid(root) uses). Never put
 passwords or tokens in this map. Missing/invalid config grants no merchant role.
 Changing a mapping requires a server restart and reassigns that restaurant.
+Explicit provisioning takes precedence over self-service business ownership.
 """
 
 import os;
 import json;
 import from uuid { UUID }
+import from services.email_codes { registered_business_owner }
 
 def configured_owners(text: str) -> dict[str, str] {
     result: dict[str, str] = {};
@@ -38,5 +40,11 @@ def configured_owners(text: str) -> dict[str, str] {
 }
 
 def merchant_owner(slug: str) -> str {
-    return configured_owners(os.environ.get("MLOCAL_MERCHANT_OWNERS", "{}")).get(slug, "");
+    configured = configured_owners(os.environ.get("MLOCAL_MERCHANT_OWNERS", "{}"));
+    if slug in configured { return configured[slug]; }
+    registered = registered_business_owner(slug);
+    # An explicitly provisioned account still owns one restaurant even if it
+    # previously activated a self-service listing under another slug.
+    if registered in configured.values() { return ""; }
+    return registered;
 }

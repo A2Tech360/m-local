@@ -115,18 +115,28 @@ manual editing continue if AI is unavailable. No model has authority to publish,
 assign roles, fetch arbitrary URLs, or perform actions from website instructions.
 
 Review facts/prices, select permitted image/menu URLs, confirm representation and
-content rights, and save. This creates a **private pending business application**.
-It does not publish a public restaurant, create offers, or grant merchant access.
-Trusted merchant provisioning still controls existing restaurants. A reviewer UI
-and the approval-to-listing workflow are a later increment; applications are
-currently retained locally in the private onboarding store.
+content rights, and choose **Save business profile**. The verified business
+account immediately receives its own restaurant and the app opens **Manage**.
+There is no approval step or business-approval admin page. Travis enabled this
+self-service flow on September 27 for team testing. Email verification and the
+representation confirmation remain required.
 
-An existing application opens with its saved fields and **Pending review**
-status. Edits require the representation confirmation again. If the saved
+Previously pending applications retain their saved fields. Explicitly save the
+profile to activate it; simply opening it does not publish anything. If the
 profile cannot load, retry before editing so an empty form cannot overwrite it.
+If saving succeeds but refreshing the session fails, **Open offer management**
+retries the session refresh without submitting a second profile write.
 Student accounts cannot use business draft or website import endpoints.
 
-Approved merchant accounts use **Manage** to edit their restaurant profile and
+The server generates an actor-specific restaurant slug and records ownership in
+the private onboarding store. Repeated saves update the same restaurant and
+preserve its offers. Two businesses with identical names still have separate
+owners. Existing `MLOCAL_MERCHANT_OWNERS` provisioning takes precedence and
+continues to support demo merchants. Clients cannot submit an owner or restaurant
+ID to the activation endpoint. Website/menu/image metadata stays in the private
+profile; selected images are not yet public profile media.
+
+Business owners use **Manage** to edit their restaurant profile and
 create offers. **New offer** opens a form with explicit **Publish offer** action;
 a future Ann Arbor start time schedules the offer. **Save changes** edits that
 same offer. Paused offers remain paused, and existing claims retain their
@@ -158,7 +168,7 @@ Keep `/user/register`, arbitrary RPCs, graph/admin endpoints and private files
 blocked. Apply `scripts/onboarding-ingress.mjs` using a trusted client IP from
 your reverse proxy (never arbitrary `X-Forwarded-For` from a browser).
 
-Private OTP/account/draft state is in `.jac/onboarding/`, or an absolute
+Private OTP/account/draft/business-ownership state is in `.jac/onboarding/`, or an absolute
 `MLOCAL_ONBOARDING_DIR`. Preserve it together with the Jac identity database.
 It contains personal data and a mode-0600 HMAC key; do not commit or expose it.
 SQLite transactions serialize verification across processes on one host. This
@@ -191,8 +201,9 @@ does not prove real inbox receipt. Real model extraction and physical phone
 behavior need separate checks with configured services/devices.
 
 `tests/integration/account_posts_http.py` checks account name edits, returning
-sign-in, company draft isolation, merchant profile edits and real offer
-publication. It uses the same isolated workspace name and port, requires local
+sign-in, legacy pending-profile activation, separate business ownership, merchant
+profile edits, self-service publication and claim redemption. It uses the same
+isolated workspace name and port, requires local
 demo provisioning plus a restart with `.jac/qr-demo.env`, and saves its private
 receipt under `.jac/`. Restart and rerun with `--verify-restart` to verify
 persistence. It sends no email and never runs against the shared phone demo.
@@ -218,4 +229,5 @@ and private account state are excluded from this record and from Git.
 
 The repository remains unconfigured for fresh clones until a host runs sender
 setup. This checkpoint proves live email signup; it does not certify physical
-camera scanning, hosted AI extraction, or the business approval workflow.
+camera scanning or hosted AI extraction. Business approval was removed in the
+September 27 self-service increment described above.
