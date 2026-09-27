@@ -35,6 +35,10 @@ to exactly one existing restaurant and exactly one existing location; it is neve
 guessed. Imports reject owner/account fields (`owner_actor_id`, password, role,
 roles, and the retired `merchant_key`).
 
+Non-demo notices cannot target fictional demo restaurants, including on refresh.
+Nonempty source URLs must use HTTP(S) without embedded credentials; optional
+evidence fields must be objects. Rejected records leave saved notices unchanged.
+
 The service reports `current` only when the interval contains the server clock,
 `checked_at` is no more than 24 hours old, and it is not future-dated. Otherwise
 the record is `needs_recheck`; its source and summary may remain visible, but its

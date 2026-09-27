@@ -68,14 +68,17 @@ Supported host: Travis's Windows 11 laptop, Ubuntu 24.04.3 under WSL, x86-64,
 uid 1000, Jac 0.37.23. Tests use fresh native Linux stores, separate from the
 running phone preview and its private accounts.
 
-- `bash scripts/test.sh context`: **11 passed**. The original branch failed to
+- `bash scripts/test.sh context`: **13 passed**. The original branch failed to
   compile. Added validation regressions failed before repair (8 passed, 3 failed)
-  and passed afterward. Freshness checks include both expired/future records and
-  the exact 24-hour boundary.
+  and passed afterward. Independent review found that real notices could target
+  fictional restaurants; creation/refresh regression failed (12 passed, 1 failed)
+  before the guard, then all 13 passed. A positive case preserves real-notice
+  support for non-demo restaurants. Freshness checks include both expired/future
+  records and the exact 24-hour boundary.
 - `bash scripts/test.sh core`: **22 passed**.
 - `bash scripts/check.sh`: **exit 0**, warnings remain.
 - `bash scripts/build.sh`: **exit 0**, 12/12 server modules; artifact size
-  1,691,350 bytes. Building is not proof of serving that artifact.
+  1,695,191 bytes. Building is not proof of serving that artifact.
 - Compiled-app DOM, UI and tooling tests: **25/25 passed** with
   `MLOCAL_UI_TEST_MODULES="$PWD/.jac/ui-test-runtime/node_modules" node --test
   tests/ui/browser/*.test.mjs tests/ui/*.test.mjs tests/tooling/*.test.mjs`.
@@ -91,6 +94,13 @@ running phone preview and its private accounts.
   by the application.
 - Logs are ignored under `.jac/e3-resume/`. HTTP fixtures and private server logs
   remain in WSL's cache; passwords, tokens and account IDs are not printed.
+
+Fresh-context independent source review covered `43aa698..329d245`. It found one
+Important issue (the fictional/real association above), no Critical findings and
+no Minor findings. The fix was verified with a failing regression followed by
+the passing suites, not a second reviewer pass. E2 attachment, E4 rendering,
+physical devices, artifact serving and existing E2 lock/runner work were explicitly
+outside this review. Human and Baz approval are still separate.
 
 This supersedes E3's unsupported Intel-Mac execution attempt, not the requirement
 for a real Mac pass. Physical camera scanning, production artifact serving and

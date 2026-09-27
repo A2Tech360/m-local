@@ -188,3 +188,35 @@ test "ambiguous_notice_edges_do_not_present_entrance_directions" {
     except ContextValidationError { rejected = True; }
     assert rejected, "ambiguous existing association must fail closed";
 }
+
+test "real_notice_cannot_create_or_refresh_a_fictional_association" {
+    loc = _location("fictional-source-context");
+    record = _record("fictional-source-context", "source-boundary", "one");
+    record["is_demo"] = False;
+    record["source_url"] = "https://example.test/reviewed-notice";
+    rejected = False;
+    try { upsert_access_notice(record); } except ContextValidationError { rejected = True; }
+    assert rejected, "real notice must not be created for a fictional restaurant";
+    assert get_access_context(jid(loc), 150.0).state == "none";
+    saved_id = upsert_access_notice(_record("fictional-source-context", "source-boundary", "one"));
+    record["summary"] = "Must not replace the simulated notice";
+    record["checked_at"] = 140.0;
+    rejected = False;
+    try { upsert_access_notice(record); } except ContextValidationError { rejected = True; }
+    assert rejected, "refresh must not turn a fictional association into a real one";
+    view = get_access_context(jid(loc), 150.0).notices[0];
+    assert view.id == saved_id and view.is_demo;
+    assert view.summary == "Simulated test notice" and view.checked_at == 100.0;
+}
+
+test "real_notice_can_target_a_non_demo_restaurant" {
+    loc = _location("reviewed-source-context");
+    restaurant = [root-->[?:Restaurant, slug == "reviewed-source-context"]][0];
+    restaurant.is_demo = False;
+    record = _record("reviewed-source-context", "reviewed-source", "one");
+    record["is_demo"] = False;
+    record["source_url"] = "https://example.test/reviewed-notice";
+    upsert_access_notice(record);
+    view = get_access_context(jid(loc), 150.0).notices[0];
+    assert view.state == "current" and not view.is_demo;
+}

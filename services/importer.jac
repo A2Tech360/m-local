@@ -36,7 +36,7 @@ def _reject_untrusted_identity_fields(record: dict[str, any]) -> None {
 }
 
 
-def _notice_location(location_slug: str) -> Location {
+def _notice_location(location_slug: str, is_demo: bool) -> Location {
     restaurants = [root.shared -->[?:Restaurant, slug == location_slug]];
     # Initial bootstrap creates restaurants under the caller before qr_catalog
     # publishes them. Once shared, always resolve the public catalog first.
@@ -45,6 +45,9 @@ def _notice_location(location_slug: str) -> Location {
     }
     if len(restaurants) != 1 {
         raise ContextValidationError("location_slug must resolve to exactly one restaurant");
+    }
+    if restaurants[0].is_demo and not is_demo {
+        raise ContextValidationError("real access notices cannot target fictional restaurants");
     }
     locations = [restaurants[0] ->:HasLocation:->];
     if len(locations) != 1 {
@@ -113,7 +116,7 @@ def _validate_access_notice(record: dict[str, any]) -> None {
 """
 def upsert_access_notice(record: dict[str, any]) -> str {
     _validate_access_notice(record);
-    loc = _notice_location(record["location_slug"]);
+    loc = _notice_location(record["location_slug"], record["is_demo"]);
     matches = [root.shared -->[?:ContextNotice, source_id == record["source_id"], external_id == record["external_id"]]];
     if len(matches) > 1 {
         raise ContextValidationError("ambiguous source/external notice identity");

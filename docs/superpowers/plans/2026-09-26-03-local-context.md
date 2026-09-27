@@ -96,8 +96,9 @@ existing location ID. An unresolved/ambiguous slug is rejected, never guessed.
   Also test an in-window record checked 86,401 seconds ago and a future checked_at.
 - [x] Add `refresh_failure_preserves_old_timestamp` and `other_location_unchanged`.
   Verify needs_recheck never returns a definitive entrance instruction.
-- [x] Implement the helper and deterministic clock-based tests. A changed notice
-  must alter the corresponding offer context once Engineer 2 attaches it.
+- [x] Implement the helper and deterministic clock-based tests.
+- [ ] Downstream acceptance: a changed notice must alter the corresponding offer
+  context once Engineer 2 attaches it and Engineer 4 renders it.
 - [x] Migrate importer/seed money fields to the shared cents contract and remove
   merchant keys. Seed fictional business data; Engineers 1 and 2 own account
   provisioning. Imported records cannot assign owner_actor_id, passwords or roles.
@@ -106,7 +107,7 @@ existing location ID. An unresolved/ambiguous slug is rejected, never guessed.
   existing user's claims. Re-running setup on the same store must not duplicate data.
 - [x] Run `./scripts/check.sh` and `./scripts/test.sh context`. Give Engineer 4 example
   none/current/needs_recheck response payloads and source-label wording.
-- [ ] Commit, open your PR and record the source evidence, test results and simulated
+- [x] Commit, open your PR and record the source evidence, test results and simulated
   versus real-data boundaries in your status.
 
 ## Done when
