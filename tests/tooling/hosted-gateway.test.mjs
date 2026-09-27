@@ -105,21 +105,21 @@ test('readiness fails within its deadline when the feed response never completes
 
 test('direct hosting cannot bypass signup limits by spoofing edge headers', async t => {
   const origin = await serve(t, (_req, res) => res.end('{}'), { trustCloudflare: false });
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 13; i++) {
     const response = await fetch(origin + '/function/request_email_code', {
       method: 'POST', body: '{}', headers: { 'cf-connecting-ip': `192.0.2.${i + 1}`, 'x-forwarded-for': `198.51.100.${i + 1}` },
     });
-    assert.equal(response.status, i < 3 ? 200 : 429);
+    assert.equal(response.status, i < 12 ? 200 : 429);
   }
 });
 
-test('trusted Render edge keeps different phones signup limits separate', async t => {
+test('trusted Render edge keeps different networks signup limits separate', async t => {
   const origin = await serve(t, (_req, res) => res.end('{}'), { trustCloudflare: true });
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 13; i++) {
     const response = await fetch(origin + '/function/request_email_code', {
       method: 'POST', body: '{}', headers: { 'cf-connecting-ip': '192.0.2.1' },
     });
-    assert.equal(response.status, i < 3 ? 200 : 429);
+    assert.equal(response.status, i < 12 ? 200 : 429);
   }
   assert.equal((await fetch(origin + '/function/request_email_code', {
     method: 'POST', body: '{}', headers: { 'cf-connecting-ip': '192.0.2.2' },
@@ -128,14 +128,14 @@ test('trusted Render edge keeps different phones signup limits separate', async 
 
 test('Funnel uses its overwritten client IP and ignores spoofed Cloudflare headers', async t => {
   const origin = await serve(t, (_req, res) => res.end('{}'), { trustFunnel: true, trustCloudflare: false });
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 13; i++) {
     const response = await fetch(origin + '/function/request_email_code', {
       method: 'POST', body: '{}',
       headers: { 'x-forwarded-for': '192.0.2.1', 'cf-connecting-ip': `198.51.100.${i + 1}` },
     });
-    assert.equal(response.status, i < 3 ? 200 : 429);
+    assert.equal(response.status, i < 12 ? 200 : 429);
   }
   assert.equal((await fetch(origin + '/function/request_email_code', {
     method: 'POST', body: '{}', headers: { 'x-forwarded-for': '192.0.2.2' },
-  })).status, 200, 'another phone has its own request budget');
+  })).status, 200, 'another network has its own request budget');
 });
