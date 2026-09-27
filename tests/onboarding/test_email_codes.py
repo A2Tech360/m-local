@@ -73,6 +73,27 @@ class EmailCodeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.request()
 
+    def test_used_code_allows_a_fresh_request_right_away_within_the_hourly_limit(self):
+        for _ in range(5):
+            sent = self.request()
+            self.assertEqual(self.store.consume(sent['challenge'], self.sent[-1][1])['email'], 'fixture@umich.edu')
+            self.now += 1
+        self.assertEqual(len(self.sent), 5)
+        with self.assertRaises(ValueError) as refused:
+            self.request()
+        self.assertIn('Too many code requests', str(refused.exception))
+        self.assertEqual(len(self.sent), 5)
+
+    def test_unused_code_still_blocks_a_second_request_for_a_minute(self):
+        first = self.request()
+        with self.assertRaises(ValueError):
+            self.store.consume(first['challenge'], '000000' if self.sent[-1][1] != '000000' else '111111')
+        self.now += 30
+        with self.assertRaises(ValueError) as refused:
+            self.request()
+        self.assertIn('wait 60 seconds', str(refused.exception))
+        self.assertEqual(len(self.sent), 1)
+
     def test_delivery_failure_never_creates_a_usable_challenge(self):
         def failed(email, code):
             raise OSError('private provider diagnostic')

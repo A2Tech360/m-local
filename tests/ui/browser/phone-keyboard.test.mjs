@@ -17,30 +17,13 @@ test('budget filter exposes native button semantics and applies the selection',a
  }finally{ui.close();}
 });
 
-test('guest claim hands focus to a named email input',async()=>{
+test('guest lands on a named email input with no password field',async()=>{
  const ui=await app({role:'guest'});
  try{
-  ui.click('Current bowl');await until(()=>ui.find('Sign in to claim'),'guest claim action');
-  ui.click('Sign in to claim');
   await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'),'sign-in inputs appear');
   const email=ui.document.querySelector('input[placeholder="uniqname"]');
-  assert.ok(ui.document.activeElement===email,'focus must move to the newly opened sign-in panel');
   assert.equal(email.getAttribute('aria-label'),'U-M uniqname');
   assert.equal(ui.document.querySelector('input[type="password"]'),null);
-  assert.deepEqual(ui.errors,[]);
- }finally{ui.close();}
-});
-
-test('guest claim refocuses a sign-in panel that was already open',async()=>{
- const ui=await app({role:'guest'});
- try{
-  ui.click('Open sign in');await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'));
-  ui.fill('uniqname','fixture');
-  ui.click('Current bowl');await until(()=>ui.find('Sign in to claim'));
-  ui.find('Sign in to claim').closest('[tabindex="0"]').focus();
-  ui.click('Sign in to claim');
-  await until(()=>ui.document.activeElement===ui.document.querySelector('input[placeholder="uniqname"]'),'existing sign-in field receives focus');
-  assert.equal(ui.document.activeElement.value,'fixture','preserve the existing uniqname');
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
 });

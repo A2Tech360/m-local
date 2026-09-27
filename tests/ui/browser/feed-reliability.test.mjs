@@ -58,7 +58,7 @@ for(const [name,response] of [
 ]) {
  test(`${name} is an error with a working retry, never a successful empty feed`,async()=>{
   let retry=false;
-  const ui=await app({role:'guest',intercept(endpoint){if(endpoint==='home_feed')return retry?rpc(home([offer()])):response();}});
+  const ui=await app({intercept(endpoint){if(endpoint==='home_feed')return retry?rpc(home([offer()])):response();}});
   try{
    await until(()=>ui.text().includes('Could not load offers.'),'invalid response becomes a load error');
    assert.equal(ui.text().includes('Offers are on their way'),false);
@@ -71,7 +71,7 @@ for(const [name,response] of [
 for(const initialItems of [[],[offer()]]) {
  test(`manual refresh is available on a ${initialItems.length?'populated':'valid empty'} feed and discovers a new offer`,async()=>{
   let published=false;
-  const ui=await app({role:'guest',intercept(name){if(name==='home_feed')return rpc(home(published?[offer({title:'Newly published lunch'})]:initialItems));}});
+  const ui=await app({intercept(name){if(name==='home_feed')return rpc(home(published?[offer({title:'Newly published lunch'})]:initialItems));}});
   try{
    if(!initialItems.length)assert.ok(ui.text().includes('Offers are on their way'));
    published=true;ui.click('Refresh offers');await until(()=>ui.find('Newly published lunch'));
@@ -83,7 +83,7 @@ for(const initialItems of [[],[offer()]]) {
 for(const trigger of ['focus','visible','online']) {
  test(`${trigger} revalidation finds an offer published while the feed was empty`,async()=>{
   const clock=feedClock();let published=false;
-  const ui=await app({role:'guest',configureWindow:clock.configureWindow,intercept(name){if(name==='home_feed')return rpc(home(published?[offer({title:'Published from another device'})]:[]));}});
+  const ui=await app({configureWindow:clock.configureWindow,intercept(name){if(name==='home_feed')return rpc(home(published?[offer({title:'Published from another device'})]:[]));}});
   try{
    assert.ok(ui.text().includes('Offers are on their way'));
    clock.visible(false);published=true;

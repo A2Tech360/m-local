@@ -5,7 +5,7 @@ import {app,home,offer,rpc,until} from './harness.mjs';
 test('returning email sign-in needs no name and can switch to business signup',async()=>{
  const ui=await app({role:'guest',intercept(name){if(name==='request_email_code')return rpc({ok:false,message:'Fixture delivery disabled.'});}});
  try{
-  ui.click('Open sign in');await until(()=>ui.document.querySelector('[placeholder="uniqname"]'));
+  await until(()=>ui.document.querySelector('[placeholder="uniqname"]'));
   assert.equal(ui.document.querySelector('[placeholder="Your name"]'),null,'returning users should not have to invent a name again');
   ui.fill('uniqname','fixture');ui.click('Send verification code');await until(()=>ui.text().includes('Fixture delivery disabled.'));
   assert.equal(ui.calls.find(c=>c.name==='request_email_code').body.name,'');
@@ -223,12 +223,13 @@ test('editing an offer keeps absent regular price optional and uses save changes
  }finally{ui.close();}
 });
 
-test('unsaved offer details survive moving between Offers and Manage',async()=>{
+test('unsaved offer details survive moving between Redeem and Manage',async()=>{
  const ui=await app({role:'merchant'});
  try{
   ui.click('Manage');await until(()=>ui.find('New offer'));ui.click('New offer');await until(()=>ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
   ui.fill('Lunch bowl for $7','Retain this draft');ui.fill('7.00','6.75');ui.fill('One per student. Dine-in only.','Keep draft terms');
-  ui.click('Offers');await until(()=>!ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
+  assert.equal(ui.find('Nearby')===undefined,true,'restaurants do not get the student feed');
+  ui.click('Redeem');await until(()=>!ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
   ui.click('Manage');await until(()=>ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
   assert.equal(ui.document.querySelector('[placeholder="Lunch bowl for $7"]').value,'Retain this draft');
   assert.equal(ui.document.querySelector('[placeholder="7.00"]').value,'6.75');
@@ -244,7 +245,7 @@ test('pending publication blocks navigation and repeat submission until confirme
   ui.click('Manage');await until(()=>ui.find('New offer'));ui.click('New offer');await until(()=>ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
   ui.fill('Lunch bowl for $7','Publish only once');ui.fill('7.00','6.75');ui.fill('One per student. Dine-in only.','One per student.');ui.click('Publish offer');
   await until(()=>ui.calls.some(c=>c.name==='save_offer'));
-  ui.click('Offers');ui.click('Saving...');
+  ui.click('Redeem');ui.click('Saving...');
   assert.ok(ui.document.querySelector('[placeholder="Lunch bowl for $7"]'),'keep the composer mounted while the write is pending');
   assert.equal(ui.calls.filter(c=>c.name==='save_offer').length,1);
   release();await until(()=>ui.text().includes('Deferred publication complete.'));
