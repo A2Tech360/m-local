@@ -102,7 +102,7 @@ def run(url, output):
         card=page.get_by_role('button',name='Find local deals')
         light_color=card.evaluate('(el)=>getComputedStyle(el).backgroundColor')
         assert card.evaluate('(el)=>getComputedStyle(el,"::after").backgroundColor')=='rgb(254, 200, 9)'
-        page.get_by_label('Appearance',exact=True).select_option('dark')
+        page.get_by_role('button',name='Switch to dark mode',exact=True).click()
         page.wait_for_timeout(75)
         middle_color=card.evaluate('(el)=>getComputedStyle(el).backgroundColor')
         assert middle_color not in (light_color,'rgb(254, 200, 9)'), 'Theme colors did not interpolate'
@@ -112,7 +112,7 @@ def run(url, output):
         assert before_box==logo.bounding_box(), 'Logo jumps when changing theme'
         assert page.locator('.ml-brand-ink').evaluate('(el)=>getComputedStyle(el).backgroundColor')=='rgb(249, 246, 240)'
         page.emulate_media(reduced_motion='reduce')
-        page.get_by_label('Appearance',exact=True).select_option('light')
+        page.get_by_role('button',name='Switch to light mode',exact=True).click()
         assert card.evaluate('(el)=>getComputedStyle(el).transitionDuration')=='0s'
         assert card.evaluate('(el)=>getComputedStyle(el).backgroundColor')==light_color
         assert page.locator('.ml-brand-ink').evaluate('(el)=>getComputedStyle(el).backgroundColor')=='rgb(2, 48, 92)'
@@ -179,7 +179,7 @@ def run(url, output):
                 page.get_by_role('heading',name='Arbor Leaf Kitchen',exact=True).wait_for()
                 capture(prefix+'-owner-preview')
                 page.get_by_role('button',name='Account You',exact=True).click()
-                page.get_by_label('Appearance').wait_for()
+                page.get_by_test_id('theme-toggle').wait_for()
                 capture(prefix+'-account')
                 page.get_by_role('button',name='Redeem Scan',exact=True).click()
                 page.get_by_role('button',name='Start camera scan',exact=True).wait_for()

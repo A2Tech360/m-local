@@ -9,11 +9,13 @@ function deviceTheme(window,dark=false){
   return value=>{query.matches=value;listeners.forEach(callback=>callback({matches:value}));};
 }
 async function choose(ui,value){
-  const control=ui.document.querySelector('select[aria-label="Appearance"]');
+  const control=ui.document.querySelector('[data-testid="theme-toggle"]');
   assert.ok(control,'the theme control is available');
-  control.value=value;
-  control.dispatchEvent(new ui.window.Event('change',{bubbles:true}));
-  await until(()=>ui.document.querySelector('select[aria-label="Appearance"]').value===value);
+  assert.equal(control.textContent,'','only an icon is visible');
+  assert.equal(control.getAttribute('aria-label'),`Switch to ${value} mode`);
+  assert.ok(control.querySelector('svg[aria-hidden="true"]'));
+  control.dispatchEvent(new ui.window.MouseEvent('click',{bubbles:true}));
+  await until(()=>ui.document.documentElement.dataset.theme===value);
 }
 
 test('welcome appearance follows system, persists selection, and keeps one logo without loading offers',async()=>{
@@ -29,10 +31,10 @@ test('welcome appearance follows system, persists selection, and keeps one logo 
     assert.equal(ui.document.querySelector('[role="img"][aria-label="M Local"]'),logo,'theme switching keeps the same logo element');
     changeDevice(false);changeDevice(true);
     assert.equal(ui.document.documentElement.dataset.theme,'light');
-    await choose(ui,'system');
+    await choose(ui,'dark');
     await until(()=>ui.document.documentElement.dataset.theme==='dark');
     changeDevice(false);
-    await until(()=>ui.document.documentElement.dataset.theme==='light');
+    assert.equal(ui.document.documentElement.dataset.theme,'dark','an explicit choice overrides the device');
     assert.equal(ui.calls.some(call=>call.name==='home_feed'),false);
     assert.deepEqual(ui.errors,[]);
   }finally{ui.close();}
@@ -45,13 +47,13 @@ test('saved dark appearance restores and remains selected through account naviga
   try{
     await until(()=>ui.document.documentElement.dataset.theme==='dark');
     ui.click('Account');
-    await until(()=>ui.document.querySelector('select[aria-label="Appearance"]'));
-    assert.equal(ui.document.querySelector('select[aria-label="Appearance"]').value,'dark');
+    await until(()=>ui.document.querySelector('[data-testid="theme-toggle"]'));
+    assert.equal(ui.document.querySelector('[data-testid="theme-toggle"]').getAttribute('aria-label'),'Switch to light mode');
     await choose(ui,'light');
     await until(()=>ui.document.documentElement.dataset.theme==='light');
     assert.equal(ui.window.localStorage.getItem('jac_token'),'synthetic-ui-token');
     ui.click('Log out');await until(()=>ui.find('Find local deals'));
-    assert.equal(ui.document.querySelector('select[aria-label="Appearance"]').value,'light');
+    assert.equal(ui.document.querySelector('[data-testid="theme-toggle"]').getAttribute('aria-label'),'Switch to dark mode');
     assert.equal(ui.window.localStorage.getItem('mlocal_theme'),'light');
     assert.equal(ui.window.localStorage.getItem('jac_token'),null);
     assert.deepEqual(ui.errors,[]);
@@ -69,7 +71,7 @@ test('blocked theme storage does not prevent switching or entering either sign-i
     ui.click('List my business');await until(()=>ui.document.querySelector('[type="email"]'));
     assert.equal(ui.document.documentElement.dataset.theme,'dark');
     ui.click('Back');await until(()=>ui.find('Find local deals'));
-    assert.equal(ui.document.querySelector('select[aria-label="Appearance"]').value,'dark');
+    assert.equal(ui.document.querySelector('[data-testid="theme-toggle"]').getAttribute('aria-label'),'Switch to light mode');
     ui.click('Find local deals');await until(()=>ui.document.querySelector('[placeholder="uniqname"]'));
     assert.deepEqual(ui.errors,[]);
   }finally{ui.close();}

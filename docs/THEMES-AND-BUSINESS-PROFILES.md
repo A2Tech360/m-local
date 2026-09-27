@@ -10,7 +10,7 @@ offer eligibility, saved claims, QR redemption, and merchant ownership.
 
 - [x] Restart the existing hosted gateway after the current deployment completes;
   verify public health, both logos, and the font return HTTP 200.
-- [x] Add System, Light, and Dark appearance preferences shared across all screens.
+- [x] Add shared light/dark appearance with an icon-only sun/moon toggle.
 - [x] Add an authenticated business projection and a customer-facing profile.
 - [x] Integrate business-name navigation, merchant preview, and explicit favorite removal.
 - [x] Move logout beside the logo, style secondary actions as buttons, and put a
@@ -19,8 +19,8 @@ offer eligibility, saved claims, QR redemption, and merchant ownership.
 
 ## Behavior
 
-Appearance defaults to the device preference. An explicit Light or Dark selection
-is remembered in `mlocal_theme`, independently of the login token. System follows
+Appearance defaults to the device preference until the sun/moon button is tapped. The 44px icon-only button has an accessible action label and tooltip. An explicit Light or Dark selection
+is remembered in `mlocal_theme`, independently of the login token. The initial system preference follows
 device changes. Storage denial does not prevent an in-tab selection. The QR
 credential stays black on a white quiet zone in either theme.
 

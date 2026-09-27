@@ -52,12 +52,15 @@ def:pub useTheme() -> ThemeSnapshot {
 
 def:pub ThemeControl() -> JsxElement {
     current = useTheme();
-    return <label style={{"display": "flex", "alignItems": "center", "justifyContent": "space-between", "gap": 12, "color": ui.muted, "fontFamily": uiFont, "fontSize": 13, "fontWeight": 700}}>
-        <span>Appearance</span>
-        <select aria-label="Appearance" value={current.preference} onChange={lambda (event: ChangeEvent) { themeStore.setPreference(event.target.value); }} style={{**formInput, "width": "auto", "minHeight": 44, "padding": "9px 12px", "fontSize": 14, "fontWeight": 600, "cursor": "pointer"}}>
-            <option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option>
-        </select>
-    </label>;
+    nextMode = "light" if current.resolved == "dark" else "dark";
+    label = "Switch to " + nextMode + " mode";
+    return <button type="button" data-testid="theme-toggle" aria-label={label} title={label}
+        onClick={lambda { themeStore.setPreference(nextMode); }}
+        style={{"display": "inline-flex", "alignItems": "center", "justifyContent": "center", "width": 44, "height": 44, "flexShrink": 0, "padding": 0, "border": "1px solid " + ui.line, "borderRadius": 999, "background": ui.white, "color": ui.ink, "cursor": "pointer"}}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+            {<Fragment><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"/></Fragment> if nextMode == "light" else <path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"/>}
+        </svg>
+    </button>;
 }
 
 def:pub BrandLogo(reversed: bool = False) -> JsxElement {
