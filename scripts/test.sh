@@ -2,10 +2,7 @@
 source "$(dirname -- "${BASH_SOURCE[0]}")/runtime.sh"
 suite="${1:-core}"
 case "$suite" in
-    core|all) ;;
-    context)
-        echo 'Context suite is not present in this checkout; see the team missions.' >&2
-        exit 2 ;;
+    core|context|all) ;;
     integration)
         node --test tests/ui/*.test.mjs tests/tooling/*.test.mjs
         accounts="$PROJECT_ROOT/.jac/qr-demo-accounts.json"
@@ -18,7 +15,7 @@ case "$suite" in
     *) echo 'Usage: scripts/test.sh core|context|integration|all' >&2; exit 2 ;;
 esac
 mkdir -p -- "$JAC_CACHE_HOME/test-runs"
-test_root="$(mktemp -d "$JAC_CACHE_HOME/test-runs/core-XXXXXXXX")"
+test_root="$(mktemp -d "$JAC_CACHE_HOME/test-runs/$suite-XXXXXXXX")"
 # Copy only source/configuration. The distinct path gives Jac a separate app store.
 while IFS= read -r -d '' source_file; do
     mkdir -p -- "$test_root/$(dirname -- "$source_file")"
@@ -26,7 +23,11 @@ while IFS= read -r -d '' source_file; do
 done < <(find . -type d \( -name .jac -o -name .git -o -name node_modules -o -name .venv \) -prune -o -type f \( -name '*.jac' -o -name jac.toml \) -print0)
 echo "Isolated test workspace (retained for diagnosis): $test_root"
 cd -- "$test_root"
-"$JAC_BIN" test services/promo.test.jac services/qr.test.jac services/session.test.jac
+if [[ "$suite" == context ]]; then
+    "$JAC_BIN" test services/context.test.jac
+else
+    "$JAC_BIN" test services/promo.test.jac services/qr.test.jac services/session.test.jac
+fi
 if [[ "$suite" == all ]]; then
     exit_code=0
     bash "$PROJECT_ROOT/scripts/test.sh" context || exit_code=$?
