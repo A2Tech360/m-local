@@ -38,9 +38,9 @@ test('public sign-in has one primary action and a compact account-type control',
   assert.equal(ui.doc.querySelector('input[type="password"]'),null);
   assert.equal(ui.doc.querySelector('h3').textContent,'Sign in');
   assert.equal(ui.doc.body.textContent.includes('Switch to U-M deals'),false);
-  ui.click('Create an account');await until(()=>ui.doc.querySelector('[placeholder="Your name"]'));
+  ui.click('Create an account');await until(()=>ui.doc.querySelector('[placeholder="Business Name"]'));
   assert.equal(ui.doc.querySelector('h3').textContent,'Create your account');
-  ui.click('Sign in');await until(()=>!ui.doc.querySelector('[placeholder="Your name"]'));
+  ui.click('Sign in');await until(()=>!ui.doc.querySelector('[placeholder="Business Name"]'));
  }finally{ui.close();}
 });
 
