@@ -24,10 +24,19 @@ function Stop-Demo {
     if ($saved) {
         foreach ($name in @('tunnel', 'proxy')) {
             $process = Find-OwnedProcess $saved.$name
-            if ($process) { Stop-Process -Id $process.Id }
+            if ($process) {
+                try { Stop-Process -Id $process.Id }
+                catch {
+                    # The launcher and Stop shortcut can observe the same exit.
+                    if ($_.FullyQualifiedErrorId -notlike 'NoProcessFoundForGivenId*') { throw }
+                }
+            }
         }
     }
-    if (Test-Path -LiteralPath $linkFile) { Remove-Item -LiteralPath $linkFile }
+    if (Test-Path -LiteralPath $linkFile) {
+        try { Remove-Item -LiteralPath $linkFile }
+        catch { if ($_.CategoryInfo.Category -ne 'ObjectNotFound') { throw } }
+    }
 }
 if ($Stop) { Stop-Demo; Write-Host 'Phone sharing stopped. Jac shuts down within a few seconds.'; exit 0 }
 

@@ -27,8 +27,16 @@ provisioning; allow several minutes.
 Private student and merchant logins are saved in **.jac/phone-share/accounts.json**.
 Assign `student_a` and `student_b` to separate testers; merchants use
 `merchant_leaf` and `merchant_noodle`. Keep this file private. The public link does
-not provide registration or disclose those logins. Browsing works without signing
-in. Use only fictional data and privately shared demo accounts.
+does not disclose those logins. Browsing works without signing in. Keep demo
+businesses/offers fictional. Real U-M accounts can register through the email-code
+flow after the host configures a sender; raw Jac registration remains blocked.
+
+For Resend, double-click **Set Up Email.cmd**, use an address on a verified sending
+domain, and enter the dedicated sending API key at the hidden prompt. The helper
+uses encrypted SMTP on port 587 and saves credentials outside Git. Restart the
+phone demo after setup. See [email onboarding](ONBOARDING.md) for other providers
+and the live two-account verification checkpoint. Configuring one checkout does
+not configure another checkout or another computer.
 
 The launcher copies application source to a stable, separate WSL directory for
 faster compilation. Its path is in `.jac/phone-share/runtime-path.txt`. That
@@ -41,7 +49,8 @@ new fictional offer for a claim-and-redeem test.
 ## Everyday use
 
 1. Double-click Start Phone Demo and wait for **OPEN ON YOUR PHONES**.
-2. Open the link on each phone. Share the appropriate private login separately.
+2. Open the link on each phone. Use verified U-M email signup or share a private
+   demo login separately. Each browser requests its own verification code.
 3. For a merchant camera test, sign in as the merchant and allow camera access
    when prompted. HTTPS provides the required secure origin; a physical scan still
    needs to be tested on the actual phone.
@@ -72,7 +81,8 @@ PowerShell alternatives (from the repository):
 - Camera scanning is a physical-device acceptance check. A working HTTPS link
   alone is not a passing camera test.
 - This gateway permits compiled assets, login, and the app's named RPCs. It blocks
-  development modules, filesystem routes, graph/admin APIs, and public signup.
+  development modules, filesystem routes, graph/admin APIs, and raw Jac signup.
+  The app's email-code signup and business-draft RPCs are allowed and rate limited.
   App identity and business rules remain enforced by Jac.
 
 ## Implementation and verification plan
@@ -84,11 +94,15 @@ PowerShell alternatives (from the repository):
 4. Record physical iPhone/Android camera results separately when humans run them.
 
 Automated gateway check: `node --test tests/tooling/phone-share.test.mjs`.
+Windows shutdown check: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File
+tests/tooling/phone-stop.test.ps1`. It mocks process termination and never stops
+the running demo. It reproduces the concurrent-exit race observed during restart.
 
 ## Verified on September 26, 2026
 
 Windows PowerShell 5.1 launcher with Ubuntu/WSL, Jac 0.37.23, Node 22.19.0,
-and the application at runtime merge `23678f9`:
+and the application at runtime merge `23678f9` (initial launcher checkpoint,
+before the later email-onboarding integration):
 
 - Four gateway/tooling tests passed. A regression reproduced the compiled
   `/static/client.js` route being blocked; it passes after the allowlist fix.
@@ -104,3 +118,8 @@ and the application at runtime merge `23678f9`:
 
 Travis's desktop has Start/Stop shortcuts targeting this checkout. Keep this
 worktree available while the shortcuts and running demo use it.
+
+The later onboarding integration was exercised through the same gateway: real
+Resend delivery, U-M account creation, a verified session retained after refresh,
+and preserved demo accounts after restart. Travis confirmed two real U-M logins.
+The current live accounts and sender configuration remain private to this host.
