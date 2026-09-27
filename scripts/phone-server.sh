@@ -8,7 +8,7 @@ mkdir -p "$state"
 key="$(printf '%s' "$PROJECT_ROOT" | sha256sum | cut -c1-16)"
 demo="$HOME/.local/share/m-local/phone-demos/$key"
 mkdir -p "$demo/scripts"
-tar -cf - main.jac theme.jac jac.toml .jac-version services client scripts/provision-demo.py | tar -xf - -C "$demo"
+tar -cf - main.jac theme.jac jac.toml .jac-version services client scripts/provision-demo.py scripts/enable-demo-students.py | tar -xf - -C "$demo"
 printf '%s\n' "$demo" > "$state/runtime-path.txt"
 cd "$demo"
 app_pid=''
@@ -34,7 +34,11 @@ wait_ready() {
     echo 'App startup timed out. See .jac/phone-share/server.log.' >&2
     exit 1
 }
-if [[ -f .jac/qr-demo.env ]]; then source .jac/qr-demo.env; fi
+if [[ -f "$PROJECT_ROOT/.jac/onboarding.env" ]]; then source "$PROJECT_ROOT/.jac/onboarding.env"; fi
+if [[ -f .jac/qr-demo.env ]]; then
+    python3 scripts/enable-demo-students.py --state-dir .jac
+    source .jac/qr-demo.env
+fi
 start_app
 wait_ready
 if [[ ! -f .jac/qr-demo-accounts.json ]]; then
