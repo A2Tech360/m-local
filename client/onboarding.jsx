@@ -9,8 +9,44 @@ const label={...stack,gap:6,fontSize:14,fontWeight:600};
 function Notice({children}) {return children ? <p role="status" aria-live="polite" style={{...hint,color:'#1f3a5f'}}>{children}</p>:null;}
 function Input({title,...props}) {return <label style={label}>{title}<input style={input} {...props}/></label>;}
 
-export function EmailOnboarding({requestCode,verifyCode,onVerified,legacySignIn,onLegacySession,onCancel,inputRef}) {
- const [kind,setKind]=useState('student'),[name,setName]=useState(''),[value,setValue]=useState('');
+const audienceKey='mlocal_audience';
+export function readAudience() {
+ try {const value=localStorage.getItem(audienceKey);return ['student','business'].includes(value)?value:'';}catch{return '';}
+}
+export function rememberAudience(value) {
+ if(!['student','business'].includes(value))return;
+ try {localStorage.setItem(audienceKey,value);}catch{/* Browsing still works when storage is unavailable. */}
+}
+export function audienceForSession(session) {
+ if(!session?.authenticated)return '';
+ return session.role==='student'?'student':['business','merchant'].includes(session.role)?'business':'';
+}
+
+export function AudienceWelcome({onChoose}) {
+ const choice={...secondary,textAlign:'left',padding:'22px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,borderRadius:16};
+ return <main style={{height:'100%',overflowY:'auto',background:'#f7f3ec',fontFamily:'system-ui, sans-serif',color:'#1d1a16'}}>
+  <style>{'.mlocal-choice:focus-visible{outline:3px solid #1f3a5f;outline-offset:4px}.mlocal-choice:hover{filter:brightness(.97)}'}</style>
+  <div style={{...stack,boxSizing:'border-box',minHeight:'100%',maxWidth:480,margin:'0 auto',padding:'36px 24px',justifyContent:'center',gap:28}}>
+   <div style={{fontSize:12,fontWeight:750,letterSpacing:2,color:'#b83a0b'}}>M-LOCAL / ANN ARBOR</div>
+   <header style={{...stack,gap:12}}>
+    <h1 style={{fontSize:36,lineHeight:1.08,letterSpacing:-1.2,margin:0,fontWeight:800}}>Welcome to M-Local</h1>
+    <p style={{...hint,fontSize:17}}>Good things are happening nearby.<br/>How will you join in?</p>
+   </header>
+   <div style={{...stack,gap:12}}>
+    <button className="mlocal-choice" type="button" style={{...choice,background:'#b83a0b',borderColor:'#b83a0b',color:'#fff'}} onClick={()=>onChoose('student')}>
+     <span style={{...stack,gap:8,color:'inherit'}}><span style={{fontSize:21,fontWeight:750}}>Find local deals</span><span style={{fontSize:14,lineHeight:1.5,fontWeight:400}}>Join with your U-M email.<br/>Discover offers from local favorites.</span></span><span aria-hidden="true" style={{fontSize:26}}>→</span>
+    </button>
+    <button className="mlocal-choice" type="button" style={choice} onClick={()=>onChoose('business')}>
+     <span style={{...stack,gap:8,color:'inherit'}}><span style={{fontSize:21,fontWeight:750}}>List my business</span><span style={{fontSize:14,lineHeight:1.5,fontWeight:400}}>Create your business profile.<br/>Connect with the U-M community.</span></span><span aria-hidden="true" style={{fontSize:26}}>→</span>
+    </button>
+   </div>
+   <p style={hint}>New here or coming back? Start with your path.<br/>We’ll remember it on this browser.</p>
+  </div>
+ </main>;
+}
+
+export function EmailOnboarding({kind='student',requestCode,verifyCode,onVerified,legacySignIn,onLegacySession,onCancel,inputRef}) {
+ const [name,setName]=useState(''),[value,setValue]=useState('');
  const [code,setCode]=useState(''),[challenge,setChallenge]=useState(null),[message,setMessage]=useState('');
  const [busy,setBusy]=useState(false),[cooldown,setCooldown]=useState(0),[demo,setDemo]=useState(false),[password,setPassword]=useState('');
  const mounted=useRef(true),inFlight=useRef(false),codeRef=useRef(null);
@@ -20,7 +56,6 @@ export function EmailOnboarding({requestCode,verifyCode,onVerified,legacySignIn,
  async function run(action){if(inFlight.current)return;inFlight.current=true;setBusy(true);setMessage('');try{await action();}catch{if(mounted.current)setMessage('Could not connect. Your entries are kept; please try again.');}finally{inFlight.current=false;if(mounted.current)setBusy(false);}}
  async function send(){await run(async()=>{const reply=await requestCode(value,kind,name);if(!mounted.current)return;setMessage(reply.message);if(reply.ok){setChallenge(reply);setCode('');setCooldown(reply.retry_after||60);}});}
  async function verify(){await run(async()=>{const reply=await verifyCode(challenge.challenge,code);if(!mounted.current)return;if(!reply.ok){setMessage(reply.message);return;}await onVerified(reply.token);});}
- function switchKind(next){setKind(next);setValue('');setMessage('');setChallenge(null);setCode('');}
  if(demo)return <form style={stack} onSubmit={e=>{e.preventDefault();run(async()=>{const session=await legacySignIn(value,password);if(mounted.current)await onLegacySession(session);});}}>
   <p style={hint}>Use the provisioned credentials shared by the demo host.</p>
   <Input title="Email" aria-label="Email" autoFocus placeholder="Email" type="email" autoComplete="username" value={value} onChange={e=>setValue(e.target.value)} required/>
@@ -30,10 +65,6 @@ export function EmailOnboarding({requestCode,verifyCode,onVerified,legacySignIn,
  </form>;
  return <form style={stack} onSubmit={e=>{e.preventDefault();challenge?verify():send();}}>
   {!challenge ? <>
-   <div role="group" aria-label="Account type" style={{display:'flex',gap:8}}>
-    <button type="button" style={kind==='student'?button:secondary} disabled={busy} aria-pressed={kind==='student'} onClick={()=>switchKind('student')}>U-M community</button>
-    <button type="button" style={kind==='business'?button:secondary} disabled={busy} aria-pressed={kind==='business'} onClick={()=>switchKind('business')}>Business owner</button>
-   </div>
    <Input title="Your name" placeholder="Your name" autoComplete="name" maxLength={80} value={name} onChange={e=>setName(e.target.value)} required disabled={busy}/>
    {kind==='student' ? <label style={label}>U-M email
     <div style={{display:'flex',border:'1px solid #c9bfb2',borderRadius:10,overflow:'hidden',minWidth:0}}>
@@ -53,7 +84,7 @@ export function EmailOnboarding({requestCode,verifyCode,onVerified,legacySignIn,
    <button style={secondary} type="button" disabled={busy} onClick={()=>{setChallenge(null);setCode('');setMessage('');}}>Change email</button>
   </>}
   <Notice>{message}</Notice>
-  {!challenge&&<button style={{...secondary,fontSize:13}} type="button" disabled={busy} onClick={()=>{setDemo(true);setValue('');setMessage('');}}>Demo / existing restaurant sign-in</button>}
+  {!challenge&&<button style={{...secondary,fontSize:13}} type="button" disabled={busy} onClick={()=>{setDemo(true);setValue('');setMessage('');}}>{kind==='student'?'Demo sign-in':'Existing restaurant sign-in'}</button>}
   <button style={secondary} type="button" disabled={busy} onClick={onCancel}>Keep browsing</button>
  </form>;
 }

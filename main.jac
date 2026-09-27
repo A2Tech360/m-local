@@ -37,7 +37,7 @@ import from "@jac/mobui" {
 import from .theme { C, buildStyles, statusColors, money }
 import from .services.session { SessionView }
 import from .client.session { signIn, signOut, loadSession, acceptEmailToken }
-import from "./client/onboarding.jsx" { EmailOnboarding, BusinessOnboarding }
+import from "./client/onboarding.jsx" { EmailOnboarding, BusinessOnboarding, AudienceWelcome, readAudience, rememberAudience, audienceForSession }
 import from "./client/qr.jsx" { ClaimQr, ClaimScanner }
 import from "./client/scan-controller.mjs" { isClaimPayload }
 
@@ -136,6 +136,8 @@ def OfferCard(o: OfferView, onOpen: any) -> JsxElement {
 def:pub app -> JsxElement {
     has tab: str = "discover",
         session: SessionView | None = None,
+        sessionReady: bool = False,
+        audience: str = readAudience(),
         email: str = "",
         password: str = "",
         emailInput: Ref[HTMLInputElement] = Ref(),
@@ -211,14 +213,22 @@ def:pub app -> JsxElement {
         restored: SessionView | None = None;
         try {
             restored = await loadSession();
-            if epoch == sessionEpoch.current { session = restored; }
+            if epoch == sessionEpoch.current {
+                session = restored;
+                restoredAudience = audienceForSession(restored);
+                if restoredAudience { audience = restoredAudience; rememberAudience(restoredAudience); }
+            }
         } except Exception {
             if epoch == sessionEpoch.current { authMsg = "Could not check your session. You can still browse; retry sign-in when connected."; }
         }
-        if epoch == sessionEpoch.current { await loadOffers("", "any", []); }
+        if epoch == sessionEpoch.current { sessionReady = True; await loadOffers("", "any", []); }
     }
 
     async def refresh() { await loadOffers(maxPrice, timeWin, diets); }
+
+    def chooseAudience(kind: str) {
+        audience = kind; rememberAudience(kind); authOpen = True; authMsg = "";
+    }
 
     def clearPrivate() {
         sessionEpoch.current = (sessionEpoch.current or 0) + 1;
@@ -234,6 +244,8 @@ def:pub app -> JsxElement {
 
     async def finishSignIn(fresh: SessionView) {
         clearPrivate(); session = fresh; authOpen = False; password = "";
+        freshAudience = audienceForSession(fresh);
+        if freshAudience { audience = freshAudience; rememberAudience(freshAudience); }
         businessOpen = fresh.role == "business";
         await refresh();
         if fresh.role == "merchant" { await openMerchant(); }
@@ -446,14 +458,14 @@ def:pub app -> JsxElement {
                 {(<View style={{"gap": 12}}>
                     <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { businessOpen = not businessOpen; }}><Text style={styles.btnGhostText}>{"Close business profile" if businessOpen else "Create a business profile"}</Text></Pressable>
                     {(<BusinessOnboarding getDraft={get_business_draft} importWebsite={import_business_website} saveDraft={save_business_draft} />) if businessOpen else <View />}
-                </View>) if session.email_verified and session.role != "merchant" else <View />}
+                </View>) if session.email_verified and session.role == "business" else <View />}
                 </View>
             ) if session and session.authenticated else (
                 <View style={{"gap": 12}}>
-                    <Text style={styles.h2}>Sign in to claim or manage offers</Text>
+                    <Text style={styles.h2}>{"Your business account" if audience == "business" else "Your U-M account"}</Text>
                     <Text style={styles.small}>Browse freely. Verify your email to create an account or sign back in.</Text>
                     {(
-                        <EmailOnboarding requestCode={request_email_code} verifyCode={verify_email_code}
+                        <EmailOnboarding kind={audience} requestCode={request_email_code} verifyCode={verify_email_code}
                             onVerified={finishEmail} legacySignIn={signIn} onLegacySession={finishSignIn}
                             inputRef={emailInput} onCancel={lambda { authOpen = False; }} />
                     ) if authOpen else <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { openSignIn(); }}><Text style={styles.btnGhostText}>Open sign in</Text></Pressable>}
@@ -575,12 +587,12 @@ def:pub app -> JsxElement {
             <Message text={claimMsg} good={claimOk} />
             <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={busy} onPress={lambda { openOffer(o.id); }}><Text style={styles.btnGhostText}>Refresh offer and claim</Text></Pressable>
             <Pressable accessibilityRole="button"
-                style={[styles.btn, {} if claimable else styles.btnDisabled]}
-                disabled={not claimable or busy or (session is not None and session.role == "merchant")}
+                style={[styles.btn, {} if claimable and audience == "student" else styles.btnDisabled]}
+                disabled={not claimable or busy or audience == "business"}
                 onPress={lambda { changeClaim(False); }}
             >
                 <Text style={styles.btnText}>
-                    {"Updating..." if busy else "Sign in to claim" if not studentSession and claimable else "Claim this offer" if claimable else "Already claimed" if o.my_status else "Not claimable right now"}
+                    {"For U-M customers" if audience == "business" else "Updating..." if busy else "Sign in to claim" if not studentSession and claimable else "Claim this offer" if claimable else "Already claimed" if o.my_status else "Not claimable right now"}
                 </Text>
             </Pressable>
             <Text style={styles.small}>Prices exclude tax unless the saved terms say otherwise. The restaurant checks the stated ID requirement.</Text>
@@ -737,13 +749,20 @@ def:pub app -> JsxElement {
         </Pressable>;
     }
 
+    if not sessionReady {
+        return <View style={[styles.screen, {"height": viewport.height}]}><View style={styles.empty}><Text style={styles.subtitle}>Opening M-Local...</Text></View></View>;
+    }
+    if not audience {
+        return <View style={[styles.screen, {"height": viewport.height}]}><AudienceWelcome onChoose={chooseAudience} /></View>;
+    }
+
     body = (Detail() if selected else Discover()) if tab == "discover" else Merchant() if tab == "merchant" else Redeem();
 
     return <View style={[styles.screen, {"height": viewport.height}]}>
         <View style={styles.frame}>
             <ScrollView style={[styles.scroll, {"height": viewport.height}]}>{SessionPanel()}{body}</ScrollView>
             <View style={styles.tabbar}>
-                {TabButton("discover", "Offers", "Student")}
+                {TabButton("discover", "Offers", "Nearby")}
                 {TabButton("merchant", "Manage", "Merchant") if session and session.role == "merchant" else <View />}
                 {TabButton("redeem", "Redeem", "Merchant") if session and session.role == "merchant" else <View />}
             </View>
