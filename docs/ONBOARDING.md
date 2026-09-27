@@ -61,7 +61,9 @@ filter mail. Move to a transactional provider before a wider launch.
 ### Domain-backed sender or another SMTP provider
 
 For example, [Resend SMTP](https://resend.com/docs/send-with-smtp) uses host
-`smtp.resend.com`, port `465`, username `resend`, and an API key as the password.
+`smtp.resend.com`, port `587` with STARTTLS, username `resend`, and an API key as
+the password. The setup helper defaults to 587; the host's WSL runtime completed
+an encrypted handshake on that port, while port 465 timed out on the test network.
 You must own and verify a sending domain; `umich.edu` and `gmail.com` cannot be
 verified by the team. Use the helper with `-Provider resend` or `-Provider custom`
 (WSL: `--provider resend` or `--provider custom`). A provider account/domain and
