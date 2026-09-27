@@ -4,7 +4,8 @@
 Start a fresh /tmp/m-local-theme-profile.* app on loopback port 8155 with
 MLOCAL_ONBOARDING_DIR=<workspace>/.jac/onboarding, MLOCAL_MERCHANT_OWNERS={},
 MLOCAL_DEMO_STUDENTS=[] and MLOCAL_DEMO_MODE=0. Run this script from any directory
-with --workspace <workspace>. Never point the server at a shared data store.
+with --workspace <workspace> through bash scripts/python.sh so Jac service imports
+use the pinned runtime. Never point the server at a shared data store.
 
 OTP challenges are inserted only into the named isolated private store. Email
 verification, activation, reads, publication and claims use real HTTP. No email
