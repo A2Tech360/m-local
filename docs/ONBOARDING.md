@@ -1,5 +1,13 @@
 # Email and business onboarding
 
+On a first visit, choose **Find local deals** or **List my business**. The app
+opens that path's email form and remembers the choice on this browser, including
+after sign-out. The other path's signup and login controls stay hidden. An
+existing authenticated account's server role overrides a stale browser choice.
+The browser preference controls presentation only; server permissions still
+control every action. A new browser or a new temporary phone-link domain asks
+again because browser storage is scoped to the site's origin.
+
 Students/community members enter their uniqname beside a fixed `@umich.edu`.
 The server constructs the address. Business owners enter their full work email.
 A six-digit email code creates an account or resumes its existing Jac session.
@@ -79,7 +87,7 @@ user's filesystem permissions and never expose it through the web server.
 
 ## Business creation and optional AI
 
-After email verification, choose **Create a business profile**. Business signup
+After business email verification, choose **Create a business profile**. Business signup
 opens this form immediately. Paste a public `https://` homepage or type details
 manually. Import reads at most the homepage and one same-site menu HTML page;
 PDF menus remain links. JavaScript-only sites may require manual entry. It reads

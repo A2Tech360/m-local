@@ -30,3 +30,7 @@ jobs:
         run: ./scripts/build.sh
       - name: Run gateway and UI unit tests
         run: node --test tests/ui/*.test.mjs tests/tooling/*.test.mjs
+      - name: Install compiled UI test runtime
+        run: npm install --prefix .jac/ui-test-runtime --no-save --package-lock=false jsdom@26.1.0
+      - name: Check compiled onboarding and phone flows
+        run: node --test tests/ui/browser/*.test.mjs

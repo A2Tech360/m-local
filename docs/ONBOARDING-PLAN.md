@@ -1,7 +1,8 @@
 # Email and business onboarding
 
 Travis requested U-M email code verification instead of university SSO, then
-business creation from a website. No email sender is available yet.
+business creation from a website. Resend SMTP is now configured on the local
+phone host, and Travis confirmed verification works for two real U-M accounts.
 
 ## Intended flow
 
@@ -37,3 +38,18 @@ business creation from a website. No email sender is available yet.
    configuration and are not claimed from fixture tests.
 6. Document exact sender/model setup and public ingress allowlist. Keep the running
    phone demo available until the replacement is built and checked.
+
+## First-visit experience (approved direction, September 26)
+
+On the first visit, show **Find local deals** and **List my business** before the
+feed or any login form. Persist the selected path in the browser and open its
+email form. Later visits and sign-out keep that same path, without the other
+path's signup toggle or legacy-login copy. A restored authenticated account's
+server role overrides an old browser preference; this preference grants no
+permissions. Verified students do not see business creation, and business viewers
+do not receive student claim-login prompts.
+
+Verify with compiled UI tests for each first-visit selection, return visits,
+sign-out, restored sessions, and absence of the other path's controls. Then check
+Jac, build the app, review the phone layout, and include the result in the pending
+main-branch release.
