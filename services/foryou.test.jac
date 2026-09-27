@@ -181,3 +181,13 @@ test "demo companies are added once, flagged demo and claimable" {
     assert len(mine.items) == len(h.items);
     assert [i for i in mine.items[:8] if i.slot == "explore"];
 }
+
+
+test "sample listings show only when the server turns demo mode on" {
+    assert demo_mode("1") and demo_mode(" TRUE ") and demo_mode("on");
+    for off in ["", "0", "false", "no", "maybe"] {
+        assert not demo_mode(off), off;
+    }
+    _ensure_seed();
+    assert _home("", "", "any", "", time.time()).show_samples == demo_mode(os.environ.get(DEMO_MODE_ENV, ""));
+}

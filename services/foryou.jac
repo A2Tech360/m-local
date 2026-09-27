@@ -108,6 +108,7 @@ obj HomeView {
         favorites: list[FavoritePlace] = [],
         items: list[FeedItem] = [],
         total_deals: int = 0,
+        show_samples: bool = False,
         note: str = "";
 }
 
@@ -368,6 +369,7 @@ def _home(actor: str, price_range: str, window: str, diets: str, now: float) -> 
     }
     personalized = bool(taste.categories or taste.diets or taste.price_range or taste.favorites or taste.history);
     return HomeView(
+        show_samples=demo_mode(os.environ.get(DEMO_MODE_ENV, "")),
         signed_in=bool(actor),
         personalized=personalized,
         completed=p.completed if p is not None else False,
@@ -381,6 +383,14 @@ def _home(actor: str, price_range: str, window: str, diets: str, now: float) -> 
 
 
 # -------------------------------------------------------- demo catalog ---
+
+glob DEMO_MODE_ENV: str = "MLOCAL_DEMO_MODE";
+
+
+def demo_mode(text: str) -> bool {
+    return text.strip().lower() in ["1", "true", "yes", "on"];
+}
+
 
 # Presentation aid: a server operator may set this to a number (for example 30)
 # to add that many random fictional companies to the catalog. Never client-set.

@@ -31,16 +31,16 @@ test('guest claim hands focus to a named email input',async()=>{
  }finally{ui.close();}
 });
 
-test('guest claim refocuses a sign-in panel that was already open',async()=>{
+test('guest claim opens the sign-in screen and leaves the feed behind',async()=>{
  const ui=await app({role:'guest'});
  try{
-  ui.click('Open sign in');await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'));
-  ui.fill('uniqname','fixture');
   ui.click('Current bowl');await until(()=>ui.find('Sign in to claim'));
-  ui.find('Sign in to claim').closest('[tabindex="0"]').focus();
   ui.click('Sign in to claim');
-  await until(()=>ui.document.activeElement===ui.document.querySelector('input[placeholder="uniqname"]'),'existing sign-in field receives focus');
-  assert.equal(ui.document.activeElement.value,'fixture','preserve the existing uniqname');
+  await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'),'sign-in screen opens');
+  assert.ok(ui.text().includes('Sign in to M-Local'));
+  assert.equal(ui.find('Sign in to claim'),undefined,'the offer is not drawn under the sign-in screen');
+  assert.equal(ui.find('Nearby')===undefined,true,'no app menu before sign-in');
+  ui.click('Keep browsing');await until(()=>ui.find('Sign in to claim'),'closing sign-in returns to the same offer');
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
 });

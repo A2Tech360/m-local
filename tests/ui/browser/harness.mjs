@@ -62,7 +62,7 @@ export async function app({role='student',verified=false,audience='student',item
  w.addEventListener('error',e=>errors.push(e.message));
  w.eval(executable);
  const initialTitle=item.my_claim_id&&['claimed','redeemed'].includes(item.my_status)?item.my_title:item.title;
- await until(()=>w.document.body.textContent.includes(initialTitle)||w.document.body.textContent.includes('Welcome to M-Local'),'initial app render');
+ await until(()=>w.document.body.textContent.includes(initialTitle)||['Welcome to M-Local','Sign in to M-Local','List your business','YOUR BUSINESS','Profile and offers'].some(mark=>w.document.body.textContent.includes(mark)),'initial app render');
  return {window:w,document:w.document,calls,errors,text:()=>w.document.body.textContent,
   find(text){return [...w.document.querySelectorAll('*')].find(n=>n.textContent===text&&n.children.length===0);},
   click(text){const n=this.find(text);if(!n)throw new Error(`Missing control: ${text}`);n.dispatchEvent(new w.MouseEvent('click',{bubbles:true}));},

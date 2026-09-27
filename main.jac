@@ -114,7 +114,7 @@ def Field(
 }
 
 
-def DealCard(item: FeedItem, onOpen: any, onHeart: any) -> JsxElement {
+def DealCard(item: FeedItem, onOpen: any, onHeart: any, canHeart: bool) -> JsxElement {
     o = item.offer;
     hasSavedClaim = o.my_claim_id != "" and o.my_status in ["claimed", "redeemed"];
     saving = o.regular_price - o.price;
@@ -126,50 +126,54 @@ def DealCard(item: FeedItem, onOpen: any, onHeart: any) -> JsxElement {
         else o.time_label + "  ·  " + str(o.remaining) + " left" if live
         else o.time_label if o.state == "scheduled" else o.state.capitalize()
     );
-    return <Pressable accessibilityRole="button" style={[styles.card, {} if live or hasSavedClaim else styles.cardMuted]} onPress={onOpen}>
+    return <View style={[styles.card, {} if live or hasSavedClaim else styles.cardMuted]}>
         <View style={styles.rowBetween}>
-            <View style={[styles.row, styles.flex1]}>
+            <Pressable accessibilityRole="button" style={styles.flex1} onPress={onOpen}>
                 <Text style={styles.restaurant}>{o.restaurant}</Text>
-            </View>
-            <Pressable accessibilityRole="button" accessibilityLabel={("Remove " if item.is_favorite else "Add ") + o.restaurant + (" from favorites" if item.is_favorite else " to favorites")}
-                style={{"paddingHorizontal": 10, "paddingVertical": 4}} onPress={onHeart}>
-                <Text style={{"fontSize": 24, "lineHeight": 28, "color": C["accent"] if item.is_favorite else C["muted"]}}>{"♥" if item.is_favorite else "♡"}</Text>
             </Pressable>
+            {(
+                <Pressable accessibilityRole="button" accessibilityLabel={("Remove " if item.is_favorite else "Add ") + o.restaurant + (" from favorites" if item.is_favorite else " to favorites")}
+                    style={{"paddingHorizontal": 12, "paddingVertical": 6, "marginRight": -8}} onPress={onHeart}>
+                    <Text style={{"fontSize": 26, "lineHeight": 30, "color": C["accent"] if item.is_favorite else C["muted"]}}>{"♥" if item.is_favorite else "♡"}</Text>
+                </Pressable>
+            ) if canHeart else <View />}
         </View>
-        <Text style={styles.offerTitle}>{o.my_title if hasSavedClaim else o.title}</Text>
-        <View style={styles.rowBetween}>
-            <View style={styles.row}>
-                <Text style={styles.price}>{money(o.my_price_cents / 100) if hasSavedClaim else money(o.price)}</Text>
-                {(<Text style={styles.strike}>{money(o.regular_price)}</Text>) if saving > 0 and not hasSavedClaim else <View />}
+        <Pressable accessibilityRole="button" style={{"gap": 10}} onPress={onOpen}>
+            <Text style={styles.offerTitle}>{o.my_title if hasSavedClaim else o.title}</Text>
+            <View style={styles.rowBetween}>
+                <View style={styles.row}>
+                    <Text style={styles.price}>{money(o.my_price_cents / 100) if hasSavedClaim else money(o.price)}</Text>
+                    {(<Text style={styles.strike}>{money(o.regular_price)}</Text>) if saving > 0 and not hasSavedClaim else <View />}
+                </View>
+                {(
+                    <View style={styles.badge}>
+                        <Text style={styles.badgeText}>{"Save " + money(saving)}</Text>
+                    </View>
+                ) if saving > 0 and not hasSavedClaim else <View />}
             </View>
             {(
-                <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{"Save " + money(saving)}</Text>
+                <View style={styles.wrap}>
+                    {[
+                        <View key={"l" + l} style={[styles.tag, {"backgroundColor": C["goodSoft"]}]}>
+                            <Text style={[styles.tagText, {"color": C["good"]}]}>{l}</Text>
+                        </View>
+                        for l in item.place_labels
+                    ]}
                 </View>
-            ) if saving > 0 and not hasSavedClaim else <View />}
-        </View>
-        {(
-            <View style={styles.wrap}>
-                {[
-                    <View key={"l" + l} style={[styles.tag, {"backgroundColor": C["goodSoft"]}]}>
-                        <Text style={[styles.tagText, {"color": C["good"]}]}>{l}</Text>
-                    </View>
-                    for l in item.place_labels
-                ]}
-            </View>
-        ) if item.place_labels else <View />}
-        {(
-            <View style={styles.wrap}>
-                {[
-                    <View key={"r" + r} style={[styles.tag, {"backgroundColor": C["badSoft"] if r.startswith("Not marked") else C["accentSoft"]}]}>
-                        <Text style={[styles.tagText, {"color": C["bad"] if r.startswith("Not marked") else C["accent"]}]}>{r}</Text>
-                    </View>
-                    for r in item.reasons
-                ]}
-            </View>
-        ) if item.reasons else <View />}
-        <Text style={[styles.small, {"color": C["accent"], "fontWeight": "700"} if o.my_qr_payload else {}]}>{status}</Text>
-    </Pressable>;
+            ) if item.place_labels else <View />}
+            {(
+                <View style={styles.wrap}>
+                    {[
+                        <View key={"r" + r} style={[styles.tag, {"backgroundColor": C["badSoft"] if r.startswith("Not marked") else C["accentSoft"]}]}>
+                            <Text style={[styles.tagText, {"color": C["bad"] if r.startswith("Not marked") else C["accent"]}]}>{r}</Text>
+                        </View>
+                        for r in item.reasons
+                    ]}
+                </View>
+            ) if item.reasons else <View />}
+            <Text style={[styles.small, {"color": C["accent"], "fontWeight": "700"} if o.my_qr_payload else {}]}>{status}</Text>
+        </Pressable>
+    </View>;
 }
 
 
@@ -330,7 +334,11 @@ def:pub app -> JsxElement {
     }
 
     async def toggleHeart(item: FeedItem) {
-        if not session or session.role != "student" { openSignIn(); return; }
+        if not session or not session.authenticated {
+            openSignIn(); authMsg = "Sign in to save your favorite places.";
+            return;
+        }
+        if session.role != "student" { return; }
         try {
             await toggle_favorite(item.place, "");
             await loadOffers(maxPrice, timeWin, diets);
@@ -358,8 +366,10 @@ def:pub app -> JsxElement {
         try {
             found = await home_feed(price, win, ",".join(ds));
             if found and requestId == offerRequest.current and epoch == sessionEpoch.current {
-                found.items = [item for item in found.items if not item.offer.is_demo];
-                found.favorites = [place for place in found.favorites if not place.is_demo];
+                if not found.show_samples {
+                    found.items = [item for item in found.items if not item.offer.is_demo];
+                    found.favorites = [place for place in found.favorites if not place.is_demo];
+                }
                 home = found;
                 offers = [i.offer for i in found.items];
                 if found.signed_in and not found.completed and not tastePrompted and session and session.role == "student" {
@@ -388,6 +398,9 @@ def:pub app -> JsxElement {
             if epoch == sessionEpoch.current { authMsg = "Could not check your session. You can still browse; retry sign-in when connected."; }
         }
         if epoch == sessionEpoch.current { sessionReady = True; await loadOffers("", "any", []); }
+        if epoch == sessionEpoch.current and restored is not None and restored.authenticated and restored.role == "merchant" {
+            tab = "merchant"; await openMerchant();
+        }
     }
 
     async def refresh() { await loadOffers(maxPrice, timeWin, diets); }
@@ -443,7 +456,7 @@ def:pub app -> JsxElement {
         if freshAudience { audience = freshAudience; rememberAudience(freshAudience); }
         businessOpen = fresh.role == "business";
         await refresh();
-        if fresh.role == "merchant" { await openMerchant(); }
+        if fresh.role == "merchant" { tab = "merchant"; await openMerchant(); }
     }
 
     async def finishEmail(token: str) {
@@ -645,39 +658,57 @@ def:pub app -> JsxElement {
     def goTab(t: str) {
         if busyRef.current { return; }
         tab = t; closeDetail();
+        if t == "account" { accountOpen = True; }
         if t != "discover" and session and session.role == "merchant" and not portal { openMerchant(); }
     }
 
-    def SessionPanel() -> JsxElement {
-        return <View style={[styles.section, {"marginHorizontal": 20, "marginTop": 16}]}>
-            {(
-                <View style={{"gap": 12}}><View style={styles.rowBetween}>
-                    <View style={styles.flex1}>
-                        <Text style={styles.body}>{session.display_name or "Signed in"}</Text>
-                        <Text style={styles.small}>{"Email verified" if session.email_verified else session.role.capitalize()}</Text>
-                    </View>
-                    <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={authBusy} onPress={lambda { logout(); }}><Text style={styles.btnGhostText}>Sign out</Text></Pressable>
+    def closeAuth() {
+        authOpen = False; authMsg = "";
+        if audience == "business" and not (session and session.authenticated) { audience = ""; }
+    }
+
+    def LogoutLink() -> JsxElement {
+        return <Pressable accessibilityRole="button" accessibilityLabel="Log out" disabled={authBusy} onPress={lambda { logout(); }}><Text style={styles.link}>Log out</Text></Pressable>;
+    }
+
+    def AuthScreen() -> JsxElement {
+        return <View style={styles.content}>
+            <View style={styles.header}>
+                <Text style={styles.brand}>M-LOCAL · ANN ARBOR</Text>
+                <Text style={styles.title}>{"List your business" if audience == "business" else "Sign in to M-Local"}</Text>
+                <Text style={styles.subtitle}>{"Verify your business email to create your profile and post offers." if audience == "business" else "Verify your U-M email to claim deals and save your favorites."}</Text>
+            </View>
+            <Message text={authMsg} good={False} />
+            <View style={styles.section}>
+                <EmailOnboarding kind={audience} initialMode={authMode} onSwitchAudience={switchAudience} requestCode={request_email_code} verifyCode={verify_email_code}
+                    onVerified={finishEmail}
+                    inputRef={emailInput} onCancel={lambda { closeAuth(); }} />
+            </View>
+        </View>;
+    }
+
+    def AccountScreen() -> JsxElement {
+        if not session or not session.authenticated { return AuthScreen(); }
+        return <View style={styles.content}>
+            <View style={styles.header}>
+                <View style={styles.rowBetween}>
+                    <Text style={styles.brand}>{"YOUR BUSINESS" if session.role in ["business", "merchant"] else "YOUR ACCOUNT"}</Text>
+                    {LogoutLink()}
                 </View>
+                <Text style={styles.title}>{session.display_name or "Signed in"}</Text>
+                <Text style={styles.subtitle}>{"Email verified" if session.email_verified else session.role.capitalize()}</Text>
+            </View>
+            <Message text={authMsg} good={False} />
+            {(<View style={styles.section}>
+                <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { businessOpen = not businessOpen; }}><Text style={styles.btnGhostText}>{"Close business profile" if businessOpen else "Business profile"}</Text></Pressable>
+                {(<BusinessOnboarding key={session.actor_id} getDraft={get_business_draft} importWebsite={import_business_website} saveDraft={save_business_draft} onActivated={openActivatedBusiness} />) if businessOpen else <View />}
+            </View>) if session.email_verified and session.role == "business" else <View />}
+            <View style={styles.section}>
                 <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { accountOpen = not accountOpen; }}><Text style={styles.btnGhostText}>{"Close account" if accountOpen else "Account"}</Text></Pressable>
                 {(<AccountProfile key={session.actor_id} getProfile={get_account_profile} saveProfile={save_account_profile} onSaved={refreshAccount} />) if accountOpen else <View />}
-                <Message text={authMsg} good={False} />
-                {(<View style={{"gap": 12}}>
-                    <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { businessOpen = not businessOpen; }}><Text style={styles.btnGhostText}>{"Close business profile" if businessOpen else "Business profile"}</Text></Pressable>
-                    {(<BusinessOnboarding key={session.actor_id} getDraft={get_business_draft} importWebsite={import_business_website} saveDraft={save_business_draft} onActivated={openActivatedBusiness} />) if businessOpen else <View />}
-                </View>) if session.email_verified and session.role == "business" else <View />}
-                </View>
-            ) if session and session.authenticated else (
-                <View style={{"gap": 12}}>
-                    <Text style={styles.h2}>{"Your business account" if audience == "business" else "Your U-M account"}</Text>
-                    <Text style={styles.small}>Browse freely. Verify your email to create an account or sign back in.</Text>
-                    {(
-                        <EmailOnboarding kind={audience} initialMode={authMode} onSwitchAudience={switchAudience} requestCode={request_email_code} verifyCode={verify_email_code}
-                            onVerified={finishEmail}
-                            inputRef={emailInput} onCancel={lambda { authOpen = False; }} />
-                    ) if authOpen else <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { openSignIn(); }}><Text style={styles.btnGhostText}>Open sign in</Text></Pressable>}
-                    <Message text={authMsg} good={False} />
-                </View>
-            )}
+                {(<Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { tab = "discover"; openTastes(); }}><Text style={styles.btnGhostText}>Edit my tastes</Text></Pressable>) if session.role == "student" else <View />}
+                <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={authBusy} onPress={lambda { logout(); }}><Text style={styles.btnGhostText}>Log out of M-Local</Text></Pressable>
+            </View>
         </View>;
     }
 
@@ -734,10 +765,14 @@ def:pub app -> JsxElement {
 
     def Discover() -> JsxElement {
         if tastesOpen { return Tastes(); }
-        studentSession = session and session.authenticated and session.role == "student";
+        signedIn: bool = session is not None and session.authenticated;
+        studentSession: bool = session is not None and session.authenticated and session.role == "student";
         return <View style={styles.content}>
             <View style={styles.header}>
-                <Text style={styles.brand}>M-LOCAL · ANN ARBOR</Text>
+                <View style={styles.rowBetween}>
+                    <Text style={styles.brand}>M-LOCAL · ANN ARBOR</Text>
+                    {(<Pressable accessibilityRole="button" onPress={lambda { openSignIn(); }}><Text style={styles.link}>Sign in</Text></Pressable>) if not signedIn else LogoutLink()}
+                </View>
                 <Text style={styles.title}>{"Picked for you, plus everything else." if home and home.personalized else "Hungry? Here is what is good nearby."}</Text>
             </View>
             {(
@@ -752,7 +787,12 @@ def:pub app -> JsxElement {
                         </ScrollView>
                     ) if home and len(home.favorites) > 0 else <Text style={styles.small}>{"Tap the heart on a place to keep it here."}</Text>}
                 </View>
-            ) if studentSession else <View />}
+            ) if studentSession else (
+                <View style={{"gap": 8}}>
+                    <Text style={styles.label}>Your favorites</Text>
+                    <Pressable accessibilityRole="button" onPress={lambda { openSignIn(); authMsg = "Sign in to save your favorite places."; }}><Text style={styles.small}>{"Sign in, then tap the heart on a place to keep it here."}</Text></Pressable>
+                </View>
+            ) if not signedIn else <View />}
             <ScrollView horizontal={True} showsHorizontalScrollIndicator={False} contentContainerStyle={styles.row}>
                 {[
                     <Chip key={"b" + b[0]} label={b[1]} on={maxPrice == b[0]} onPress={lambda { pickBudget(b[0]); }} />
@@ -779,7 +819,7 @@ def:pub app -> JsxElement {
                     <Text style={styles.small}>{"Try removing a filter." if maxPrice != "" or timeWin != "any" or len(diets) > 0 else "Local businesses will share their offers here. Check back soon."}</Text>
                 </View>
             ) if not offers or not home else <View style={{"gap": 12}}>
-                {[<DealCard key={i.offer.id} item={i} onOpen={lambda { openOffer(i.offer.id); }} onHeart={lambda { toggleHeart(i); }} /> for i in home.items]}
+                {[<DealCard key={i.offer.id} item={i} onOpen={lambda { openOffer(i.offer.id); }} onHeart={lambda { toggleHeart(i); }} canHeart={not signedIn or studentSession} /> for i in home.items]}
                 <Text style={styles.small}>{"Showing " + str(len(home.items)) + " deals. Your tastes change the order, never what you can see."}</Text>
             </View>}
         </View>;
@@ -791,6 +831,7 @@ def:pub app -> JsxElement {
                 <View style={styles.empty}>
                     <Text style={styles.subtitle}>{"Loading offer..." if detailLoading else detailError or "Offer not found."}</Text>
                     <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { closeDetail(); }}><Text style={styles.btnGhostText}>Back to offers</Text></Pressable>
+                    {LogoutLink() if session is not None and session.authenticated else <View />}
                     {(<Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { openOffer(selected); }}><Text style={styles.btnGhostText}>Retry offer</Text></Pressable>) if detailError else <View />}
                 </View>
             </View>;
@@ -801,9 +842,12 @@ def:pub app -> JsxElement {
         hasSavedClaim = o.my_claim_id != "" and o.my_status in ["claimed", "redeemed"];
         saving = o.regular_price - o.price;
         return <View style={styles.content}>
-            <Pressable accessibilityRole="button" onPress={lambda { closeDetail(); }}>
-                <Text style={styles.link}>Back to offers</Text>
-            </Pressable>
+            <View style={styles.rowBetween}>
+                <Pressable accessibilityRole="button" onPress={lambda { closeDetail(); }}>
+                    <Text style={styles.link}>Back to offers</Text>
+                </Pressable>
+                {LogoutLink() if session is not None and session.authenticated else <View />}
+            </View>
             <View style={styles.header}>
                 <View style={styles.row}>
                     <Text style={styles.restaurant}>{o.restaurant}</Text>
@@ -894,7 +938,10 @@ def:pub app -> JsxElement {
         if not session or session.role != "merchant" { return <View style={styles.content}><MerchantGate /></View>; }
         return <View style={styles.content}>
             <View style={styles.header}>
-                <Text style={styles.brand}>MERCHANT</Text>
+                <View style={styles.rowBetween}>
+                    <Text style={styles.brand}>MERCHANT</Text>
+                    {LogoutLink()}
+                </View>
                 <Text style={styles.title}>Profile and offers</Text>
             </View>
             <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={mLoading or busy or editing} onPress={lambda { openMerchant(); }}><Text style={styles.btnGhostText}>Refresh restaurant</Text></Pressable>
@@ -955,7 +1002,10 @@ def:pub app -> JsxElement {
         if not session or session.role != "merchant" { return <View style={styles.content}><MerchantGate /></View>; }
         return <View style={styles.content}>
             <View style={styles.header}>
-                <Text style={styles.brand}>COUNTER</Text>
+                <View style={styles.rowBetween}>
+                    <Text style={styles.brand}>COUNTER</Text>
+                    {LogoutLink()}
+                </View>
                 <Text style={styles.title}>Scan a claim</Text>
                 <Text style={styles.subtitle}>Review the saved offer before redeeming.</Text>
             </View>
@@ -987,7 +1037,7 @@ def:pub app -> JsxElement {
     }
 
     def TabButton(id: str, label: str, sub: str) -> JsxElement {
-        on = tab == id;
+        on = tab == id or (id == "merchant" and tab == "discover" and session and session.role == "merchant");
         return <Pressable accessibilityRole="button" style={[styles.tab, styles.tabOn if on else {}]} disabled={busy} onPress={lambda { goTab(id); }}>
             <Text style={[styles.tabText, styles.tabTextOn if on else {}]}>{label}</Text>
             <Text style={styles.tabSub}>{sub}</Text>
@@ -1001,16 +1051,40 @@ def:pub app -> JsxElement {
         return <View style={[styles.screen, {"height": viewport.height}]}><AudienceWelcome onChoose={chooseAudience} /></View>;
     }
 
-    body = (Detail() if selected else Discover()) if tab == "discover" else Merchant() if tab == "merchant" else Redeem();
+    signedIn: bool = session is not None and session.authenticated;
+    role: str = session.role if session is not None and session.authenticated else "guest";
+    company: bool = role in ["business", "merchant"];
+
+    if not signedIn and (authOpen or audience == "business") {
+        return <View style={[styles.screen, {"height": viewport.height}]}>
+            <View style={styles.frame}>
+                <ScrollView style={[styles.scroll, {"height": viewport.height}]}>{AuthScreen()}</ScrollView>
+            </View>
+        </View>;
+    }
+
+    shown = tab;
+    if role == "business" { shown = "account"; }
+    elif role == "merchant" and tab == "discover" { shown = "merchant"; }
+    elif not company and tab in ["merchant", "redeem"] { shown = "discover"; }
+
+    body = (
+        AccountScreen() if shown == "account"
+        else (Detail() if selected else Discover()) if shown == "discover"
+        else Merchant() if shown == "merchant" else Redeem()
+    );
 
     return <View style={[styles.screen, {"height": viewport.height}]}>
         <View style={styles.frame}>
-            <ScrollView style={[styles.scroll, {"height": viewport.height}]}>{SessionPanel()}{body}</ScrollView>
-            <View style={styles.tabbar}>
-                {TabButton("discover", "Offers", "Nearby")}
-                {TabButton("merchant", "Manage", "Merchant") if session and session.role == "merchant" else <View />}
-                {TabButton("redeem", "Redeem", "Merchant") if session and session.role == "merchant" else <View />}
-            </View>
+            <ScrollView style={[styles.scroll, {"height": viewport.height}]}>{body}</ScrollView>
+            {(
+                <View style={styles.tabbar}>
+                    {TabButton("discover", "Offers", "Nearby") if not company else <View />}
+                    {TabButton("merchant", "Manage", "Offers") if role == "merchant" else <View />}
+                    {TabButton("redeem", "Redeem", "Scan") if role == "merchant" else <View />}
+                    {TabButton("account", "Account", "You")}
+                </View>
+            ) if signedIn and role != "business" else <View />}
         </View>
     </View>;
 }

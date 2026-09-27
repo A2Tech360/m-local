@@ -8,7 +8,7 @@ for (const audience of ['student','business']) {
    if(name==='request_email_code')return rpc({ok:true,challenge:'fixture-code',email:audience==='student'?'fixture@umich.edu':'owner@example.test',retry_after:60,message:'Check your inbox.'});
   }});
   try{
-   ui.click('Open sign in');
+   if(audience==='student')ui.click('Sign in');
    const field=audience==='student'?'uniqname':'you@business.com';
    await until(()=>ui.document.querySelector(`[placeholder="${field}"]`));
    assert.equal(ui.find('Demo sign-in'),undefined);
