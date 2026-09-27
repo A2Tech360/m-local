@@ -903,10 +903,10 @@ def:pub app -> JsxElement {
                     <Text style={styles.noteText}>{("Date provided: " + o.note_date + ". " if o.note_date else "") + "Not independently checked. Confirm current access with the restaurant."}</Text>
                 </View>
             ) if o.entrance_note else <View style={styles.hidden} />}
-            <View style={styles.section}>
+            <View style={{"gap": 4}}>
+                <Text style={styles.label}>Where</Text>
                 <Text style={styles.body}>{o.address + (" · " + o.neighborhood if o.neighborhood else "")}</Text>
-                {(<View style={{"gap": 8}}>
-                    <View style={styles.divider} />
+                {(<View style={{"gap": 4}}>
                     <Text style={styles.small}>{"For: " + o.eligibility}</Text>
                     <Text style={styles.small}>{o.terms or "No additional terms."}</Text>
                 </View>) if not hasSavedClaim else <View style={styles.hidden} />}

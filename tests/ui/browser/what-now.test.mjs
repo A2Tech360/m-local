@@ -99,3 +99,21 @@ test('nothing is suggested before redemption or when no places come back',async(
   }finally{empty.close();}
  }
 });
+
+test('the address is plain text under a Where label, not a box that looks like a field',async()=>{
+ const ui=await app({verified:true});
+ try{
+  ui.click('Current bowl');await until(()=>ui.find('Fictional test address · Test area'));
+  const address=ui.find('Fictional test address · Test area'),holder=address.parentElement;
+  assert.ok(ui.find('Where'));
+  assert.equal(holder.firstElementChild.textContent,'Where');
+  for(const node of [address,holder]){
+   const style=ui.window.getComputedStyle(node);
+   assert.equal(style.borderTopWidth,'0px');
+   assert.ok(['','rgba(0, 0, 0, 0)','transparent'].includes(style.backgroundColor),style.backgroundColor);
+  }
+  assert.equal(holder.querySelector('input,textarea,select,[contenteditable]'),null);
+  assert.ok(ui.text().includes('For: Student ID'));assert.ok(ui.text().includes('Current offer terms'));
+  assert.deepEqual(ui.errors,[]);
+ }finally{ui.close();}
+});
