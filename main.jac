@@ -13,30 +13,17 @@ import from services.promo {
     update_profile,
     save_offer,
     set_offer_status,
-    redeem_code,
+    resolve_claim,
+    redeem_claim,
+    cancel_claim,
     offer_defaults,
     OfferView,
     MerchantView,
     ActionResult,
     ClaimView
 }
+import from services.session { current_session, SessionView }
 
-cl {
-sv import from services.promo {
-    list_offers,
-    get_offer,
-    claim_offer,
-    merchant_portal,
-    update_profile,
-    save_offer,
-    set_offer_status,
-    redeem_code,
-    offer_defaults,
-    OfferView,
-    MerchantView,
-    ActionResult,
-    ClaimView
-}
 import from "@jac/mobui" {
     View,
     Text,
@@ -46,6 +33,10 @@ import from "@jac/mobui" {
     useWindowDimensions
 }
 import from .theme { C, buildStyles, statusColors, money }
+import from .services.session { SessionView }
+import from .client.session { signIn, signOut, loadSession }
+import from "./client/qr.jsx" { ClaimQr, ClaimScanner }
+import from "./client/scan-controller.mjs" { isClaimPayload }
 
 
 glob styles = buildStyles(C);
@@ -56,15 +47,10 @@ glob WINDOWS: list[list[str]] = [["any", "Any time"], ["now", "Right now"], ["to
 
 glob BUDGETS: list[str] = ["", "5", "8", "10"];
 
-glob MERCHANTS: list[list[str]] = [
-    ["noodle-demo", "Noodle Lab"],
-    ["leaf-demo", "Arbor Leaf"],
-    ["dough-demo", "Diag Dough"]
-];
 
 
 def Chip(label: str, on: bool, onPress: any) -> JsxElement {
-    return <Pressable style={[styles.chip, styles.chipOn if on else {}]} onPress={onPress}>
+    return <Pressable accessibilityRole="button" style={[styles.chip, styles.chipOn if on else {}]} onPress={onPress}>
         <Text style={[styles.chipText, styles.chipTextOn if on else {}]}>{label}</Text>
     </Pressable>;
 }
@@ -99,6 +85,7 @@ def Field(
     return <View style={[styles.field, styles.flex1]}>
         <Text style={styles.label}>{label}</Text>
         <TextInput
+            accessibilityLabel={label}
             style={[styles.input, styles.inputMulti if multiline else {}]}
             value={value}
             placeholder={placeholder}
@@ -111,38 +98,52 @@ def Field(
 
 
 def OfferCard(o: OfferView, onOpen: any) -> JsxElement {
+    hasSavedClaim = o.my_claim_id != "" and o.my_status in ["claimed", "redeemed"];
     saving = o.regular_price - o.price;
     live = o.state == "active";
     status = (
-        ("Your code " + o.my_code) if o.my_code and o.my_status == "claimed"
+        "Your QR is ready" if o.my_qr_payload and o.my_status == "claimed"
+        else "Saved claim redeemed" if hasSavedClaim and o.my_status == "redeemed"
+        else "Open your saved claim" if hasSavedClaim
         else o.time_label + "  ·  " + str(o.remaining) + " left" if live
         else o.time_label if o.state == "scheduled" else o.state.capitalize()
     );
-    return <Pressable style={[styles.card, {} if live else styles.cardMuted]} onPress={onOpen}>
+    return <Pressable accessibilityRole="button" style={[styles.card, {} if live or hasSavedClaim else styles.cardMuted]} onPress={onOpen}>
         <View style={styles.rowBetween}>
             <Text style={styles.restaurant}>{o.restaurant.replace(" (Demo)", "")}</Text>
             {(<DemoTag />) if o.is_demo else <View />}
         </View>
-        <Text style={styles.offerTitle}>{o.title}</Text>
+        <Text style={styles.offerTitle}>{o.my_title if hasSavedClaim else o.title}</Text>
         <View style={styles.rowBetween}>
             <View style={styles.row}>
-                <Text style={styles.price}>{money(o.price)}</Text>
-                {(<Text style={styles.strike}>{money(o.regular_price)}</Text>) if saving > 0 else <View />}
+                <Text style={styles.price}>{money(o.my_price_cents / 100) if hasSavedClaim else money(o.price)}</Text>
+                {(<Text style={styles.strike}>{money(o.regular_price)}</Text>) if saving > 0 and not hasSavedClaim else <View />}
             </View>
             {(
                 <View style={styles.badge}>
                     <Text style={styles.badgeText}>{"Save " + money(saving)}</Text>
                 </View>
-            ) if saving > 0 else <View />}
+            ) if saving > 0 and not hasSavedClaim else <View />}
         </View>
-        <Text style={[styles.small, {"color": C["accent"], "fontWeight": "700"} if o.my_code else {}]}>{status}</Text>
+        <Text style={[styles.small, {"color": C["accent"], "fontWeight": "700"} if o.my_qr_payload else {}]}>{status}</Text>
     </Pressable>;
 }
 
 
 def:pub app -> JsxElement {
     has tab: str = "discover",
-        student: str = "demo-student",
+        session: SessionView | None = None,
+        email: str = "",
+        password: str = "",
+        emailInput: Ref[HTMLInputElement] = Ref(),
+        authOpen: bool = False,
+        authBusy: bool = False,
+        authMsg: str = "",
+        sessionEpoch: Ref[int] = Ref(0),
+        offerRequest: Ref[int] = Ref(0),
+        detailRequest: Ref[int] = Ref(0),
+        busyRef: Ref[bool] = Ref(False),
+        authRef: Ref[bool] = Ref(False),
         maxPrice: str = "",
         timeWin: str = "any",
         diets: list[str] = [],
@@ -155,7 +156,6 @@ def:pub app -> JsxElement {
         claimMsg: str = "",
         claimOk: bool = False,
         busy: bool = False,
-        mKey: str = "",
         portal: MerchantView | None = None,
         mLoading: bool = False,
         mMsg: str = "",
@@ -181,66 +181,121 @@ def:pub app -> JsxElement {
         eDiets: str = "",
         eItem: str = "",
         eMsg: str = "",
-        code: str = "",
-        rMsg: str = "",
-        rOk: bool = False;
+        detailError: str = "";
 
     viewport = useWindowDimensions();
 
     async def loadOffers(price: str, win: str, ds: list[str]) {
+        offerRequest.current = (offerRequest.current or 0) + 1;
+        requestId = offerRequest.current;
+        epoch = sessionEpoch.current;
+        found: list[OfferView] = [];
         loading = True;
         loadError = "";
         try {
-            offers = await list_offers(student, price, win, ",".join(ds));
-        } except Exception as e {
-            loadError = "Could not load offers. " + str(e);
+            found = await list_offers(price, win, ",".join(ds));
+            if requestId == offerRequest.current and epoch == sessionEpoch.current { offers = found; }
+        } except Exception {
+            if requestId == offerRequest.current and epoch == sessionEpoch.current { loadError = "Could not load offers. Check your connection and tap Refresh offers."; }
+        } finally {
+            if requestId == offerRequest.current and epoch == sessionEpoch.current { loading = False; }
         }
-        loading = False;
     }
 
     async can with entry {
-        await loadOffers("", "any", []);
+        epoch = sessionEpoch.current;
+        restored: SessionView | None = None;
+        try {
+            restored = await loadSession();
+            if epoch == sessionEpoch.current { session = restored; }
+        } except Exception {
+            if epoch == sessionEpoch.current { authMsg = "Could not check your session. You can still browse; retry sign-in when connected."; }
+        }
+        if epoch == sessionEpoch.current { await loadOffers("", "any", []); }
     }
 
-    async def refresh() {
-        await loadOffers(maxPrice, timeWin, diets);
+    async def refresh() { await loadOffers(maxPrice, timeWin, diets); }
+
+    def clearPrivate() {
+        sessionEpoch.current = (sessionEpoch.current or 0) + 1;
+        offerRequest.current = (offerRequest.current or 0) + 1;
+        detailRequest.current = (detailRequest.current or 0) + 1;
+        offers = []; detail = None; selected = ""; portal = None;
+        claimMsg = ""; mMsg = ""; editing = False; busy = False;
+        busyRef.current = False; detailLoading = False; mLoading = False;
+        pName = ""; pCuisine = ""; pBlurb = ""; pAddress = "";
+        pHood = ""; pNote = ""; pNoteDate = "";
+        eTitle = ""; eDesc = ""; eTerms = ""; eMsg = "";
     }
 
-    def pickBudget(v: str) {
-        maxPrice = v;
-        loadOffers(v, timeWin, diets);
+    async def login() {
+        if authRef.current { return; }
+        authRef.current = True; authBusy = True; authMsg = "";
+        fresh: SessionView | None = None;
+        try {
+            fresh = await signIn(email, password);
+            clearPrivate(); session = fresh; authOpen = False; password = "";
+            await refresh();
+            if fresh and fresh.role == "merchant" { await openMerchant(); }
+        } except Exception {
+            authMsg = "Sign-in failed. Check the provisioned email and password, and your connection.";
+        } finally { authBusy = False; authRef.current = False; }
     }
 
-    def pickWindow(v: str) {
-        timeWin = v;
-        loadOffers(maxPrice, v, diets);
+    def logout() {
+        signOut(); clearPrivate(); session = None; password = "";
+        tab = "discover"; authOpen = False; authMsg = ""; refresh();
     }
 
+    def pickBudget(v: str) { maxPrice = v; loadOffers(v, timeWin, diets); }
+    def pickWindow(v: str) { timeWin = v; loadOffers(maxPrice, v, diets); }
     def toggleDiet(d: str) {
         nxt = [x for x in diets if x != d] if d in diets else diets + [d];
-        diets = nxt;
-        loadOffers(maxPrice, timeWin, nxt);
+        diets = nxt; loadOffers(maxPrice, timeWin, nxt);
     }
 
     async def openOffer(oid: str) {
-        selected = oid;
-        claimMsg = "";
-        detailLoading = True;
-        detail = await get_offer(oid, student, maxPrice, timeWin, ",".join(diets));
-        detailLoading = False;
+        detailRequest.current = (detailRequest.current or 0) + 1;
+        requestId = detailRequest.current; epoch = sessionEpoch.current;
+        found: OfferView | None = None;
+        selected = oid; claimMsg = ""; detailError = ""; detail = None; detailLoading = True;
+        try {
+            found = await get_offer(oid, maxPrice, timeWin, ",".join(diets));
+            if requestId == detailRequest.current and epoch == sessionEpoch.current { detail = found; }
+        } except Exception {
+            if requestId == detailRequest.current and epoch == sessionEpoch.current { detailError = "Could not load this offer. Check your connection and try again."; }
+        } finally {
+            if requestId == detailRequest.current and epoch == sessionEpoch.current { detailLoading = False; }
+        }
     }
 
-    async def claim() {
-        if busy or not selected {
-            return;
+    def openSignIn() {
+        authOpen = True;
+        if emailInput.current { emailInput.current.focus(); }
+    }
+
+    async def changeClaim(cancel: bool) {
+        if not session or session.role != "student" { openSignIn(); return; }
+        if busyRef.current or not selected { return; }
+        busyRef.current = True; busy = True;
+        epoch = sessionEpoch.current; requestId = detailRequest.current; oid = selected;
+        res: ActionResult | None = None; found: OfferView | None = None;
+        try {
+            if cancel { res = await cancel_claim(oid); }
+            else { res = await claim_offer(oid); }
+            if epoch != sessionEpoch.current { return; }
+            if requestId == detailRequest.current { claimOk = res.ok; claimMsg = res.message; }
+            found = await get_offer(oid, maxPrice, timeWin, ",".join(diets));
+            if epoch != sessionEpoch.current { return; }
+            if requestId == detailRequest.current { detail = found; }
+            await refresh();
+        } except Exception {
+            if epoch == sessionEpoch.current and requestId == detailRequest.current {
+                claimOk = False; claimMsg = "Could not finish updating this claim. Check the connection and retry; an existing hold is kept.";
+            }
+        } finally {
+            if epoch == sessionEpoch.current { busy = False; busyRef.current = False; }
         }
-        busy = True;
-        res = await claim_offer(selected, student);
-        claimOk = res.ok;
-        claimMsg = res.message;
-        detail = await get_offer(selected, student, maxPrice, timeWin, ",".join(diets));
-        busy = False;
-        refresh();
     }
 
     def fillProfile(p: MerchantView) {
@@ -253,55 +308,57 @@ def:pub app -> JsxElement {
         pNoteDate = p.note_date;
     }
 
-    async def openMerchant(k: str) {
-        mKey = k;
-        mMsg = "";
-        editing = False;
-        mLoading = True;
-        p = await merchant_portal(k);
-        portal = p if p.ok else None;
-        if p.ok {
-            fillProfile(p);
-        } else {
-            mOk = False;
-            mMsg = p.message;
-        }
-        mLoading = False;
+    async def openMerchant() {
+        epoch = sessionEpoch.current;
+        p: MerchantView | None = None;
+        mMsg = ""; editing = False; mLoading = True;
+        try {
+            p = await merchant_portal();
+            if epoch != sessionEpoch.current { return; }
+            portal = p if p.ok else None;
+            if p.ok { fillProfile(p); }
+            else { mOk = False; mMsg = p.message; }
+        } except Exception {
+            if epoch == sessionEpoch.current { mOk = False; mMsg = "Could not load your restaurant. Check the connection and retry."; }
+        } finally { if epoch == sessionEpoch.current { mLoading = False; } }
     }
 
     async def reloadPortal() {
-        p = await merchant_portal(mKey);
-        portal = p if p.ok else None;
+        epoch = sessionEpoch.current;
+        p: MerchantView | None = None;
+        p = await merchant_portal();
+        if epoch == sessionEpoch.current { portal = p if p.ok else None; }
     }
 
     async def saveProfile() {
-        busy = True;
-        p = await update_profile(mKey, pName, pCuisine, pBlurb, pAddress, pHood, pNote, pNoteDate);
-        mOk = p.message == "Profile saved.";
-        mMsg = p.message;
-        if p.ok {
-            portal = p;
-        }
-        busy = False;
-        refresh();
+        if busyRef.current { return; }
+        busyRef.current = True; busy = True; epoch = sessionEpoch.current;
+        p: MerchantView | None = None;
+        try {
+            p = await update_profile(pName, pCuisine, pBlurb, pAddress, pHood, pNote, pNoteDate);
+            if epoch != sessionEpoch.current { return; }
+            mOk = p.ok; mMsg = p.message;
+            if p.ok { portal = p; }
+            await refresh();
+        } except Exception {
+            if epoch == sessionEpoch.current { mOk = False; mMsg = "Profile could not be saved. Your entries are kept; check the connection and retry."; }
+        } finally { if epoch == sessionEpoch.current { busy = False; busyRef.current = False; } }
     }
 
     async def newOffer() {
-        d = await offer_defaults();
-        eId = "";
-        eTitle = "";
-        eDesc = "";
-        ePrice = "";
-        eRegular = "";
-        eStart = d[0];
-        eEnd = d[1];
-        eQty = "10";
-        eElig = "Students with a valid university ID";
-        eTerms = "";
-        eDiets = "";
-        eItem = "";
-        eMsg = "";
-        editing = True;
+        if busyRef.current { return; }
+        busyRef.current = True; busy = True; epoch = sessionEpoch.current;
+        d: list[str] = [];
+        try {
+            d = await offer_defaults();
+            if epoch != sessionEpoch.current { return; }
+            eId = ""; eTitle = ""; eDesc = ""; ePrice = ""; eRegular = "";
+            eStart = d[0]; eEnd = d[1]; eQty = "10";
+            eElig = "Students with a valid university ID";
+            eTerms = ""; eDiets = ""; eItem = ""; eMsg = ""; editing = True;
+        } except Exception {
+            if epoch == sessionEpoch.current { mOk = False; mMsg = "Could not start an offer. Check the connection and retry."; }
+        } finally { if epoch == sessionEpoch.current { busy = False; busyRef.current = False; } }
     }
 
     def editOffer(o: OfferView) {
@@ -322,82 +379,91 @@ def:pub app -> JsxElement {
     }
 
     async def submitOffer() {
-        busy = True;
-        res = await save_offer(
-            mKey, eId, eTitle, eDesc, ePrice, eRegular, eStart, eEnd, eQty, eElig, eTerms, eDiets, eItem
-        );
-        busy = False;
-        if res.ok {
-            editing = False;
-            mOk = True;
-            mMsg = res.message;
-            await reloadPortal();
-            refresh();
-        } else {
-            eMsg = res.message;
-        }
+        if busyRef.current { return; }
+        busyRef.current = True; busy = True; epoch = sessionEpoch.current;
+        res: ActionResult | None = None;
+        try {
+            res = await save_offer(eId, eTitle, eDesc, ePrice, eRegular, eStart, eEnd, eQty, eElig, eTerms, eDiets, eItem);
+            if epoch != sessionEpoch.current { return; }
+            if res.ok {
+                editing = False; mOk = True; mMsg = res.message;
+                # The save is confirmed even if fetching the updated list fails.
+                try { await reloadPortal(); }
+                except Exception {
+                    if epoch == sessionEpoch.current {
+                        mOk = False;
+                        mMsg = res.message + " The restaurant list could not refresh. Use Refresh restaurant to update it.";
+                    }
+                }
+                if epoch == sessionEpoch.current { await refresh(); }
+            } else { eMsg = res.message; }
+        } except Exception {
+            if epoch == sessionEpoch.current { eMsg = "Could not save the offer. Your entries are kept; check the connection and retry."; mOk = False; mMsg = eMsg; }
+        } finally { if epoch == sessionEpoch.current { busy = False; busyRef.current = False; } }
     }
 
     async def toggleStatus(o: OfferView) {
-        res = await set_offer_status(mKey, o.id, "active" if o.state == "paused" else "paused");
-        mOk = res.ok;
-        mMsg = res.message;
-        await reloadPortal();
-        refresh();
+        if busyRef.current { return; }
+        busyRef.current = True; busy = True; epoch = sessionEpoch.current;
+        res: ActionResult | None = None;
+        try {
+            res = await set_offer_status(o.id, "active" if o.state == "paused" else "paused");
+            if epoch != sessionEpoch.current { return; }
+            mOk = res.ok; mMsg = res.message; await reloadPortal(); await refresh();
+        } except Exception {
+            if epoch == sessionEpoch.current { mOk = False; mMsg = "Could not update the offer. Check the connection and retry."; }
+        } finally { if epoch == sessionEpoch.current { busy = False; busyRef.current = False; } }
     }
 
-    async def redeem() {
-        if busy {
-            return;
-        }
-        busy = True;
-        res = await redeem_code(mKey, code);
-        rOk = res.ok;
-        rMsg = res.message;
-        if res.ok {
-            code = "";
-        }
-        await reloadPortal();
-        busy = False;
-        refresh();
+    async def afterRedeemed() {
+        try { await reloadPortal(); await refresh(); }
+        except Exception { mOk = False; mMsg = "Redemption was confirmed. Refresh to update recent claims."; }
+    }
+
+    def closeDetail() {
+        detailRequest.current = (detailRequest.current or 0) + 1;
+        selected = ""; detail = None; detailLoading = False;
     }
 
     def goTab(t: str) {
-        tab = t;
-        selected = "";
-        detail = None;
+        tab = t; closeDetail();
+        if t != "discover" and session and session.role == "merchant" and not portal { openMerchant(); }
     }
 
-    # ---------------------------------------------------------- screens ---
-
-    def MerchantPicker() -> JsxElement {
-        return <View style={styles.section}>
-            <Text style={styles.h2}>Sign in as a demo merchant</Text>
-            <Text style={styles.small}>
-                Each restaurant has its own merchant key. You only see and change your own offers and claims.
-            </Text>
-            <View style={styles.wrap}>
-                {[
-                    <Chip key={m[0]} label={m[1]} on={mKey == m[0]} onPress={lambda { openMerchant(m[0]); }} />
-                    for m in MERCHANTS
-                ]}
-            </View>
-            <View style={styles.row}>
-                <View style={styles.flex1}>
-                    <TextInput
-                        style={styles.input}
-                        value={mKey}
-                        placeholder="Merchant key"
-                        placeholderTextColor={C["muted"]}
-                        autoCapitalize="none"
-                        onChangeText={lambda (t: str) { mKey = t; }}
-                    />
+    def SessionPanel() -> JsxElement {
+        return <View style={[styles.section, {"marginHorizontal": 20, "marginTop": 16}]}>
+            {(
+                <View style={styles.rowBetween}>
+                    <View style={styles.flex1}>
+                        <Text style={styles.body}>{session.display_name or "Signed in"}</Text>
+                        <Text style={styles.small}>{session.role.capitalize() + (" · demo account" if session.is_demo else "")}</Text>
+                    </View>
+                    <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={authBusy} onPress={lambda { logout(); }}><Text style={styles.btnGhostText}>Sign out</Text></Pressable>
                 </View>
-                <Pressable style={styles.btnGhost} onPress={lambda { openMerchant(mKey); }}>
-                    <Text style={styles.btnGhostText}>Open</Text>
-                </Pressable>
-            </View>
-            {(<Message text={mMsg} good={mOk} />) if portal is None else <View />}
+            ) if session and session.authenticated else (
+                <View style={{"gap": 12}}>
+                    <Text style={styles.h2}>Sign in to claim or manage offers</Text>
+                    <Text style={styles.small}>Browse freely. Use your pre-provisioned student or restaurant account to continue.</Text>
+                    {(
+                        <View style={{"gap": 12}}>
+                            <Text style={styles.label}>Email</Text>
+                            <TextInput ref={emailInput} accessibilityLabel="Email" autoFocus={True} style={styles.input} value={email} placeholder="Email" keyboardType="email-address" autoCapitalize="none" autoCorrect={False} onChangeText={lambda (v: str) { email = v; }} />
+                            <Text style={styles.label}>Password</Text>
+                            <TextInput accessibilityLabel="Password" style={styles.input} value={password} placeholder="Password" secureTextEntry={True} autoCapitalize="none" autoCorrect={False} onChangeText={lambda (v: str) { password = v; }} onSubmitEditing={lambda { login(); }} />
+                            <Pressable accessibilityRole="button" style={styles.btn} disabled={authBusy} onPress={lambda { login(); }}><Text style={styles.btnText}>{"Signing in..." if authBusy else "Sign in"}</Text></Pressable>
+                            <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={authBusy} onPress={lambda { authOpen = False; password = ""; }}><Text style={styles.btnGhostText}>Keep browsing</Text></Pressable>
+                        </View>
+                    ) if authOpen else <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { openSignIn(); }}><Text style={styles.btnGhostText}>Open sign in</Text></Pressable>}
+                    <Message text={authMsg} good={False} />
+                </View>
+            )}
+        </View>;
+    }
+
+    def MerchantGate() -> JsxElement {
+        return <View style={styles.section}>
+            <Text style={styles.h2}>Restaurant session required</Text>
+            <Text style={styles.body}>{"Your account is a student account. Sign out and use the restaurant account to manage or redeem offers." if session and session.authenticated else "Sign in above with your pre-provisioned restaurant account to manage offers and scan claims."}</Text>
         </View>;
     }
 
@@ -406,20 +472,6 @@ def:pub app -> JsxElement {
             <View style={styles.header}>
                 <Text style={styles.brand}>PROMOPUSHER · ANN ARBOR</Text>
                 <Text style={styles.title}>Hungry? Here is what is good nearby.</Text>
-            </View>
-            <View style={styles.row}>
-                <Text style={styles.small}>Claiming as</Text>
-                <View style={styles.flex1}>
-                    <TextInput
-                        style={[styles.input, {"paddingVertical": 8}]}
-                        value={student}
-                        placeholder="Your name or student ID"
-                        placeholderTextColor={C["muted"]}
-                        autoCapitalize="none"
-                        onChangeText={lambda (t: str) { student = t; }}
-                        onBlur={lambda { refresh(); }}
-                    />
-                </View>
             </View>
             <ScrollView horizontal={True} showsHorizontalScrollIndicator={False} contentContainerStyle={styles.row}>
                 {[
@@ -440,7 +492,7 @@ def:pub app -> JsxElement {
             {(
                 <View style={styles.empty}><Text style={styles.subtitle}>Finding deals...</Text></View>
             ) if loading else (
-                <View style={styles.msgBad}><Text style={styles.msgBadText}>{loadError}</Text></View>
+                <View style={styles.msgBad}><Text style={styles.msgBadText}>{loadError}</Text><Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { refresh(); }}><Text style={styles.btnGhostText}>Refresh offers</Text></Pressable></View>
             ) if loadError else (
                 <View style={styles.empty}>
                     <Text style={styles.h2}>Nothing matches yet</Text>
@@ -456,15 +508,19 @@ def:pub app -> JsxElement {
         if detailLoading or detail is None {
             return <View style={styles.content}>
                 <View style={styles.empty}>
-                    <Text style={styles.subtitle}>{"Loading offer..." if detailLoading else "Offer not found."}</Text>
+                    <Text style={styles.subtitle}>{"Loading offer..." if detailLoading else detailError or "Offer not found."}</Text>
+                    <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { closeDetail(); }}><Text style={styles.btnGhostText}>Back to offers</Text></Pressable>
+                    {(<Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { openOffer(selected); }}><Text style={styles.btnGhostText}>Retry offer</Text></Pressable>) if detailError else <View />}
                 </View>
             </View>;
         }
         o = detail;
-        claimable = o.state == "active" and o.my_status == "";
+        claimable = o.state == "active" and o.my_status in ["", "cancelled", "expired"];
+        studentSession = session and session.role == "student";
+        hasSavedClaim = o.my_claim_id != "" and o.my_status in ["claimed", "redeemed"];
         saving = o.regular_price - o.price;
         return <View style={styles.content}>
-            <Pressable onPress={lambda { selected = ""; detail = None; }}>
+            <Pressable accessibilityRole="button" onPress={lambda { closeDetail(); }}>
                 <Text style={styles.link}>Back to offers</Text>
             </Pressable>
             <View style={styles.header}>
@@ -472,20 +528,20 @@ def:pub app -> JsxElement {
                     <Text style={styles.restaurant}>{o.restaurant.replace(" (Demo)", "")}</Text>
                     {(<DemoTag />) if o.is_demo else <View />}
                 </View>
-                <Text style={styles.title}>{o.title}</Text>
-                <Text style={styles.subtitle}>{o.description}</Text>
+                <Text style={styles.title}>{o.my_title if hasSavedClaim else o.title}</Text>
+                {(<Text style={styles.subtitle}>{o.description}</Text>) if not hasSavedClaim else <View />}
             </View>
             <View style={styles.row}>
-                <Text style={styles.priceBig}>{money(o.price)}</Text>
-                {(<Text style={styles.strike}>{money(o.regular_price)}</Text>) if saving > 0 else <View />}
+                <Text style={styles.priceBig}>{money(o.my_price_cents / 100) if hasSavedClaim else money(o.price)}</Text>
+                {(<Text style={styles.strike}>{money(o.regular_price)}</Text>) if saving > 0 and not hasSavedClaim else <View />}
                 {(
                     <View style={styles.badge}><Text style={styles.badgeText}>{"Save " + money(saving)}</Text></View>
-                ) if saving > 0 else <View />}
+                ) if saving > 0 and not hasSavedClaim else <View />}
             </View>
             <View style={styles.row}>
-                <StatusPill state={o.state} />
+                <StatusPill state={o.my_status if hasSavedClaim else o.state} />
                 <Text style={styles.small}>
-                    {o.time_label + ("  ·  " + str(o.remaining) + " left" if o.state == "active" else "")}
+                    {("Hold expires " + o.my_expires if o.my_status == "claimed" else "Saved claim redeemed") if hasSavedClaim else o.time_label + ("  ·  " + str(o.remaining) + " left" if o.state == "active" else "")}
                 </Text>
             </View>
             {(
@@ -497,37 +553,48 @@ def:pub app -> JsxElement {
                         for r in o.reasons
                     ]}
                 </View>
-            ) if o.reasons else <View />}
+            ) if o.reasons and not hasSavedClaim else <View />}
             {(
-                <View style={styles.codeBox}>
-                    <Text style={styles.codeSub}>{"SHOW THIS CODE AT THE COUNTER" if o.my_status == "claimed" else "REDEEMED"}</Text>
-                    <Text style={styles.codeText}>{o.my_code}</Text>
-                    <Text style={styles.codeSub}>
-                        {"Hold expires " + o.my_expires + ". Unused claims release automatically." if o.my_status == "claimed" else "Enjoy your meal."}
-                    </Text>
+                <View style={styles.section}>
+                    <Text style={styles.h2}>{"Your saved claim" if o.my_status == "claimed" else "Saved claim · " + o.my_status}</Text>
+                    <Text style={styles.offerTitle}>{o.my_title}</Text>
+                    <Text style={styles.price}>{money(o.my_price_cents / 100)}</Text>
+                    <Text style={styles.body}>{o.my_terms or "No additional terms."}</Text>
+                    <Text style={styles.body}>{"For: " + o.my_eligibility}</Text>
+                    <Text style={styles.small}>{"Hold expires " + o.my_expires + ". Unused holds release automatically."}</Text>
+                    {(<View style={{"gap": 12}}>
+                        <Text style={styles.label}>Show this QR at the counter</Text>
+                        {(<ClaimQr payload={o.my_qr_payload} expiresTs={o.my_expires_ts} />) if isClaimPayload(o.my_qr_payload) else <Text style={styles.body}>Claim QR unavailable. Refresh this offer.</Text>}
+                        <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={busy} onPress={lambda { changeClaim(True); }}><Text style={styles.btnGhostText}>{"Updating..." if busy else "Cancel this hold"}</Text></Pressable>
+                    </View>) if o.my_status == "claimed" and o.my_qr_payload else <StatusPill state={o.my_status} />}
                 </View>
-            ) if o.my_code else <View />}
+            ) if o.my_claim_id else <View />}
             <Message text={claimMsg} good={claimOk} />
-            <Pressable
+            <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={busy} onPress={lambda { openOffer(o.id); }}><Text style={styles.btnGhostText}>Refresh offer and claim</Text></Pressable>
+            <Pressable accessibilityRole="button"
                 style={[styles.btn, {} if claimable else styles.btnDisabled]}
-                disabled={not claimable or busy}
-                onPress={lambda { claim(); }}
+                disabled={not claimable or busy or (session is not None and session.role == "merchant")}
+                onPress={lambda { changeClaim(False); }}
             >
                 <Text style={styles.btnText}>
-                    {"Claiming..." if busy else "Claim this offer" if claimable else "Already claimed" if o.my_status else "Not claimable right now"}
+                    {"Updating..." if busy else "Sign in to claim" if not studentSession and claimable else "Claim this offer" if claimable else "Already claimed" if o.my_status else "Not claimable right now"}
                 </Text>
             </Pressable>
+            <Text style={styles.small}>Prices exclude tax unless the saved terms say otherwise. The restaurant checks the stated ID requirement.</Text>
             {(
                 <View style={styles.note}>
-                    <Text style={[styles.noteText, {"fontWeight": "800"}]}>{"Getting in" + (" · updated " + o.note_date if o.note_date else "")}</Text>
+                    <Text style={[styles.noteText, {"fontWeight": "800"}]}>Unverified restaurant note</Text>
                     <Text style={styles.noteText}>{o.entrance_note}</Text>
+                    <Text style={styles.noteText}>{("Date provided: " + o.note_date + ". " if o.note_date else "") + "Not independently checked. Confirm current access with the restaurant."}</Text>
                 </View>
             ) if o.entrance_note else <View />}
             <View style={styles.section}>
                 <Text style={styles.body}>{o.address + (" · " + o.neighborhood if o.neighborhood else "")}</Text>
-                <View style={styles.divider} />
-                <Text style={styles.small}>{"For: " + o.eligibility}</Text>
-                <Text style={styles.small}>{o.terms or "No additional terms."}</Text>
+                {(<View style={{"gap": 8}}>
+                    <View style={styles.divider} />
+                    <Text style={styles.small}>{"For: " + o.eligibility}</Text>
+                    <Text style={styles.small}>{o.terms or "No additional terms."}</Text>
+                </View>) if not hasSavedClaim else <View />}
             </View>
         </View>;
     }
@@ -555,10 +622,10 @@ def:pub app -> JsxElement {
             <Field label="Dietary tags" value={eDiets} onChange={lambda (t: str) { eDiets = t; }} placeholder="vegetarian, vegan, gluten-free, halal" multiline={False} />
             <Message text={eMsg} good={False} />
             <View style={styles.row}>
-                <Pressable style={[styles.btn, styles.flex1]} disabled={busy} onPress={lambda { submitOffer(); }}>
+                <Pressable accessibilityRole="button" style={[styles.btn, styles.flex1]} disabled={busy} onPress={lambda { submitOffer(); }}>
                     <Text style={styles.btnText}>{"Saving..." if busy else "Save offer"}</Text>
                 </Pressable>
-                <Pressable style={styles.btnGhost} onPress={lambda { editing = False; }}>
+                <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { editing = False; }}>
                     <Text style={styles.btnGhostText}>Cancel</Text>
                 </Pressable>
             </View>
@@ -566,12 +633,14 @@ def:pub app -> JsxElement {
     }
 
     def Merchant() -> JsxElement {
+        if not session or session.role != "merchant" { return <View style={styles.content}><MerchantGate /></View>; }
         return <View style={styles.content}>
             <View style={styles.header}>
                 <Text style={styles.brand}>MERCHANT</Text>
                 <Text style={styles.title}>Profile and offers</Text>
             </View>
-            <MerchantPicker />
+            <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={mLoading} onPress={lambda { openMerchant(); }}><Text style={styles.btnGhostText}>Refresh restaurant</Text></Pressable>
+            <Message text={mMsg} good={mOk} />
             {(
                 <View style={styles.empty}><Text style={styles.subtitle}>Loading restaurant...</Text></View>
             ) if mLoading else (<View />) if portal is None else <View style={{"gap": 16}}>
@@ -580,7 +649,7 @@ def:pub app -> JsxElement {
                 <View style={styles.section}>
                     <View style={styles.rowBetween}>
                         <Text style={styles.h2}>Your offers</Text>
-                        <Pressable style={styles.btnGhost} onPress={lambda { newOffer(); }}>
+                        <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { newOffer(); }}>
                             <Text style={styles.btnGhostText}>New offer</Text>
                         </Pressable>
                     </View>
@@ -594,10 +663,10 @@ def:pub app -> JsxElement {
                             <Text style={styles.body}>{money(o.price) + "  ·  " + o.time_label}</Text>
                             <Text style={styles.small}>{str(o.remaining) + " of " + str(o.quantity) + " available"}</Text>
                             <View style={styles.row}>
-                                <Pressable style={styles.btnGhost} onPress={lambda { editOffer(o); }}>
+                                <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { editOffer(o); }}>
                                     <Text style={styles.btnGhostText}>Edit</Text>
                                 </Pressable>
-                                <Pressable style={styles.btnGhost} onPress={lambda { toggleStatus(o); }}>
+                                <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { toggleStatus(o); }}>
                                     <Text style={styles.btnGhostText}>{"Resume" if o.state == "paused" else "Pause"}</Text>
                                 </Pressable>
                             </View>
@@ -614,8 +683,8 @@ def:pub app -> JsxElement {
                     <Field label="Neighborhood" value={pHood} onChange={lambda (t: str) { pHood = t; }} placeholder="Kerrytown" multiline={False} />
                     <Field label="Entrance or construction note" value={pNote} onChange={lambda (t: str) { pNote = t; }} placeholder="Use the side door while sidewalk work continues" multiline={True} />
                     <Field label="Note date" value={pNoteDate} onChange={lambda (t: str) { pNoteDate = t; }} placeholder="2026-09-26" multiline={False} />
-                    <Pressable style={styles.btn} disabled={busy} onPress={lambda { saveProfile(); }}>
-                        <Text style={styles.btnText}>Save profile</Text>
+                    <Pressable accessibilityRole="button" style={styles.btn} disabled={busy} onPress={lambda { saveProfile(); }}>
+                        <Text style={styles.btnText}>{"Saving..." if busy else "Save profile"}</Text>
                     </Pressable>
                 </View>
             </View>}
@@ -623,39 +692,29 @@ def:pub app -> JsxElement {
     }
 
     def Redeem() -> JsxElement {
+        if not session or session.role != "merchant" { return <View style={styles.content}><MerchantGate /></View>; }
         return <View style={styles.content}>
             <View style={styles.header}>
                 <Text style={styles.brand}>COUNTER</Text>
-                <Text style={styles.title}>Redeem a claim</Text>
-                <Text style={styles.subtitle}>Enter the six-character code the student shows you.</Text>
+                <Text style={styles.title}>Scan a claim</Text>
+                <Text style={styles.subtitle}>Review the saved offer before redeeming.</Text>
             </View>
-            <MerchantPicker />
+            <Message text={mMsg} good={mOk} />
+            <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={mLoading} onPress={lambda { openMerchant(); }}><Text style={styles.btnGhostText}>Refresh restaurant</Text></Pressable>
+            {(<Text style={styles.small}>Loading your restaurant...</Text>) if mLoading else <View />}
             {(<View />) if portal is None else <View style={{"gap": 16}}>
                 <View style={styles.section}>
                     <Text style={styles.restaurant}>{portal.name}</Text>
-                    <TextInput
-                        style={[styles.input, {"fontSize": 24, "fontWeight": "800", "letterSpacing": 4, "textAlign": "center"}]}
-                        value={code}
-                        placeholder="ABC123"
-                        placeholderTextColor={C["muted"]}
-                        autoCapitalize="characters"
-                        maxLength={6}
-                        onChangeText={lambda (t: str) { code = t.upper(); }}
-                        onSubmitEditing={lambda { redeem(); }}
-                    />
-                    <Pressable style={styles.btn} disabled={busy} onPress={lambda { redeem(); }}>
-                        <Text style={styles.btnText}>{"Checking..." if busy else "Redeem code"}</Text>
-                    </Pressable>
-                    <Message text={rMsg} good={rOk} />
+                    <ClaimScanner key={session.actor_id} resolveClaim={resolve_claim} redeemClaim={redeem_claim} onRedeemed={afterRedeemed} />
                 </View>
                 <View style={styles.section}>
                     <Text style={styles.h2}>Recent claims</Text>
                     {(<Text style={styles.small}>No claims yet.</Text>) if not portal.claims else <View />}
                     {[
-                        <View key={c.code} style={styles.rowBetween}>
+                        <View key={c.claim_id} style={styles.rowBetween}>
                             <View style={styles.flex1}>
-                                <Text style={[styles.body, {"fontWeight": "800", "letterSpacing": 2}]}>{c.code}</Text>
-                                <Text style={styles.small}>{c.student_id + " · " + c.offer_title}</Text>
+                                <Text style={styles.body}>{c.title_snapshot}</Text>
+                                <Text style={styles.small}>{money(c.price_cents / 100)}</Text>
                                 <Text style={styles.small}>{"Claimed " + c.claimed_label + ", hold until " + c.expires_label}</Text>
                             </View>
                             <StatusPill state={c.status} />
@@ -669,7 +728,7 @@ def:pub app -> JsxElement {
 
     def TabButton(id: str, label: str, sub: str) -> JsxElement {
         on = tab == id;
-        return <Pressable style={[styles.tab, styles.tabOn if on else {}]} onPress={lambda { goTab(id); }}>
+        return <Pressable accessibilityRole="button" style={[styles.tab, styles.tabOn if on else {}]} onPress={lambda { goTab(id); }}>
             <Text style={[styles.tabText, styles.tabTextOn if on else {}]}>{label}</Text>
             <Text style={styles.tabSub}>{sub}</Text>
         </Pressable>;
@@ -679,13 +738,12 @@ def:pub app -> JsxElement {
 
     return <View style={[styles.screen, {"height": viewport.height}]}>
         <View style={styles.frame}>
-            <ScrollView style={[styles.scroll, {"height": viewport.height}]}>{body}</ScrollView>
+            <ScrollView style={[styles.scroll, {"height": viewport.height}]}>{SessionPanel()}{body}</ScrollView>
             <View style={styles.tabbar}>
                 {TabButton("discover", "Offers", "Student")}
-                {TabButton("merchant", "Manage", "Merchant")}
-                {TabButton("redeem", "Redeem", "Merchant")}
+                {TabButton("merchant", "Manage", "Merchant") if session and session.role == "merchant" else <View />}
+                {TabButton("redeem", "Redeem", "Merchant") if session and session.role == "merchant" else <View />}
             </View>
         </View>
     </View>;
-}
 }

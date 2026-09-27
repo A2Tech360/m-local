@@ -17,6 +17,12 @@ Keep source evidence, simulated fixtures and normalized records distinguishable.
 **Spec:** [Mission](../../START-HERE.md), [contract](../../TEAM-CONTRACT.md),
 [workflow](../../TEAM-WORKFLOW.md).
 
+**Continuation:** Travis authorized E4 to finish E3 on 2026-09-27 UTC. Preserve
+E3's commits through `32645ea`, integrate runtime `43aa698`, and update existing
+PR #4. E2 still owns attaching `AccessContextView` to `OfferView`; E4 rendering
+follows that handoff. The server/data handoff does not complete the integrated
+offer-explanation acceptance criterion below.
+
 **Source research:** [Free local data guide](../../research/FREE-DATA-SOURCES.md)
 and [impact evidence](../../research/LOCAL-IMPACT-EVIDENCE.md). City access notices
 remain the required context type. Other sources are prioritized options, not added
@@ -59,48 +65,49 @@ existing location ID. An unresolved/ambiguous slug is rejected, never guessed.
 
 ## Work sequence
 
-### 1. Publish the context interface early
+### Task 1: Publish the context interface early
 
-- [ ] Read the runtime guides, current models/importer/seed and the shared contract.
-- [ ] Add context model/DTO definitions and the internal helper. An empty notice graph
+- [x] Read the runtime guides, current models/importer/seed and the shared contract.
+- [x] Add context model/DTO definitions and the internal helper. An empty notice graph
   returns `state="none"` and `notices=[]`; it does not fabricate a notice.
-- [ ] Add `empty_context_is_unknown_not_clear_access` and run it. Publish the small
+- [x] Add `empty_context_is_unknown_not_clear_access` and run it. Publish the small
   DTO/helper PR to unblock Engineer 2's OfferView integration.
 
-### 2. Build one defensible record pipeline
+### Task 2: Build one defensible record pipeline
 
-- [ ] Document the JSON schema and required fields, including stable source/external
+- [x] Document the JSON schema and required fields, including stable source/external
   IDs, location_slug, version, publisher, URL, checked time, validity interval,
   summary, is_demo and optional explicitly confirmed entrance instructions.
-- [ ] Add tests `upsert_is_idempotent`, `new_version_updates_same_notice`,
+- [x] Add tests `upsert_is_idempotent`, `new_version_updates_same_notice`,
   `invalid_dates_rejected_without_mutation`, and `unknown_location_rejected`.
-- [ ] Implement validation, source identity lookup and one-record upsert. Deduplicate
+- [x] Implement validation, source identity lookup and one-record upsert. Deduplicate
   Affects edges. Do not treat the existing skip-on-slug restaurant loader as refresh.
-- [ ] Review one relevant official public access/construction source and record its
+- [x] Review one relevant official public access/construction source and record its
   exact URL, publisher, retrieval time, reuse limitations and supported facts in
   SOURCES.md. Live ingestion is optional; a reviewed small fixture is sufficient.
-- [ ] Create a clearly simulated notice for a fictional demo location. A real source
+- [x] Create a clearly simulated notice for a fictional demo location. A real source
   may be shown separately as research, but must not appear to validate a fictional
   storefront's entrance. Never invent a source URL or confirmation.
 
-### 3. Prove freshness and repeatable fixtures
+### Task 3: Prove freshness and repeatable fixtures
 
-- [ ] Add `notice_boundary_and_freshness`: a fixture valid [100, 200) with checked_at
+- [x] Add `notice_boundary_and_freshness`: a fixture valid [100, 200) with checked_at
   100 is current at 150, needs_recheck at 200, and cannot be current before 100.
   Also test an in-window record checked 86,401 seconds ago and a future checked_at.
-- [ ] Add `refresh_failure_preserves_old_timestamp` and `other_location_unchanged`.
+- [x] Add `refresh_failure_preserves_old_timestamp` and `other_location_unchanged`.
   Verify needs_recheck never returns a definitive entrance instruction.
-- [ ] Implement the helper and deterministic clock-based tests. A changed notice
-  must alter the corresponding offer context once Engineer 2 attaches it.
-- [ ] Migrate importer/seed money fields to the shared cents contract and remove
+- [x] Implement the helper and deterministic clock-based tests.
+- [ ] Downstream acceptance: a changed notice must alter the corresponding offer
+  context once Engineer 2 attaches it and Engineer 4 renders it.
+- [x] Migrate importer/seed money fields to the shared cents contract and remove
   merchant keys. Seed fictional business data; Engineers 1 and 2 own account
   provisioning. Imported records cannot assign owner_actor_id, passwords or roles.
-- [ ] Provide Engineer 1 a callable fresh-fixture path for demo.sh. Relative demo
+- [x] Provide Engineer 1 a callable fresh-fixture path for demo.sh. Relative demo
   times are anchored at creation of a new isolated store, not rewritten in an
   existing user's claims. Re-running setup on the same store must not duplicate data.
-- [ ] Run `./scripts/check.sh` and `./scripts/test.sh context`. Give Engineer 4 example
+- [x] Run `./scripts/check.sh` and `./scripts/test.sh context`. Give Engineer 4 example
   none/current/needs_recheck response payloads and source-label wording.
-- [ ] Commit, open your PR and record the source evidence, test results and simulated
+- [x] Commit, open your PR and record the source evidence, test results and simulated
   versus real-data boundaries in your status.
 
 ## Done when

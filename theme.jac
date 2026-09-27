@@ -6,7 +6,7 @@ No JSX here: E1105 is only enforced on main.jac, so UI stays there.
 import from "@jac/mobui" { StyleSheet }
 
 
-glob:pub C: dict = {
+glob:pub C: dict[str, str] = {
          "bg": "#faf7f2",
          "surface": "#ffffff",
          "sunken": "#f3eee6",
@@ -25,12 +25,12 @@ glob:pub C: dict = {
          "bad": "#c92a2a",
          "badSoft": "#fdecec"
      },
-     S: dict = {"xs": 4, "sm": 8, "md": 12, "lg": 16, "xl": 20, "xxl": 28},
-     R: dict = {"sm": 8, "md": 12, "lg": 18, "pill": 999},
-     F: dict = {"xs": 12, "sm": 13, "md": 15, "lg": 18, "xl": 24, "xxl": 30};
+     S: dict[str, int] = {"xs": 4, "sm": 8, "md": 12, "lg": 16, "xl": 20, "xxl": 28},
+     R: dict[str, int] = {"sm": 8, "md": 12, "lg": 18, "pill": 999},
+     F: dict[str, int] = {"xs": 12, "sm": 13, "md": 15, "lg": 18, "xl": 24, "xxl": 30};
 
 
-def:pub buildStyles(T: dict) -> any {
+def:pub buildStyles(T: dict[str, str]) -> any {
     return StyleSheet.create(
         {
             "screen": {"flex": 1, "backgroundColor": T["bg"]},
@@ -165,7 +165,7 @@ def:pub buildStyles(T: dict) -> any {
                 "borderColor": T["border"],
                 "backgroundColor": T["surface"],
                 "color": T["ink"],
-                "fontSize": F["md"]
+                "fontSize": 16
             },
             "inputMulti": {"minHeight": 72, "textAlignVertical": "top"},
             "field": {"gap": 6},
@@ -203,20 +203,6 @@ def:pub buildStyles(T: dict) -> any {
                 "padding": S["md"]
             },
             "msgBadText": {"color": T["bad"], "fontWeight": "700", "fontSize": F["md"]},
-            "codeBox": {
-                "backgroundColor": T["ink"],
-                "borderRadius": R["lg"],
-                "padding": S["xl"],
-                "alignItems": "center",
-                "gap": S["xs"]
-            },
-            "codeText": {
-                "color": T["accentText"],
-                "fontSize": 34,
-                "fontWeight": "800",
-                "letterSpacing": 6
-            },
-            "codeSub": {"color": "#d8d2c8", "fontSize": F["sm"]},
             "reason": {"flexDirection": "row", "gap": S["sm"], "alignItems": "flex-start"},
             "dot": {
                 "width": 8,
@@ -284,7 +270,7 @@ def:pub statusColors(state: str) -> list[str] {
 }
 
 
-def:pub money(v: float) -> str {
+def money(v: float) -> str {
     cents: int = int(round(v * 100));
     whole = cents // 100;
     rest = cents % 100;

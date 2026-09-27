@@ -2,23 +2,24 @@
 offer is flagged is_demo, so nothing here can be mistaken for a real Ann Arbor
 business. Loaded through the importer, the same path real sources will use."""
 
-import from services.importer { import_restaurant }
+import time;
+import from services.importer { import_restaurant, import_access_notices }
+import from services.models { Restaurant }
 
 
-glob:pub DEMO_RECORDS: list[dict] = [
+glob:pub DEMO_RECORDS: list[dict[str, any]] = [
     {
         "slug": "maize-noodle-lab",
         "name": "Maize Street Noodle Lab (Demo)",
         "cuisine": "Noodles and dumplings",
         "blurb": "Fictional demo shop. Hand-pulled noodles, quick counter service.",
-        "merchant_key": "noodle-demo",
         "is_demo": True,
         "source": "demo-seed",
         "location": {
             "address": "100 Example Ave, Ann Arbor (fictional)",
             "neighborhood": "State Street",
-            "entrance_note": "Front door closed for sidewalk work. Use the side entrance on the alley.",
-            "note_date": "2026-09-20"
+            "entrance_note": "",
+            "note_date": ""
         },
         "menu": [
             {"name": "Veggie Dan Dan Noodles", "price": 11.5, "dietary": ["vegetarian"]},
@@ -58,7 +59,6 @@ glob:pub DEMO_RECORDS: list[dict] = [
         "name": "Arbor Leaf Kitchen (Demo)",
         "cuisine": "Plant-based bowls",
         "blurb": "Fictional demo cafe. Vegan and gluten-free grain bowls.",
-        "merchant_key": "leaf-demo",
         "is_demo": True,
         "source": "demo-seed",
         "location": {
@@ -105,14 +105,13 @@ glob:pub DEMO_RECORDS: list[dict] = [
         "name": "Diag Dough Co. (Demo)",
         "cuisine": "Pizza by the slice",
         "blurb": "Fictional demo pizzeria. Big slices, halal toppings available.",
-        "merchant_key": "dough-demo",
         "is_demo": True,
         "source": "demo-seed",
         "location": {
             "address": "300 Placeholder Rd, Ann Arbor (fictional)",
             "neighborhood": "South University",
-            "entrance_note": "Street is under construction. Enter from the parking lot behind the building.",
-            "note_date": "2026-09-15"
+            "entrance_note": "",
+            "note_date": ""
         },
         "menu": [
             {"name": "Halal Chicken Slice", "price": 6.0, "dietary": ["halal"]},
@@ -151,10 +150,47 @@ glob:pub DEMO_RECORDS: list[dict] = [
 ];
 
 
+"""Create relative fixture timestamps once for a new isolated demo store.
+
+The record is deliberately simulated and names a fictional store. It does not
+claim a real construction event, route, or confirmed alternate entrance.
+"""
+def demo_access_notice_records(now_ts: float = 0.0) -> list[dict[str, any]] {
+    now = now_ts if now_ts > 0 else time.time();
+    return [{
+        "source_id": "m-local-demo",
+        "external_id": "maize-access-demo-1",
+        "location_slug": "maize-noodle-lab",
+        "version": "1",
+        "publisher": "M-Local simulated fixture",
+        "source_url": "",
+        "checked_at": now,
+        "valid_from": now - 60,
+        "valid_until": now + 6 * 3600,
+        "summary": "Demo access context for a fictional storefront. Confirm access before visiting.",
+        "is_demo": True,
+        "entrance_instruction": "",
+        "original_evidence": {"fixture": "data/demo/access-notices.json", "simulated": True},
+        "normalized_evidence": {"review_status": "simulated", "association": "fictional demo only"}
+    }];
+}
+
+
+def seed_demo_access_notices(now_ts: float = 0.0) -> list[str] {
+    """Callable fresh-fixture path for an isolated store (for example demo.sh).""";
+    return import_access_notices(demo_access_notice_records(now_ts));
+}
+
+
 """Load demo records once. Safe to call repeatedly (importer skips known slugs)."""
 def seed_demo() -> int {
+    was_empty = not [root-->[?:Restaurant]];
     for rec in DEMO_RECORDS {
         import_restaurant(rec);
+    }
+    # Do not rewrite timestamps in an existing store: the first seed anchors them.
+    if was_empty {
+        seed_demo_access_notices();
     }
     return len(DEMO_RECORDS);
 }

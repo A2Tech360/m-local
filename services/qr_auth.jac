@@ -1,0 +1,42 @@
+"""Trusted local provisioning. No HTTP endpoint can write this mapping.
+
+MLOCAL_MERCHANT_OWNERS is a server environment JSON object mapping restaurant
+slug to the root_id returned by Jac's pre-provisioned account login (either
+UUID spelling; it is canonicalized to the 32-hex form jid(root) uses). Never put
+passwords or tokens in this map. Missing/invalid config grants no merchant role.
+Changing a mapping requires a server restart and reassigns that restaurant.
+"""
+
+import os;
+import json;
+import from uuid { UUID }
+
+def configured_owners(text: str) -> dict[str, str] {
+    result: dict[str, str] = {};
+    try {
+        raw = json.loads(text);
+        if not isinstance(raw, dict) {
+            return result;
+        }
+        for (slug, actor) in raw.items() {
+            if not isinstance(slug, str) or not isinstance(actor, str) or not slug {
+                return {};
+            }
+            # Accept the hyphenated form from /user/login and the 32-hex form
+            # jid(root) reports; store the canonical 32-hex form, which is what
+            # every ownership comparison in the app sees.
+            result[slug] = UUID(actor).hex;
+        }
+        # This slice permits one restaurant per merchant account.
+        if len(set(result.values())) != len(result) {
+            return {};
+        }
+        return result;
+    } except Exception {
+        return {};
+    }
+}
+
+def merchant_owner(slug: str) -> str {
+    return configured_owners(os.environ.get("MLOCAL_MERCHANT_OWNERS", "{}")).get(slug, "");
+}
