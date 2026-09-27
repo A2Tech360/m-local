@@ -60,7 +60,7 @@ def check_settings(values):
 
 
 def collect_settings(provider):
-    defaults = {'resend': ('smtp.resend.com', '465', 'resend'), 'gmail': ('smtp.gmail.com', '465', ''), 'custom': ('', '465', '')}
+    defaults = {'resend': ('smtp.resend.com', '587', 'resend'), 'gmail': ('smtp.gmail.com', '465', ''), 'custom': ('', '465', '')}
     host, port, username = defaults[provider]
     print('This saves the sender on this computer, outside Git. No email will be sent.')
     if provider == 'gmail':
