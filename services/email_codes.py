@@ -16,6 +16,7 @@ import smtplib
 import sqlite3
 import ssl
 import time
+from uuid import UUID
 
 
 def account_email(value: str, kind: str) -> str:
@@ -26,6 +27,13 @@ def account_email(value: str, kind: str) -> str:
         return value + '@umich.edu'
     if kind != 'business' or len(value) > 254 or not re.fullmatch(r'[a-z0-9.!#$%&\x27*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,63}', value):
         raise ValueError('Enter a valid work email address.')
+    return value
+
+
+def validated_name(value: str) -> str:
+    value = value.strip()
+    if not 1 <= len(value) <= 80 or any(ord(c) < 32 or 127 <= ord(c) < 160 for c in value):
+        raise ValueError('Enter your name (up to 80 characters, without control characters).')
     return value
 
 
@@ -51,9 +59,11 @@ class CodeStore:
             db.execute('CREATE TABLE IF NOT EXISTS sends (email TEXT, at REAL)')
             db.execute('CREATE INDEX IF NOT EXISTS sends_email_at ON sends(email, at)')
             db.execute('CREATE TABLE IF NOT EXISTS accounts (actor TEXT PRIMARY KEY, email TEXT UNIQUE, kind TEXT, name TEXT)')
+            db.execute('CREATE TABLE IF NOT EXISTS display_names (actor TEXT PRIMARY KEY, name TEXT)')
             db.execute('CREATE TABLE IF NOT EXISTS provisioning (email TEXT PRIMARY KEY, marker TEXT, kind TEXT, name TEXT)')
             db.execute('CREATE TABLE IF NOT EXISTS drafts (actor TEXT PRIMARY KEY, body TEXT, updated REAL)')
             db.execute('CREATE TABLE IF NOT EXISTS imports (actor TEXT, at REAL)')
+            db.execute('CREATE TABLE IF NOT EXISTS business_owners (actor TEXT PRIMARY KEY, slug TEXT UNIQUE NOT NULL, active INTEGER NOT NULL DEFAULT 0)')
         os.chmod(self.path, 0o600)
 
     @contextmanager
@@ -75,9 +85,9 @@ class CodeStore:
 
     def request(self, value, kind, name, send):
         email = account_email(value, kind)
-        name = name.strip()
-        if not 1 <= len(name) <= 80 or any(ord(c) < 32 for c in name):
-            raise ValueError('Enter your name (up to 80 characters).')
+        # Blank means returning sign-in; account existence is checked only after
+        # inbox proof. Named requests keep the existing create-or-resume flow.
+        name = validated_name(name) if name else ''
         now = self.clock()
         challenge = secrets.token_urlsafe(32)
         code = f'{secrets.randbelow(1000000):06d}'
@@ -143,6 +153,25 @@ class CodeStore:
             row = db.execute('SELECT email,kind,name FROM accounts WHERE actor=?', (actor,)).fetchone()
             return dict(row) if row else {}
 
+    def display_name(self, actor: str, fallback: str = '') -> str:
+        with self.transaction() as db:
+            row = db.execute('SELECT name FROM accounts WHERE actor=?', (actor,)).fetchone()
+            if row is None:
+                row = db.execute('SELECT name FROM display_names WHERE actor=?', (actor,)).fetchone()
+            return row['name'] if row else fallback
+
+    def save_display_name(self, actor: str, name: str) -> str:
+        if not actor:
+            raise ValueError('Sign in before editing your profile.')
+        name = validated_name(name)
+        with self.transaction() as db:
+            changed = db.execute('UPDATE accounts SET name=? WHERE actor=?', (name, actor)).rowcount
+            if not changed:
+                # Demo and other runtime accounts may have preferences without
+                # gaining a verified email record or application authority.
+                db.execute('INSERT INTO display_names VALUES (?,?) ON CONFLICT(actor) DO UPDATE SET name=excluded.name', (actor, name))
+        return name
+
     def reserve_import(self, actor):
         now = self.clock()
         with self.transaction() as db:
@@ -162,9 +191,61 @@ class CodeStore:
             row = db.execute('SELECT body FROM drafts WHERE actor=?', (actor,)).fetchone()
             return json.loads(row['body']) if row else {}
 
+    def reserve_business(self, actor: str) -> str:
+        """Reserve a stable server-derived identity without granting authority."""
+        try:
+            actor = UUID(actor).hex
+        except (ValueError, TypeError, AttributeError):
+            raise ValueError('Sign in with a verified business account to save a business profile.') from None
+        slug = 'business-' + actor
+        with self.transaction() as db:
+            account = db.execute('SELECT kind FROM accounts WHERE actor=?', (actor,)).fetchone()
+            if account is None or account['kind'] != 'business':
+                raise ValueError('Sign in with a verified business account to save a business profile.')
+            db.execute('INSERT OR IGNORE INTO business_owners (actor,slug) VALUES (?,?)', (actor, slug))
+            row = db.execute('SELECT slug FROM business_owners WHERE actor=?', (actor,)).fetchone()
+            if row is None or row['slug'] != slug:
+                raise ValueError('Could not reserve this business profile. Please retry.')
+        return slug
+
+    def activate_business(self, actor: str, body: dict[str, str]) -> dict[str, str]:
+        """Finalize only after the caller has committed the restaurant graph."""
+        try:
+            actor = UUID(actor).hex
+        except (ValueError, TypeError, AttributeError):
+            raise ValueError('Sign in with a verified business account to save a business profile.') from None
+        result = {**body, 'status': 'active'}
+        with self.transaction() as db:
+            account = db.execute('SELECT kind FROM accounts WHERE actor=?', (actor,)).fetchone()
+            if account is None or account['kind'] != 'business':
+                raise ValueError('Sign in with a verified business account to save a business profile.')
+            changed = db.execute('UPDATE business_owners SET active=1 WHERE actor=? AND slug=?',
+                                 (actor, 'business-' + actor)).rowcount
+            if not changed:
+                raise ValueError('Save your business profile again to finish setting it up.')
+            db.execute('INSERT INTO drafts VALUES (?,?,?) ON CONFLICT(actor) DO UPDATE SET body=excluded.body,updated=excluded.updated',
+                       (actor, json.dumps(result), self.clock()))
+        return result
+
+    def business_owner(self, slug: str) -> str:
+        with self.transaction() as db:
+            row = db.execute('SELECT b.actor FROM business_owners b JOIN accounts a ON a.actor=b.actor '
+                             'WHERE b.slug=? AND b.active=1 AND a.kind=?', (slug, 'business')).fetchone()
+            return row['actor'] if row else ''
+
 
 def store() -> CodeStore:
     return CodeStore(Path(os.environ.get('MLOCAL_ONBOARDING_DIR', '.jac/onboarding')).resolve())
+
+
+def registered_business_owner(slug: str) -> str:
+    if not re.fullmatch(r'business-[0-9a-f]{32}', slug):
+        return ''
+    try:
+        return store().business_owner(slug)
+    except (OSError, sqlite3.Error, RuntimeError):
+        # Unavailable private state must never confer merchant authority.
+        return ''
 
 
 def delivery_ready() -> bool:

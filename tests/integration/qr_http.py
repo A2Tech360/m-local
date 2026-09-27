@@ -26,11 +26,11 @@ class Api:
     def __init__(self, origin, token=''):
         self.origin, self.token = origin, token
 
-    def call(self, name, **params):
+    def call(self, endpoint, **params):
         headers = {'Content-Type': 'application/json'}
         if self.token:
             headers['Authorization'] = 'Bearer ' + self.token
-        request = urllib.request.Request(self.origin + '/function/' + name,
+        request = urllib.request.Request(self.origin + '/function/' + endpoint,
                                          json.dumps(params).encode(), headers, method='POST')
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
@@ -38,8 +38,8 @@ class Api:
         except urllib.error.HTTPError as error:
             if error.code in (401, 403):
                 return {'ok': False, 'http_status': error.code}
-            raise AssertionError(f'{name}: unexpected HTTP {error.code}') from None
-        assert envelope.get('ok'), f'{name}: runtime returned an error'
+            raise AssertionError(f'{endpoint}: unexpected HTTP {error.code}') from None
+        assert envelope.get('ok'), f'{endpoint}: runtime returned an error'
         return envelope['data']['result']
 
 
@@ -64,8 +64,15 @@ def main():
     parser.add_argument('--accounts', type=Path, default=ROOT / '.jac/qr-demo-accounts.json')
     args = parser.parse_args()
     try:
-        with urllib.request.urlopen(args.api + '/graph/data', timeout=10):
-            raise AssertionError('graph inspector must be disabled for private claims')
+        with urllib.request.urlopen(args.api + '/graph/data', timeout=10) as response:
+            # Jac's no-dev web server falls back to the SPA shell for unknown
+            # GET routes. A 200 shell is not a graph-data response; require it
+            # to be byte-identical to the anonymous app shell before accepting.
+            body = response.read()
+            with urllib.request.urlopen(args.api + '/', timeout=10) as home:
+                shell = home.read()
+            require(response.headers.get_content_type() == 'text/html' and body == shell,
+                    'graph route serves only the anonymous application shell')
     except urllib.error.HTTPError as error:
         require(error.code in (401, 403, 404), 'graph inspector does not expose private claims')
     accounts = json.loads(args.accounts.read_text())
@@ -120,7 +127,7 @@ def main():
     preview = merchant.call('resolve_claim', qr_payload=payload)
     require(preview['ok'] and preview['price_cents'] == 300, 'merchant resolves original terms without mutation')
     require(winner.call('get_offer', offer_id=offer_id)['my_status'] == 'claimed', 'preview does not redeem')
-    offer.update(offer_id=offer_id, price='9.00', title='Edited ' + run, terms='Different future terms')
+    offer.update(offer_id=offer_id, price='9.00', regular_price='12.00', title='Edited ' + run, terms='Different future terms')
     require(merchant.call('save_offer', **offer)['ok'], 'merchant edits future offer terms')
     unchanged = merchant.call('resolve_claim', qr_payload=payload)
     require(all(unchanged[k] == preview[k] for k in ('title_snapshot', 'price_cents', 'terms', 'eligibility', 'expires_ts')),

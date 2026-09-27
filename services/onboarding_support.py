@@ -40,6 +40,8 @@ def finish_account(proof, users, state):
             raise ValueError('This account uses another sign-in method. Use its original sign-in or contact the host.')
         user_id = existing['user_id']
     else:
+        if not proof['name']:
+            raise ValueError('No account exists for this email yet. Choose Create account to get started.')
         pending = state.provisioning(email, proof['kind'], proof['name'])
         created = users.create_user_with_identities(
             identities=[{'type': 'email', 'value': email, 'verified': True}],
@@ -72,6 +74,15 @@ def account_details(actor: str) -> dict:
     return store().account(actor)
 
 
+def account_name(actor: str, fallback: str = '') -> str:
+    return store().display_name(actor, fallback)
+
+
+def save_account_name(actor: str, name: str) -> str:
+    # Called only with the authenticated Jac root, never a browser-selected actor.
+    return store().save_display_name(actor, name)
+
+
 def demo_student(actor: str) -> bool:
     try:
         configured = json.loads(os.environ.get('MLOCAL_DEMO_STUDENTS', '[]'))
@@ -86,13 +97,15 @@ def may_claim(actor: str) -> bool:
 
 
 def validate_draft(raw: dict) -> dict:
-    limits = {'name': 160, 'cuisine': 120, 'description': 1000, 'address': 500,
+    limits = {'name': 120, 'cuisine': 80, 'description': 1000, 'address': 240,
               'website': 2048, 'menu_url': 2048, 'image_url': 2048, 'menu_text': 4000}
     result = {}
     for key, limit in limits.items():
         value = raw.get(key, '')
         if not isinstance(value, str) or len(value) > limit:
             raise ValueError(f'Please shorten the {key.replace("_", " ")} field.')
+        if any((ord(char) < 32 and char not in '\t\r\n') or 127 <= ord(char) < 160 for char in value):
+            raise ValueError(f'The {key.replace("_", " ")} field contains unsupported control characters.')
         result[key] = value.strip()
     if not result['name'] or not result['address']:
         raise ValueError('Add the business name and address before saving.')
@@ -104,15 +117,35 @@ def validate_draft(raw: dict) -> dict:
 
 
 def read_draft(actor: str) -> dict:
-    return store().draft(actor)
+    state = store()
+    if state.account(actor).get('kind') != 'business':
+        raise ValueError('Sign in with a verified business account to edit a business profile.')
+    return state.draft(actor)
 
 
 def persist_draft(actor: str, raw: dict) -> dict:
     state = store()
     # The actor comes from Jac's authenticated request root, never request JSON.
     account = state.account(actor)
-    if not account:
-        raise ValueError('Verify an email address before creating a business profile.')
+    if account.get('kind') != 'business':
+        raise ValueError('Sign in with a verified business account to edit a business profile.')
     result = validate_draft(raw)
     state.save_draft(actor, result)
     return result
+
+
+def prepare_business_activation(actor: str, raw: dict) -> dict[str, str]:
+    state = store()
+    if state.account(actor).get('kind') != 'business':
+        raise ValueError('Sign in with a verified business account to save a business profile.')
+    result = validate_draft(raw)
+    result['status'] = 'draft'
+    result['slug'] = state.reserve_business(actor)
+    return result
+
+
+def finish_business_activation(actor: str, raw: dict) -> dict[str, str]:
+    # Re-validate and retain only known metadata. Browser-selected slugs, actor
+    # IDs, roles and statuses never enter the private authority registry.
+    result = validate_draft(raw)
+    return store().activate_business(actor, result)

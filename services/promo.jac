@@ -11,6 +11,8 @@ worker processes on one machine only; several machines would need a shared lock.
 import os;
 import fcntl;
 import tempfile;
+import re;
+import sys;
 
 import time;
 import secrets;
@@ -30,7 +32,8 @@ import from services.models {
     Reservation,
     Reserves,
     UsesReservation,
-    CLAIM_HOLD_MINUTES
+    CLAIM_HOLD_MINUTES,
+    DIET_TAGS
 }
 import from services.qr_catalog { _ensure_seed }
 import from services.qr { new_qr_payload, valid_qr_payload }
@@ -46,15 +49,26 @@ glob LOCK_PATH: str = os.path.join(tempfile.gettempdir(), "m-local-mutations.loc
 
 def _lock -> int {
     fd = os.open(LOCK_PATH, os.O_CREAT | os.O_RDWR, 384);
-    fcntl.flock(fd, fcntl.LOCK_EX);
-    commit();
+    try {
+        fcntl.flock(fd, fcntl.LOCK_EX);
+        commit();
+    } except BaseException {
+        try {
+            fcntl.flock(fd, fcntl.LOCK_UN);
+        } finally {
+            os.close(fd);
+        }
+        raise;
+    }
     return fd;
 }
 
 
 def _unlock(fd: int) -> None {
     try {
-        commit();
+        # The runtime aborts and replays cold read-tier writes and conflicts.
+        # Never persist the abandoned attempt while its exception unwinds.
+        if sys.exc_info()[0] is None { commit(); }
     } finally {
         fcntl.flock(fd, fcntl.LOCK_UN);
         os.close(fd);
@@ -183,8 +197,21 @@ def _input_fmt(ts: float) -> str {
 
 def _parse_local(text: str) -> float | None {
     try {
-        dt = datetime.strptime(text.strip(), "%Y-%m-%d %H:%M");
-        return dt.replace(tzinfo=_tz()).timestamp();
+        local_text = text.strip().replace("T", " ");
+        if re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}", local_text) is None {
+            return None;
+        }
+        dt = datetime.strptime(local_text, "%Y-%m-%d %H:%M");
+        zone = _tz();
+        if zone is None { return None; }
+        aware = dt.replace(tzinfo=zone);
+        ts = aware.timestamp();
+        # Reject the spring-forward gap and repeated fall-back hour. A local
+        # editor cannot disambiguate those times, so never guess the deadline.
+        if _local(ts).replace(tzinfo=None) != dt or aware.utcoffset() != dt.replace(tzinfo=zone, fold=1).utcoffset() {
+            return None;
+        }
+        return ts;
     } except Exception {
         return None;
     }
@@ -252,15 +279,19 @@ def _claim_status(c: Redemption, now: float) -> str {
 
 # Reads never expire/mutate claims. Counting the public reservation projection
 # lets all roots see identical remaining stock without exposing private claims.
+def _used_quantity(o: Offer, now: float) -> int {
+    return len([s for s in [o ->:Reserves:->]
+        if s.status == "redeemed" or (s.status == "claimed" and now < s.expires_ts)]);
+}
+
+
 def _remaining(o: Offer, now: float) -> int {
     # Existing pre-QR claims cannot be attributed to authenticated principals.
     # Fail closed instead of reclaiming historical consumed/held stock. The
     # operator must reconcile that legacy offer before enabling it for new QR
     # claims; editing or pausing it never silently discards old redemptions.
     if not o.qr_ready { return 0; }
-    held = len([s for s in [o ->:Reserves:->]
-        if s.status == "redeemed" or (s.status == "claimed" and now < s.expires_ts)]);
-    return max(o.quantity - held, 0);
+    return max(o.quantity - _used_quantity(o, now), 0);
 }
 
 
@@ -289,7 +320,23 @@ def _state(o: Offer, now: float) -> str {
 
 
 def _parse_diets(diets: str) -> list[str] {
-    return [d.strip().lower() for d in diets.split(",") if d.strip()];
+    tags: list[str] = [];
+    for raw in diets.split(",") {
+        tag = raw.strip().lower();
+        if tag and tag not in tags { tags.append(tag); }
+    }
+    return tags;
+}
+
+
+def _text_error(value: str, label: str, limit: int, required: bool = False) -> str {
+    clean = value.strip();
+    if required and not clean { return label + " is required"; }
+    if len(clean) > limit { return f"{label} must be {limit} characters or fewer"; }
+    if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", clean) is not None {
+        return label + " contains unsupported control characters";
+    }
+    return "";
 }
 
 
@@ -560,38 +607,47 @@ def _save_offer(
     errors: list[str] = [];
     p = -1;
     rp = -1;
-    try { p = money_to_cents(price); } except ValueError {}
-    try { rp = money_to_cents(regular_price) if regular_price.strip() else 0; } except ValueError {}
+    try {
+        if len(price.strip()) <= 12 { p = money_to_cents(price); }
+    } except ValueError {}
+    try {
+        if len(regular_price.strip()) <= 12 { rp = money_to_cents(regular_price) if regular_price.strip() else 0; }
+    } except ValueError {}
     st = _parse_local(start_local);
     en = _parse_local(end_local);
     qty = -1;
-    try {
+    if re.fullmatch(r"[0-9]{1,5}", quantity.strip()) is not None {
         qty = int(quantity.strip());
-    } except Exception {
-        qty = -1;
     }
-    if not title.strip() {
-        errors.append("title is required");
+    for (value, label, limit, required) in [
+        (title, "title", 120, True), (description, "description", 2000, False),
+        (eligibility, "eligibility", 300, True), (terms, "terms", 2000, True),
+        (dietary, "dietary tags", 200, False), (menu_item, "menu item", 120, False)
+    ] {
+        error = _text_error(value, label, limit, required);
+        if error { errors.append(error); }
     }
-    if p < 0 {
-        errors.append("price must be a nonnegative amount with at most two decimal places");
+    if p < 0 or p > 999999 {
+        errors.append("price must be between 0 and 9999.99 with at most two decimal places");
     }
-    if rp < 0 {
-        errors.append("regular price must be a nonnegative amount with at most two decimal places");
+    if rp < 0 or rp > 999999 {
+        errors.append("regular price must be between 0 and 9999.99 with at most two decimal places");
+    } elif regular_price.strip() and p >= 0 and rp < p {
+        errors.append("regular price cannot be less than the offer price; leave it blank if unavailable");
     }
     if st is None or en is None {
-        errors.append("times must look like 2026-09-26 14:00");
+        errors.append("use valid Ann Arbor times like 2026-09-26 14:00; avoid the repeated or skipped daylight-saving hour");
     } elif en <= st {
         errors.append("end must be after start");
+    } elif en <= now {
+        errors.append("end must be in the future");
     }
-    if qty < 1 {
-        errors.append("quantity must be at least 1");
+    if qty < 1 or qty > 10000 {
+        errors.append("quantity must be a whole number from 1 to 10000");
     }
-    if not eligibility.strip() {
-        errors.append("eligibility is required");
-    }
-    if not terms.strip() {
-        errors.append("terms are required");
+    tags = _parse_diets(dietary);
+    if [tag for tag in tags if tag not in DIET_TAGS] {
+        errors.append("dietary tags must be vegetarian, vegan, gluten-free, or halal");
     }
     o: Offer | None = None;
     if offer_id {
@@ -599,7 +655,7 @@ def _save_offer(
         if o is None {
             return ActionResult(ok=False, message="That offer does not belong to your restaurant.");
         }
-        held = o.quantity - _remaining(o, now);
+        held = _used_quantity(o, now) if o.qr_ready else o.quantity;
         if qty >= 1 and qty < held {
             errors.append(f"quantity cannot go below {held} already claimed or redeemed");
         }
@@ -622,7 +678,7 @@ def _save_offer(
     o.quantity = qty;
     o.eligibility = eligibility.strip();
     o.terms = terms.strip();
-    o.dietary = _parse_diets(dietary);
+    o.dietary = tags;
     o.menu_item = menu_item.strip();
     for e in [edge o ->:Features:->] {
         del e;
@@ -777,22 +833,35 @@ def:protect update_profile(
         r = _merchant();
         if r is None {
             view = MerchantView(ok=False, message="This account does not own a restaurant.");
-        } elif not name.strip() or not address.strip() {
-            view = _portal(r, time.time(), "Name and address are required.");
         } else {
-            r.name = name.strip();
-            r.cuisine = cuisine.strip();
-            r.blurb = blurb.strip();
-            loc = _location_of(r);
-            if loc is None {
-                loc = Location(address="");
-                r +>:HasLocation():+> loc;
+            errors: list[str] = [];
+            for (value, label, limit, required) in [
+                (name, "name", 120, True), (cuisine, "cuisine", 80, False),
+                (blurb, "description", 2000, False), (address, "address", 240, True),
+                (neighborhood, "neighborhood", 120, False),
+                (entrance_note, "entrance note", 500, False), (note_date, "note date", 80, False)
+            ] {
+                error = _text_error(value, label, limit, required);
+                if error { errors.append(error); }
             }
-            loc.address = address.strip();
-            loc.neighborhood = neighborhood.strip();
-            loc.entrance_note = entrance_note.strip();
-            loc.note_date = note_date.strip();
-            view = _portal(r, time.time(), "Profile saved.");
+            if errors {
+                view = _portal(r, time.time(), "Fix: " + "; ".join(errors) + ".");
+                view.ok = False;
+            } else {
+                r.name = name.strip();
+                r.cuisine = cuisine.strip();
+                r.blurb = blurb.strip();
+                loc = _location_of(r);
+                if loc is None {
+                    loc = Location(address="");
+                    r +>:HasLocation():+> loc;
+                }
+                loc.address = address.strip();
+                loc.neighborhood = neighborhood.strip();
+                loc.entrance_note = entrance_note.strip();
+                loc.note_date = note_date.strip();
+                view = _portal(r, time.time(), "Profile saved.");
+            }
         }
     } finally {
         _unlock(fd);
@@ -858,6 +927,8 @@ def:protect set_offer_status(offer_id: str, status: str) -> ActionResult {
             result = ActionResult(ok=False, message="Status must be active or paused.");
         } elif o is None {
             result = ActionResult(ok=False, message="That offer does not belong to your restaurant.");
+        } elif status == "active" and o.end_ts <= time.time() {
+            result = ActionResult(ok=False, message="Update the offer end time before resuming an expired offer.");
         } else {
             o.status = status;
             result = ActionResult(ok=True, message="Offer resumed." if status == "active" else "Offer paused.");

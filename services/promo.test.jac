@@ -2,6 +2,8 @@
 
 import time;
 import from services.seed { seed_demo }
+import from unittest.mock { patch }
+import from jaclang { JacRuntime as Jac }
 
 
 def _offer_by_title(title: str) -> Offer {
@@ -248,4 +250,211 @@ test "offer views carry the location's access context with the server clock" {
     stale = _view(noodle, now + 10 * 86400.0);
     assert stale.access_context.state == "needs_recheck";
     assert all([n.entrance_instruction == "" for n in stale.access_context.notices]);
+}
+
+
+test "offer creation rejects invalid content without publishing any nodes" {
+    _ensure_seed();
+    r = _restaurant_by_slug("arbor-leaf-kitchen");
+    before = len([r ->:Publishes:->]);
+    now = 1790449200.0;  # 2026-09-26 19:00 UTC.
+    cases = [
+        ("T" * 121, "5", "7", "10", "2026-09-26 16:00", "vegan"),
+        ("Valid title", "10000", "", "10", "2026-09-26 16:00", "vegan"),
+        ("Valid title", "5", "4", "10", "2026-09-26 16:00", "vegan"),
+        ("Valid title", "5", "0", "10", "2026-09-26 16:00", "vegan"),
+        ("Valid title", "5", "7", "1_0", "2026-09-26 16:00", "vegan"),
+        ("Valid title", "5", "7", "10001", "2026-09-26 16:00", "vegan"),
+        ("Valid title", "5", "7", "10", "2026-09-26 10:59", "vegan"),
+        ("Valid title", "5", "7", "10", "2026-09-26 16:00", "imaginary-diet")
+    ];
+    for (title, price, regular, qty, end, diets) in cases {
+        result = _save_offer(r, "", title, "Lunch special", price, regular,
+            "2026-09-26 10:00", end, qty, "Show student ID", "One per person",
+            diets, "Lunch bowl", now);
+        assert not result.ok, result.message;
+        assert result.code == "";
+        assert len([r ->:Publishes:->]) == before;
+    }
+}
+
+
+test "local offer dates accept browser input and reject impossible Detroit times" {
+    assert _parse_local("2026-09-26T11:00") == 1790434800.0;
+    assert _parse_local("2026-09-26 11:00") == 1790434800.0;
+    assert _parse_local("2026-03-08 02:30") is None;
+    assert _parse_local("2026-11-01 01:30") is None;
+    assert _parse_local("2026-02-30 12:00") is None;
+}
+
+
+test "offer editing keeps the same listing paused state and original claim" {
+    _ensure_seed();
+    r = _restaurant_by_slug("arbor-leaf-kitchen");
+    now = 1790434800.0;
+    before = len([r ->:Publishes:->]);
+    created = _save_offer(r, "", "New lunch", "Lunch special", "5.25", "7",
+        "2026-09-26 10:00", "2026-09-26 16:00", "3", "Show student ID",
+        "One per person", " Vegan, vegan ", "Lunch bowl", now);
+    assert created.ok, created.message;
+    o = _owned_offer(r, created.code) as Offer;
+    assert o.price_cents == 525 and o.dietary == ["vegan"];
+    assert o.status == "active" and o.qr_ready;
+    held = _claim(created.code, "save-claim-student", now);
+    assert held.ok;
+    o.status = "paused";
+    updated = _save_offer(r, created.code, "Updated lunch", "New description", "6", "8",
+        "2026-09-26 10:00", "2026-09-26 17:00", "3", "New eligibility",
+        "New terms", "vegan", "Lunch bowl", now + 60);
+    assert updated.ok and updated.code == created.code;
+    assert len([r ->:Publishes:->]) == before + 1;
+    assert o.title == "Updated lunch" and o.status == "paused";
+    assert _remaining(o, now + 60) == 2;
+    snapshot = _preview(r, held.qr_payload, now + 60);
+    assert snapshot.ok and snapshot.title_snapshot == "New lunch";
+    assert snapshot.price_cents == 525 and snapshot.terms == "One per person";
+}
+
+
+test "invalid offer edits leave listing and menu relationships unchanged" {
+    _ensure_seed();
+    r = _restaurant_by_slug("arbor-leaf-kitchen");
+    now = 1790434800.0;
+    saved = _save_offer(r, "", "Protected lunch", "Original description", "5", "7",
+        "2026-09-26 10:00", "2026-09-26 16:00", "2", "Student ID",
+        "Original terms", "vegan", "Original bowl", now);
+    assert saved.ok;
+    o = _owned_offer(r, saved.code) as Offer;
+    assert _claim(saved.code, "stock-student-1", now).ok;
+    assert _claim(saved.code, "stock-student-2", now).ok;
+    rejected = _save_offer(r, saved.code, "Replacement", "Replacement description", "6", "8",
+        "2026-09-26 10:00", "2026-09-26 17:00", "1", "New ID",
+        "New terms", "vegan", "Replacement bowl", now);
+    assert not rejected.ok and "quantity" in rejected.message;
+    assert o.title == "Protected lunch" and o.description == "Original description";
+    assert o.price_cents == 500 and o.quantity == 2 and o.terms == "Original terms";
+    assert [m.name for m in [o ->:Features:->]] == ["Original bowl"];
+    oversized = _save_offer(r, saved.code, "Replacement", "D" * 2001, "6", "8",
+        "2026-09-26 10:00", "2026-09-26 17:00", "2", "New ID",
+        "New terms", "vegan", "Replacement bowl", now);
+    assert not oversized.ok;
+    assert o.title == "Protected lunch" and o.description == "Original description";
+}
+
+
+test "merchant profile rejects invalid input with a failure and no partial write" {
+    _ensure_seed();
+    r = _restaurant_by_slug("arbor-leaf-kitchen");
+    original = r.name;
+    original_address = (_location_of(r) as Location).address;
+    with patch.dict(update_profile.__globals__, {"_merchant": lambda () -> Restaurant { return r; }}) {
+        result = update_profile("", "Changed cuisine", "Changed blurb", "Changed address", "", "", "");
+        assert not result.ok, "Invalid profile must not report success";
+        assert result.name == original and result.address == original_address;
+        long_result = update_profile("R" * 121, "Changed cuisine", "Changed blurb", "Changed address", "", "", "");
+        assert not long_result.ok;
+        assert long_result.name == original and long_result.address == original_address;
+    }
+}
+
+
+test "expired offers must receive a future deadline before they can resume" {
+    _ensure_seed();
+    r = _restaurant_by_slug("arbor-leaf-kitchen");
+    now = time.time();
+    o = Offer(title="Ended paused offer", qr_ready=True, status="paused", quantity=2,
+        start_ts=now - 7200, end_ts=now - 3600);
+    r +>:Publishes():+> o;
+    with patch.dict(set_offer_status.__globals__, {"_merchant": lambda () -> Restaurant { return r; }}) {
+        result = set_offer_status(jid(o), "active");
+        assert not result.ok and "end" in result.message;
+        assert o.status == "paused";
+    }
+}
+
+
+test "merchant profile saves normalized fields and is readable after commit" {
+    r = Restaurant(slug="profile-test", name="Profile Test (Demo)", is_demo=True);
+    root.shared ++> r;
+    with patch.dict(update_profile.__globals__, {"_merchant": lambda () -> Restaurant { return r; }}) {
+        result = update_profile("  Updated Profile (Demo)  ", "  Cafe  ", "  Lunch and coffee  ",
+            "  123 Main St  ", "  Downtown  ", "  Use Main St door  ", "  2026-09-26  ");
+        assert result.ok, result.message;
+        assert result.name == "Updated Profile (Demo)" and result.address == "123 Main St";
+        assert result.cuisine == "Cafe" and result.blurb == "Lunch and coffee";
+    }
+    persisted = _restaurant_by_slug("profile-test");
+    loc = _location_of(persisted) as Location;
+    assert persisted.name == "Updated Profile (Demo)" and loc.address == "123 Main St";
+    assert loc.neighborhood == "Downtown" and loc.entrance_note == "Use Main St door";
+    assert loc.note_date == "2026-09-26";
+}
+
+
+test "offer edits count all held and redeemed units even if old quantity is inconsistent" {
+    _ensure_seed();
+    r = _restaurant_by_slug("arbor-leaf-kitchen");
+    now = 1790434800.0;
+    saved = _save_offer(r, "", "Reconciled stock", "Lunch", "5", "7",
+        "2026-09-26 10:00", "2026-09-26 16:00", "2", "Student ID",
+        "One per student", "", "", now);
+    assert saved.ok;
+    redeemed = _claim(saved.code, "stock-redeemed-student", now);
+    assert redeemed.ok and _redeem(r, redeemed.qr_payload, now).ok;
+    assert _claim(saved.code, "stock-held-student", now).ok;
+    o = _owned_offer(r, saved.code) as Offer;
+    o.quantity = 1;  # Simulate an older/imported inconsistent catalog value.
+    rejected = _save_offer(r, saved.code, "Edited stock", "Lunch", "5", "7",
+        "2026-09-26 10:00", "2026-09-26 16:00", "1", "Student ID",
+        "One per student", "", "", now);
+    assert not rejected.ok and "2 already claimed or redeemed" in rejected.message;
+    assert o.title == "Reconciled stock";
+}
+
+
+test "failed mutation releases its lock without committing an abandoned draft" {
+    _ensure_seed();
+    commit();
+    abandoned_id = "";
+    fd = _lock();
+    try {
+        try {
+            r = _restaurant_by_slug("arbor-leaf-kitchen");
+            abandoned = Offer(title="Abandoned mutation", qr_ready=True, quantity=1);
+            r +>:Publishes():+> abandoned;
+            abandoned_id = jid(abandoned);
+            raise ValueError("Simulated request failure before completion");
+        } finally {
+            _unlock(fd);
+        }
+    } except ValueError {
+        # This is the served runtime's exception lifecycle: discard the failed
+        # attempt before retrying. Cleanup must not have committed it already.
+        Jac.get_context().mem.abort();
+    }
+    assert _find_offer(abandoned_id) is None;
+    next_fd = _lock();
+    _unlock(next_fd);
+}
+
+
+def _raise_lock_test_error() {
+    raise ValueError("Simulated refresh failure while acquiring mutation lock");
+}
+
+
+test "lock refresh failure closes the file descriptor" {
+    fd = os.open(LOCK_PATH, os.O_CREAT | os.O_RDWR, 384);
+    closed = False;
+    try {
+        with patch("os.open", return_value=fd) {
+            with patch.dict(_lock.__globals__, {"commit": _raise_lock_test_error}) {
+                try { _lock(); } except ValueError {}
+            }
+        }
+        try { _ = os.fstat(fd); } except OSError { closed = True; }
+        assert closed, "Failed lock acquisition must not leak its descriptor";
+    } finally {
+        if not closed { os.close(fd); }
+    }
 }

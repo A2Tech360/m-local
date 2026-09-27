@@ -8,7 +8,8 @@ import {createOnboardingLimit} from './onboarding-ingress.mjs';
 const functions = new Set(['list_offers', 'get_offer', 'claim_offer', 'merchant_portal',
   'update_profile', 'save_offer', 'set_offer_status', 'resolve_claim', 'redeem_claim',
   'cancel_claim', 'offer_defaults', 'current_session', 'request_email_code', 'verify_email_code',
-  'get_business_draft', 'import_business_website', 'save_business_draft']);
+  'get_business_draft', 'import_business_website', 'save_business_draft',
+  'get_account_profile', 'save_account_profile']);
 
 export function createShareProxy({ upstreamHost = 'localhost', upstreamPort = 8200,
   trustCloudflare = true, trustFunnel = false, healthCheck = false } = {}) {
