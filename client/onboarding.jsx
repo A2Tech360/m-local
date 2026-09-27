@@ -1,88 +1,93 @@
 import React, {useEffect, useRef, useState} from 'react';
+import {BrandLogo, uiFont, formStack, formInput, formButton, formSecondary, formHint} from './ui.jsx';
 
-const stack={display:'flex',flexDirection:'column',gap:12,minWidth:0,color:'#1d1a16',fontFamily:'system-ui, sans-serif'};
-const input={width:'100%',minWidth:0,boxSizing:'border-box',minHeight:48,padding:'12px',fontSize:16,border:'1px solid #c9bfb2',borderRadius:10,background:'#fff',color:'#1d1a16'};
-const button={...input,background:'#b83a0b',color:'#fff',fontWeight:700,cursor:'pointer',borderColor:'#b83a0b'};
-const secondary={...button,background:'#fff',color:'#3a342c',borderColor:'#c9bfb2'};
-const hint={fontSize:13,lineHeight:1.5,margin:0,color:'#6b6157'};
+const stack=formStack;
+const input=formInput;
+const button=formButton;
+const secondary=formSecondary;
+const hint=formHint;
 const label={...stack,gap:6,fontSize:14,fontWeight:600};
-function Notice({children}) {return children ? <p role="status" aria-live="polite" style={{...hint,color:'#1f3a5f'}}>{children}</p>:null;}
+function Notice({children}) {return children ? <p role="status" aria-live="polite" style={{...hint,color:'#02305C'}}>{children}</p>:null;}
 function Input({title,...props}) {return <label style={label}>{title}<input style={input} {...props}/></label>;}
 
-const audienceKey='mlocal_audience';
-export function readAudience() {
- try {const value=localStorage.getItem(audienceKey);return ['student','business'].includes(value)?value:'';}catch{return '';}
-}
-export function rememberAudience(value) {
- if(!['student','business'].includes(value))return;
- try {localStorage.setItem(audienceKey,value);}catch{/* Browsing still works when storage is unavailable. */}
-}
 export function audienceForSession(session) {
  if(!session?.authenticated)return '';
  return session.role==='student'?'student':['business','merchant'].includes(session.role)?'business':'';
 }
 
 export function AudienceWelcome({onChoose}) {
- const choice={...secondary,textAlign:'left',padding:'22px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,borderRadius:16};
- return <main style={{height:'100%',overflowY:'auto',background:'#f7f3ec',fontFamily:'system-ui, sans-serif',color:'#1d1a16'}}>
-  <style>{'.mlocal-choice:focus-visible{outline:3px solid #1f3a5f;outline-offset:4px}.mlocal-choice:hover{filter:brightness(.97)}'}</style>
+ const choice={...secondary,textAlign:'left',padding:'22px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,borderRadius:20};
+ return <main style={{height:'100%',overflowY:'auto',background:'#F9F6F0',fontFamily:uiFont,color:'#0B1F38'}}>
+  <style>{'.mlocal-choice:focus-visible{outline:3px solid #02305C;outline-offset:4px}.mlocal-choice:hover{filter:brightness(.97)}'}</style>
   <div style={{...stack,boxSizing:'border-box',minHeight:'100%',maxWidth:480,margin:'0 auto',padding:'36px 24px',justifyContent:'center',gap:28}}>
-   <div style={{fontSize:12,fontWeight:750,letterSpacing:2,color:'#b83a0b'}}>M-LOCAL / ANN ARBOR</div>
+   <BrandLogo/>
    <header style={{...stack,gap:12}}>
-    <h1 style={{fontSize:36,lineHeight:1.08,letterSpacing:-1.2,margin:0,fontWeight:800}}>Welcome to M-Local</h1>
-    <p style={{...hint,fontSize:17}}>Good things are happening nearby.<br/>How will you join in?</p>
+    <p style={{...hint,fontWeight:700}}>Welcome to M-Local</p>
+    <h1 style={{fontSize:38,lineHeight:1.04,letterSpacing:-1.2,margin:0,fontWeight:900}}>Good things are happening nearby.</h1>
+    <p style={{...hint,fontSize:17}}>How will you join in?</p>
    </header>
    <div style={{...stack,gap:12}}>
-    <button className="mlocal-choice" type="button" style={{...choice,background:'#b83a0b',borderColor:'#b83a0b',color:'#fff'}} onClick={()=>onChoose('student')}>
+    <button className="mlocal-choice ml-welcome-choice" type="button" style={{...choice,background:'#02305C',borderColor:'#02305C',color:'#fff'}} onClick={()=>onChoose('student')}>
      <span style={{...stack,gap:8,color:'inherit'}}><span style={{fontSize:21,fontWeight:750}}>Find local deals</span><span style={{fontSize:14,lineHeight:1.5,fontWeight:400}}>Join with your U-M email.<br/>Discover offers from local favorites.</span></span><span aria-hidden="true" style={{fontSize:26}}>→</span>
     </button>
-    <button className="mlocal-choice" type="button" style={choice} onClick={()=>onChoose('business')}>
+    <button className="mlocal-choice ml-welcome-choice" type="button" style={choice} onClick={()=>onChoose('business')}>
      <span style={{...stack,gap:8,color:'inherit'}}><span style={{fontSize:21,fontWeight:750}}>List my business</span><span style={{fontSize:14,lineHeight:1.5,fontWeight:400}}>Create your business profile.<br/>Connect with the U-M community.</span></span><span aria-hidden="true" style={{fontSize:26}}>→</span>
     </button>
    </div>
-   <p style={hint}>New here or coming back? Start with your path.<br/>We’ll remember it on this browser.</p>
   </div>
  </main>;
 }
 
-export function EmailOnboarding({kind='student',initialMode='signin',onSwitchAudience,requestCode,verifyCode,onVerified,onCancel,cancelLabel='Keep browsing',inputRef}) {
- const [name,setName]=useState(''),[value,setValue]=useState('');
- const [mode,setMode]=useState(initialMode);
+export function EmailOnboarding({kind='student',initialMode='signin',onSwitchAudience,requestCode,verifyCode,onVerified,onCancel,cancelLabel='Back',inputRef}) {
+ const [name,setName]=useState(''),[value,setValue]=useState(''),[mode,setMode]=useState(initialMode);
  const [code,setCode]=useState(''),[challenge,setChallenge]=useState(null),[message,setMessage]=useState('');
  const [busy,setBusy]=useState(false),[cooldown,setCooldown]=useState(0);
- const mounted=useRef(true),inFlight=useRef(false),codeRef=useRef(null);
- useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
- useEffect(()=>{setValue('');setCode('');setChallenge(null);setMessage('');setCooldown(0);},[kind]);
+ const mounted=useRef(true),inFlight=useRef(false),codeRef=useRef(null),emailRef=useRef(null),revision=useRef(0),previousKind=useRef(kind);
+ const quiet={border:0,background:'transparent',padding:'6px 0',minHeight:36,color:'#02305C',font:'700 13px Figtree, system-ui',cursor:'pointer',textDecoration:'underline',textUnderlineOffset:3};
+ useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;revision.current++;};},[]);
+ useEffect(()=>{if(previousKind.current===kind)return;previousKind.current=kind;revision.current++;inFlight.current=false;setBusy(false);setValue('');setCode('');setChallenge(null);setMessage('');setCooldown(0);},[kind]);
  useEffect(()=>{if(cooldown<=0)return;const timer=setTimeout(()=>setCooldown(v=>Math.max(0,v-1)),1000);return()=>clearTimeout(timer);},[cooldown]);
- useEffect(()=>{if(challenge)codeRef.current?.focus();else inputRef?.current?.focus();},[challenge,kind]);
- async function run(action){if(inFlight.current)return;inFlight.current=true;setBusy(true);setMessage('');try{await action();}catch{if(mounted.current)setMessage('Could not connect. Your entries are kept; please try again.');}finally{inFlight.current=false;if(mounted.current)setBusy(false);}}
- async function send(){await run(async()=>{const reply=await requestCode(value.trim(),kind,mode==='signup'?name.trim():'');if(!mounted.current)return;setMessage(reply.message);if(reply.ok){setChallenge(reply);setCode('');setCooldown(reply.retry_after||60);}});}
- async function verify(){await run(async()=>{const reply=await verifyCode(challenge.challenge,code);if(!mounted.current)return;if(!reply.ok){setMessage(reply.message);return;}await onVerified(reply.token);});}
- return <form style={stack} onSubmit={e=>{e.preventDefault();challenge?verify():send();}}>
+ useEffect(()=>{if(challenge)codeRef.current?.focus();else (inputRef?.current||emailRef.current)?.focus();},[challenge,kind]);
+ async function run(action){
+  if(inFlight.current)return;inFlight.current=true;setBusy(true);setMessage('');
+  const ticket=revision.current, current=()=>mounted.current&&ticket===revision.current;
+  try{await action(current);}catch{if(current())setMessage('Could not connect. Your entries are kept; please try again.');}
+  finally{if(current()){inFlight.current=false;setBusy(false);}}
+ }
+ async function send(){await run(async current=>{const reply=await requestCode(value.trim(),kind,mode==='signup'?name.trim():'');if(!current())return;setMessage(reply.ok?'':reply.message);if(reply.ok){setChallenge(reply);setCode('');setCooldown(reply.retry_after||60);}});}
+ async function verify(){await run(async current=>{const reply=await verifyCode(challenge.challenge,code);if(!current())return;if(!reply.ok){setMessage(reply.message);return;}await onVerified(reply.token);});}
+ function switchMode(){setMode(mode==='signup'?'signin':'signup');setMessage('');}
+ return <form aria-label={challenge?'Verify your email':mode==='signup'?'Create an account':'Sign in'} className="ml-auth" style={{...stack,gap:20}} onSubmit={e=>{e.preventDefault();challenge?verify():send();}}>
+  <style>{'.ml-auth button:focus-visible,.ml-auth select:focus-visible,.ml-auth input:focus-visible{outline:3px solid #02305C;outline-offset:3px}.ml-auth button:disabled{opacity:.55;cursor:default}.ml-auth select{max-width:100%}'}</style>
+  <header style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16}}>
+   <div style={{...stack,gap:8}}>
+    {!challenge&&<select aria-label="Account type" value={kind} disabled={busy} onChange={e=>onSwitchAudience(e.target.value)} style={{font:'700 13px Figtree, system-ui',color:'#5F6B7A',border:'1px solid #DDD5C7',borderRadius:6,background:'#F9F6F0',padding:'7px 9px'}}><option value="student">U-M student</option><option value="business">Business</option></select>}
+    <h3 style={{fontSize:26,lineHeight:1.2,margin:0}}>{challenge?'Check your email':mode==='signup'?'Create your account':'Sign in'}</h3>
+   </div>
+   <button style={{...quiet,whiteSpace:'nowrap',color:'#5F6B7A'}} type="button" disabled={busy} onClick={onCancel}>{cancelLabel}</button>
+  </header>
   {!challenge ? <>
-   <h3 style={{fontSize:20,margin:0}}>{mode==='signup'?'Create your account':'Welcome back'}</h3>
+   <p style={hint}>{mode==='signup'?'Start with your name and email. We’ll send a code to verify it.':'Enter your email. We’ll send a code to sign you in.'}</p>
    {mode==='signup'&&<Input title="Your name" placeholder="Your name" autoComplete="name" maxLength={80} value={name} onChange={e=>setName(e.target.value)} required disabled={busy}/>}
    {kind==='student' ? <label style={label}>U-M email
-    <div style={{display:'flex',border:'1px solid #c9bfb2',borderRadius:10,overflow:'hidden',minWidth:0}}>
-     <input ref={inputRef} autoFocus aria-label="U-M uniqname" aria-describedby="umich-email-help" style={{...input,border:0,borderRadius:0,flex:1}} placeholder="uniqname" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} pattern="[A-Za-z][A-Za-z0-9]{1,31}" maxLength={32} value={value} onChange={e=>setValue(e.target.value)} required disabled={busy}/>
-     <span style={{padding:'13px 10px',background:'#eee9e2',color:'#6b6157',fontWeight:500,whiteSpace:'nowrap'}}>@umich.edu</span>
-    </div>
-    <span id="umich-email-help" style={hint}>Enter your uniqname. We’ll email a code to verify your U-M inbox. No university password needed.</span>
-   </label> : <Input title="Work email" placeholder="you@business.com" type="email" autoComplete="email" maxLength={254} value={value} onChange={e=>setValue(e.target.value)} required disabled={busy}/>}
-   {kind==='business'&&<p style={hint}>{mode==='signup'?'Verify your work email, then start your business profile from your website or enter it yourself.':'Use the same work email you used to create your business account.'}</p>}
-   <button style={button} disabled={busy}>{busy?'Sending...':'Send verification code'}</button>
-   <p style={hint}>{mode==='signup'?'Your email code creates your account. Already registered? Use sign in.':'We’ll send a fresh email code to sign you in. No password needed.'}</p>
+    <div style={{display:'flex',border:'1px solid #DDD5C7',borderRadius:10,overflow:'hidden',minWidth:0}}>
+     <input ref={inputRef||emailRef} aria-label="U-M uniqname" aria-describedby="umich-email-help" style={{...input,border:0,borderRadius:0,flex:1}} placeholder="uniqname" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} pattern="[A-Za-z][A-Za-z0-9]{1,31}" maxLength={32} value={value} onChange={e=>setValue(e.target.value)} required disabled={busy}/>
+     <span style={{padding:'13px 10px',background:'#EFE9DE',color:'#5F6B7A',fontWeight:500,whiteSpace:'nowrap'}}>@umich.edu</span>
+    </div><span id="umich-email-help" style={hint}>Use your uniqname. No university password needed.</span>
+   </label> : <label style={label}>Work email<input ref={inputRef||emailRef} style={input} placeholder="you@business.com" type="email" autoComplete="email" maxLength={254} value={value} onChange={e=>setValue(e.target.value)} required disabled={busy}/></label>}
+   <Notice>{message}</Notice>
+   <button type="submit" style={button} disabled={busy}>{busy?'Sending...':'Send verification code'}</button>
+   <p style={{...hint,textAlign:'center'}}>{mode==='signup'?'Already registered? ':'New here? '}<button style={quiet} type="button" disabled={busy} onClick={switchMode}>{mode==='signup'?'Sign in':'Create an account'}</button></p>
   </> : <>
-   <strong>Check your email</strong><p style={hint}>Enter the code sent to <strong>{challenge.email}</strong>. It expires in 10 minutes.</p>
-   <label style={label}>Verification code<input ref={codeRef} style={{...input,letterSpacing:6,fontSize:24}} aria-label="Verification code" placeholder="123456" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,''))} required disabled={busy}/></label>
-   <button style={button} disabled={busy}>{busy?'Verifying...':'Verify and continue'}</button>
-   <button style={secondary} type="button" disabled={busy||cooldown>0} onClick={send}>{cooldown>0?`Resend code in ${cooldown}s`:'Resend code'}</button>
-   <button style={secondary} type="button" disabled={busy} onClick={()=>{setChallenge(null);setCode('');setMessage('');}}>Change email</button>
+   <p style={hint}>Enter the 6-digit code sent to <strong>{challenge.email}</strong>.</p>
+   <label style={label}>Verification code<input ref={codeRef} style={{...input,letterSpacing:10,fontSize:28,fontVariantNumeric:'tabular-nums',textAlign:'center',minHeight:64}} aria-label="Verification code" placeholder="123456" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,''))} required disabled={busy}/></label>
+   <Notice>{message}</Notice>
+   <button type="submit" style={button} disabled={busy}>{busy?'Verifying...':'Verify and continue'}</button>
+   <div style={{display:'flex',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
+    <button style={quiet} type="button" disabled={busy} onClick={()=>{setChallenge(null);setCode('');setMessage('');}}>Change email</button>
+    <button style={quiet} type="button" disabled={busy||cooldown>0} onClick={send}>{cooldown>0?`Resend code in ${cooldown}s`:'Resend code'}</button>
+   </div><p style={hint}>The code expires in 10 minutes.</p>
   </>}
-  <Notice>{message}</Notice>
-  <button style={secondary} type="button" disabled={busy} onClick={()=>{setMode(mode==='signup'?'signin':'signup');setChallenge(null);setCode('');setMessage('');setCooldown(0);}}>{mode==='signup'?'I already have an account':'Create an account'}</button>
-  {!challenge&&<button style={secondary} type="button" disabled={busy} onClick={()=>onSwitchAudience(kind==='student'?'business':'student')}>{kind==='student'?'Switch to business':'Switch to U-M deals'}</button>}
-  <button style={secondary} type="button" disabled={busy} onClick={onCancel}>{cancelLabel}</button>
  </form>;
 }
 
@@ -108,7 +113,7 @@ export function BusinessOnboarding({getDraft,importWebsite,saveDraft,onActivated
  }
  async function run(action,activate=false){if(inFlight.current)return;inFlight.current=true;setBusy(true);setMessage('');try{const reply=await action();if(!mounted.current)return;if(reply.ok){setDraft({...empty,...reply});setConfirmed(false);}setMessage(reply.message);if(reply.ok&&reply.status==='active'&&activate)await openManagement();}catch{if(mounted.current)setMessage('Could not connect. Your entries are kept; please retry.');}finally{inFlight.current=false;if(mounted.current)setBusy(false);}}
  const imported=()=>run(()=>importWebsite(draft.website));
- return <section aria-label="Create your business profile" style={{...stack,paddingTop:16,borderTop:'1px solid #e7dfd3'}}>
+ return <section aria-label="Create your business profile" style={{...stack,paddingTop:16,borderTop:'1px solid #DDD5C7'}}>
   <h3 style={{margin:0,fontSize:20}}>{draft.name?'Your business profile':'Bring your business to M-Local'}</h3>
   {draft.status==='pending_review'&&<p role="status" style={hint}>Your saved details are here. Save your business profile to start posting.</p>}
   {draft.status==='active'&&<><p role="status" style={hint}>Your business profile is saved.</p><button style={secondary} type="button" disabled={busy} onClick={retryManagement}>{busy?'Opening offer management...':'Open offer management'}</button></>}

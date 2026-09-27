@@ -30,10 +30,10 @@ def main():
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))
         page.goto(origin, wait_until='networkidle')
-        expect(page.get_by_role('heading', name='Welcome to M-Local')).to_be_visible()
+        expect(page.get_by_text('Welcome to M-Local', exact=True)).to_be_visible()
         page.get_by_role('button', name='List my business', exact=False).click()
         expect(page.get_by_placeholder('Your name')).to_be_visible()
-        page.get_by_role('button', name='I already have an account', exact=True).click()
+        page.get_by_role('button', name='Sign in', exact=True).click()
         expect(page.get_by_placeholder('Your name')).to_have_count(0)
         page.screenshot(path=str(args.screenshots / 'business-signin-390.png'))
         expect(page.get_by_role('button', name='Existing restaurant sign-in', exact=True)).to_have_count(0)

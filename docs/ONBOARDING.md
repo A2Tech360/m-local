@@ -1,13 +1,12 @@
 # Email and business onboarding
 
-On a first visit, choose **Find local deals** or **List my business**. The app
-opens that path's email form and remembers the choice on this browser, including
-after sign-out. Use **Switch to business** or **Switch to U-M deals** on the
-email form to change paths. An
-existing authenticated account's server role overrides a stale browser choice.
-The browser preference controls presentation only; server permissions still
-control every action. A new browser or a new temporary phone-link domain asks
-again because browser storage is scoped to the site's origin.
+Signed-out visitors always see the same welcome screen with **Find local deals**
+and **List my business**. Choosing either opens its email form. **Back** returns
+to both choices, and the compact **Account type** selector can also switch forms.
+Logout returns to this welcome screen. Previously saved path choices are ignored.
+Valid authenticated sessions still restore automatically; the server account's
+role determines the available screens and permissions. App content stays hidden
+until the session is authenticated.
 
 Students/community members enter their uniqname beside a fixed `@umich.edu`.
 The server constructs the address. Business owners enter their full work email.
@@ -15,7 +14,7 @@ A six-digit email code creates an account or resumes its existing Jac session.
 No university password is collected. Email verification proves inbox access,
 not current enrollment or official U-M endorsement.
 
-**Create an account** asks for your name and email. **I already have an account**
+**Create an account** asks for your name and email. **Sign in**
 switches to returning sign-in, which only needs your email. The server checks
 account existence after successful email verification. Returning sign-in never
 overwrites your saved name or changes your account type.
@@ -25,6 +24,12 @@ public `/user/login` route have been removed. Internal provisioning tools still
 work against the loopback API for isolated tests. Existing data is preserved.
 Seeded sample offers are hidden from public browsing; new business offers appear
 normally. The feed shows an empty state when no real offers have been published.
+
+The sign-in form has one primary action per phase. Signup/sign-in is a small text
+link; account type is a selector rather than another full-width button. After a
+code is requested, these controls disappear, leaving verification, resend, and
+change-email actions. Duplicate account headings and explanatory paragraphs have
+been removed. Business setup still follows successful verification.
 
 Signed-in members can open **Account** to edit their display name, cancel unsaved
 changes, and view their email and access status. Email and account type are not

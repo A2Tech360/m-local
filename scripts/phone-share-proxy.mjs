@@ -20,7 +20,8 @@ export function createShareProxy({ upstreamHost = 'localhost', upstreamPort = 82
     const path = req.url.split('?')[0];
     const read = ['GET', 'HEAD'].includes(req.method);
     const allowed = read && (path === '/' || path === '/index.html' || path === '/favicon.ico' || path === '/static/client.js'
-      || /^\/assets\/[\w-]+\.(js|css|png|svg|ico|webp|woff2?)$/.test(path))
+      || /^\/assets\/[\w-]+\.(js|css|png|svg|ico|webp|woff2?)$/.test(path)
+      || /^\/static\/assets\/brand\/[\w-]+\.(png|ttf)$/.test(path))
       || req.method === 'POST' && functions.has(path.replace(/^\/function\//, '')) && path.startsWith('/function/');
     res.setHeader('x-content-type-options', 'nosniff');
     res.setHeader('referrer-policy', 'no-referrer');
