@@ -24,6 +24,8 @@ jobs:
         run: ./scripts/check.sh
       - name: Run core tests
         run: ./scripts/test.sh core
+      - name: Run business insights tests
+        run: ./scripts/test.sh insights
       - name: Run onboarding security tests
         run: python3 -m unittest discover -s tests/onboarding
       - name: Test deployment source and data separation

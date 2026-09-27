@@ -2,7 +2,7 @@
 source "$(dirname -- "${BASH_SOURCE[0]}")/runtime.sh"
 suite="${1:-core}"
 case "$suite" in
-    core|context|all) ;;
+    core|context|insights|all) ;;
     onboarding) python3 -m unittest discover -s tests/onboarding; exit $? ;;
     integration)
         node --test tests/ui/*.test.mjs tests/tooling/*.test.mjs
@@ -13,8 +13,12 @@ case "$suite" in
         fi
         python3 tests/integration/qr_http.py --api "${MLOCAL_API_URL:-http://localhost:8001}" --accounts "$accounts"
         exit 0 ;;
-    *) echo 'Usage: scripts/test.sh core|context|integration|onboarding|all' >&2; exit 2 ;;
+    *) echo 'Usage: scripts/test.sh core|context|insights|integration|onboarding|all' >&2; exit 2 ;;
 esac
+if [[ "$suite" == insights ]]; then
+    python3 -m unittest discover -s tests/analytics -p test_analytics.py
+    node --test tests/analytics/insights.test.mjs
+fi
 mkdir -p -- "$JAC_CACHE_HOME/test-runs"
 test_root="$(mktemp -d "$JAC_CACHE_HOME/test-runs/$suite-XXXXXXXX")"
 # Copy only source/configuration. The distinct path gives Jac a separate app store.
@@ -26,6 +30,8 @@ echo "Isolated test workspace (retained for diagnosis): $test_root"
 cd -- "$test_root"
 if [[ "$suite" == context ]]; then
     "$JAC_BIN" test services/context.test.jac
+elif [[ "$suite" == insights ]]; then
+    "$JAC_BIN" test tests/analytics/backend_tests.jac
 else
     "$JAC_BIN" test services/promo.test.jac services/qr.test.jac services/session.test.jac services/business_onboarding.test.jac \
         services/taste.test.jac services/taste_sandbox.test.jac services/foryou.test.jac

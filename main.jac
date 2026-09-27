@@ -37,6 +37,7 @@ import from services.foryou {
 import from services.onboarding { request_email_code, verify_email_code }
 import from services.business_onboarding { get_business_draft, import_business_website, save_business_draft }
 import from services.account_profile { get_account_profile, save_account_profile }
+import from services.analytics { merchant_insights }
 
 import from "@jac/mobui" {
     View,
@@ -53,6 +54,9 @@ import from "./client/onboarding.jsx" { EmailOnboarding, BusinessOnboarding, Aud
 import from "./client/account-profile.jsx" { AccountProfile }
 import from "./client/offer-editor.jsx" { OfferEditor }
 import from "./client/qr.jsx" { ClaimQr, ClaimScanner }
+import from "./client/insights.jsx" { BusinessInsights }
+# Include the JSX helper explicitly for Jac 0.37.23.
+import from "./client/insights-support.mjs" { normalizeInsights }
 import from "./client/scan-controller.mjs" { isClaimPayload }
 import from "./client/feed-support.jsx" { useFeedRefresh }
 import from "./client/feed-validation.mjs" { validateHomeFeed }
@@ -100,7 +104,7 @@ def Message(text: str, good: bool) -> JsxElement {
 def Field(
     label: str, value: str, onChange: any, placeholder: str, multiline: bool, disabled: bool = False
 ) -> JsxElement {
-    return <View style={[styles.field, styles.flex1]}>
+    return <View style={styles.field}>
         <Text style={styles.label}>{label}</Text>
         <TextInput
             accessibilityLabel={label}
@@ -294,7 +298,7 @@ def:pub app -> JsxElement {
 
     viewport = useWindowDimensions();
     useFeedRefresh({
-        "enabled": sessionReady and session is not None and session.authenticated and audience != "" and tab == "discover" and selected == "" and not tastesOpen,
+        "enabled": sessionReady and session is not None and session.authenticated and session.role == "student" and audience != "" and tab == "discover" and selected == "" and not tastesOpen,
         "onRefresh": lambda { return refresh(); },
         "busy": loading
     });
@@ -406,10 +410,10 @@ def:pub app -> JsxElement {
         }
         if epoch == sessionEpoch.current {
             sessionReady = True;
-            if restored is not None and restored.authenticated { await loadOffers("", "any", []); }
+            if restored is not None and restored.authenticated and restored.role == "student" { await loadOffers("", "any", []); }
         }
         if epoch == sessionEpoch.current and restored is not None and restored.authenticated and restored.role == "merchant" {
-            tab = "merchant"; await openMerchant();
+            tab = "insights";
         }
     }
 
@@ -442,9 +446,7 @@ def:pub app -> JsxElement {
         if epoch != sessionEpoch.current { return False; }
         if fresh is None { return False; }
         if not fresh.authenticated or fresh.role != "merchant" or not fresh.restaurant_id { return False; }
-        session = fresh; businessOpen = False; tab = "merchant";
-        await openMerchant();
-        if epoch == sessionEpoch.current { await refresh(); }
+        session = fresh; businessOpen = False; tab = "insights";
         return True;
     }
 
@@ -465,8 +467,8 @@ def:pub app -> JsxElement {
         freshAudience = audienceForSession(fresh);
         if freshAudience { audience = freshAudience; rememberAudience(freshAudience); }
         businessOpen = fresh.role == "business";
-        await refresh();
-        if fresh.role == "merchant" { tab = "merchant"; await openMerchant(); }
+        if fresh.role == "student" { tab = "discover"; await refresh(); }
+        if fresh.role == "merchant" { tab = "insights"; }
     }
 
     async def finishEmail(token: str) {
@@ -669,7 +671,7 @@ def:pub app -> JsxElement {
         if busyRef.current { return; }
         tab = t; closeDetail();
         if t == "account" { accountOpen = True; }
-        if t != "discover" and session and session.role == "merchant" and not portal { openMerchant(); }
+        if t in ["merchant", "redeem"] and session and session.role == "merchant" and not portal { openMerchant(); }
     }
 
     def closeAuth() {
@@ -1051,8 +1053,16 @@ def:pub app -> JsxElement {
         </View>;
     }
 
+    def Insights() -> JsxElement {
+        if not session or session.role != "merchant" { return <View style={styles.content}><MerchantGate /></View>; }
+        return <View style={styles.content}>
+            <View style={styles.rowBetween}><Text style={styles.brand}>YOUR BUSINESS</Text>{LogoutLink()}</View>
+            <BusinessInsights key={session.actor_id} getInsights={merchant_insights} />
+        </View>;
+    }
+
     def TabButton(id: str, label: str, sub: str) -> JsxElement {
-        on = tab == id or (id == "merchant" and tab == "discover" and session and session.role == "merchant");
+        on = tab == id or (id == "insights" and tab == "discover" and session and session.role == "merchant");
         return <Pressable accessibilityRole="button" style={[styles.tab, styles.tabOn if on else {}]} disabled={busy} onPress={lambda { goTab(id); }}>
             <Text style={[styles.tabText, styles.tabTextOn if on else {}]}>{label}</Text>
             <Text style={styles.tabSub}>{sub}</Text>
@@ -1080,21 +1090,22 @@ def:pub app -> JsxElement {
 
     shown = tab;
     if role == "business" { shown = "account"; }
-    elif role == "merchant" and tab == "discover" { shown = "merchant"; }
-    elif not company and tab in ["merchant", "redeem"] { shown = "discover"; }
+    elif role == "merchant" and tab == "discover" { shown = "insights"; }
+    elif not company and tab in ["merchant", "redeem", "insights"] { shown = "discover"; }
 
     body = (
         AccountScreen() if shown == "account"
         else (Detail() if selected else Discover()) if shown == "discover"
-        else Merchant() if shown == "merchant" else Redeem()
+        else Insights() if shown == "insights" else Merchant() if shown == "merchant" else Redeem()
     );
 
     return <View style={[styles.screen, {"height": viewport.height}]}>
-        <View style={styles.frame}>
+        <View style={[styles.frame, {"maxWidth": 1040} if shown == "insights" else {}]}>
             <ScrollView style={[styles.scroll, {"height": viewport.height}]}>{body}</ScrollView>
             {(
                 <View style={styles.tabbar}>
                     {TabButton("discover", "Offers", "Nearby") if not company else <View />}
+                    {TabButton("insights", "Insights", "Metrics") if role == "merchant" else <View />}
                     {TabButton("merchant", "Manage", "Offers") if role == "merchant" else <View />}
                     {TabButton("redeem", "Redeem", "Scan") if role == "merchant" else <View />}
                     {TabButton("account", "Account", "You")}

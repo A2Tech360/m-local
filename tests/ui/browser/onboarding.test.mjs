@@ -127,7 +127,8 @@ test('business import fills an editable draft and requires confirmation before s
   assert.equal(ui.find('Save business profile').disabled,true);
   ui.fill('Business name','Reviewed Cafe');
   ui.document.querySelector('input[type="checkbox"]').click();ui.click('Save business profile');
-  await until(()=>ui.find('New offer'));
+  await until(()=>ui.find('Insights'));
+  ui.click('Manage');await until(()=>ui.find('New offer'));
   const request=ui.calls.find(c=>c.name==='save_business_draft');
   assert.equal(request.body.name,'Reviewed Cafe');assert.equal(request.body.confirmed,true);
   assert.equal('actor_id' in request.body,false);assert.equal('role' in request.body,false);

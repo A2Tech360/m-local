@@ -298,6 +298,7 @@ def _remaining(o: Offer, now: float) -> int {
 def _set_claim_status(c: Redemption, status: str, now: float) {
     c.status = status;
     if status == "redeemed" { c.redeemed_ts = now; }
+    elif status == "cancelled" { c.cancelled_ts = now; }
     for s in [c ->:UsesReservation:->] { s.status = status; }
 }
 
@@ -512,6 +513,7 @@ def _claim(offer_id: str, actor_id: str, now: float) -> ActionResult {
     c = Redemption(actor_id=actor_id, restaurant_slug=r.slug,
         qr_payload=new_qr_payload(), status="claimed", claimed_ts=now, expires_ts=expires,
         offer_title_snapshot=o.title, price_cents_snapshot=o.price_cents,
+        regular_price_cents_snapshot=o.regular_price_cents,
         terms_snapshot=o.terms, eligibility_snapshot=o.eligibility);
     o +>:ClaimedAs():+> c;
     slot = Reservation(status="claimed", expires_ts=expires);

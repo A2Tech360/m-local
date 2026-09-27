@@ -60,10 +60,15 @@ test('student menu is Offers and Account, and log out hides the deals',async()=>
  }finally{ui.close();}
 });
 
-test('restaurant lands on its offers with Manage, Redeem and Account and can log out',async()=>{
+test('restaurant lands on Insights with business navigation and can log out',async()=>{
  const ui=await app({role:'merchant',verified:true,audience:'business'});
  try{
-  await until(()=>has(ui,'New offer'),'restaurant offers load without a tap');
+  await until(()=>ui.calls.some(c=>c.name==='merchant_insights'),'private insights load on landing');
+  assert.ok(has(ui,'Insights'));
+  assert.equal(ui.calls.some(c=>c.name==='home_feed'),false,'business landing does not fetch the student feed');
+  const metricsTab=ui.find('Metrics').parentElement;
+  assert.equal(metricsTab.parentElement.querySelector('[role=button]').textContent,'InsightsMetrics');
+  ui.click('Manage');await until(()=>has(ui,'New offer'));
   assert.ok(has(ui,'Manage'));assert.ok(has(ui,'Redeem'));assert.ok(has(ui,'Account'));
   assert.equal(has(ui,'Nearby'),false);assert.equal(has(ui,'Your favorites'),false);
   ui.click('Redeem');await until(()=>ui.text().includes('Scan a claim'));

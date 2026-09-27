@@ -69,12 +69,14 @@ node Redemption {
         qr_payload: str = "",
         offer_title_snapshot: str = "",
         price_cents_snapshot: int = 0,
+        regular_price_cents_snapshot: int = -1,
         terms_snapshot: str = "",
         eligibility_snapshot: str = "",
         status: str = "claimed",
         claimed_ts: float = 0.0,
         expires_ts: float = 0.0,
-        redeemed_ts: float = 0.0;
+        redeemed_ts: float = 0.0,
+        cancelled_ts: float = 0.0;
 
     # Jac's optional graph visualizer renders repr(node). Never emit private
     # fields there, even if the operator accidentally enables that route.
