@@ -23,6 +23,12 @@ is remembered in `mlocal_theme`, independently of the login token. System follow
 device changes. Storage denial does not prevent an in-tab selection. The QR
 credential stays black on a white quiet zone in either theme.
 
+Both themes use one transparent logo silhouette with identical geometry. The
+wordmark changes navy/cream while the detached maize square remains recognizable.
+The welcome card's square reverses to navy against its dark-mode maize surface.
+Surface, text, border, and logo colors transition together over 220 ms; reduced
+motion disables transitions, including the page background.
+
 Business names and saved favorites open a business page. Offer titles still open
 the existing detail/claim screen. A profile opened from an offer returns to that
 offer. Favorites have a separate remove button, including businesses with no
@@ -72,6 +78,11 @@ are synthetic and do not prove real email delivery or physical phone-camera use.
   the profile's back control visible.
 - Independent code review found the graph-ID/slug and empty-favorite-removal
   issues; both were fixed and covered before final validation.
+- The shared-logo follow-up passed source check, production build, and all 127
+  UI/tooling checks from `/tmp/m-local-brand-theme.rFYlZj`. All 66 responsive
+  screenshots passed again. Chromium additionally observed an intermediate color
+  during the 220 ms theme transition, checked the reversed welcome accent,
+  verified unchanged logo bounds, and verified immediate reduced-motion changes.
 
 Visual evidence: `.jac/theme-profile-evidence/`. Reproduce after building:
 
@@ -82,3 +93,29 @@ python tests/ui/theme_profile_visual.py --url http://localhost:8155 --output .ja
 Real HTTP checks require the specifically isolated workspace and environment
 documented in `tests/integration/business_profile_http.py`; never run its
 fixture setup against the public demo or shared account store.
+
+## Jac language inventory
+
+The [official A2Tech guide](https://jachacks.org/a2tech-guide/), rechecked on
+2026-09-27, requires meaningful Jac use and at least 40% Jac, but does not define
+whether percentages use lines, bytes, or which test/tooling files count.
+
+At `f8902d6`, counting tracked source files (excluding assets, dependencies, build
+output, data, and documentation):
+
+| Scope | Jac nonblank lines / total | Jac by nonblank lines | Jac by bytes |
+| --- | ---: | ---: | ---: |
+| App: main/theme, client, services; excluding tests and declarations | 4,301 / 6,101 | 70.50% | 57.47% |
+| All source, including tests, declarations, and hosting/tooling scripts | 5,812 / 14,046 | 41.38% | 33.41% |
+
+Source extensions counted: `.jac`, `.jsx`, `.mjs`, `.js`, `.py`, `.ts`, `.tsx`,
+`.sh`, `.ps1`, `.cmd`, `.html`, `.css`. Nonblank lines include comments. App scope
+does not include `.test.*` or `.d.ts` files. Byte counts use the files on disk.
+
+Jac owns the entry point, graph models, authorization orchestration, offers,
+claims, redemption, and business-profile endpoint. JSX handles selected client
+components; Python supports email, onboarding storage, imports, and analytics.
+This demonstrates substantial Jac use, but is not an unconditional eligibility
+claim: the all-source byte share is below 40%. Confirm the organizer's counting
+method and rerun the inventory on the submission commit. Do not remove tests,
+pad source, or change file classification to manufacture a percentage.

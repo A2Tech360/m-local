@@ -65,10 +65,35 @@ def run(url, output):
         def capture(name):
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'), 'Page overflow: '+name
             assert not page.evaluate('''()=>[...document.querySelectorAll('input,select,textarea,button')].filter(el=>{const r=el.getBoundingClientRect();return r.width>0&&(r.left< -1||r.right>innerWidth+1)}).map(el=>el.textContent)'''), 'Control overflow: '+name
-            logo = page.locator('img[alt="M Local"]').first
-            assert logo.evaluate('(el)=>el.complete&&el.naturalWidth>0'), 'Logo failed: '+name
+            logo = page.get_by_role('img',name='M Local',exact=True).first
+            assert logo.is_visible(), 'Logo missing: '+name
+            assert page.evaluate('''async()=>{const image=new Image();image.src='/static/assets/brand/logo-master.png';await image.decode();return image.naturalWidth>0;}'''), 'Logo mask failed: '+name
             page.screenshot(path=str(output/f'{name}.png'), full_page=True)
             shots.append(name)
+
+        # Observe real CSS interpolation, then verify reduced-motion and the
+        # reversed accent on the yellow card. No screenshot-only claim of motion.
+        load('guest','light')
+        page.emulate_media(reduced_motion='no-preference')
+        logo=page.get_by_role('img',name='M Local',exact=True)
+        before_box=logo.bounding_box()
+        card=page.get_by_role('button',name='Find local deals')
+        light_color=card.evaluate('(el)=>getComputedStyle(el).backgroundColor')
+        assert card.evaluate('(el)=>getComputedStyle(el,"::after").backgroundColor')=='rgb(254, 200, 9)'
+        page.get_by_label('Appearance',exact=True).select_option('dark')
+        page.wait_for_timeout(75)
+        middle_color=card.evaluate('(el)=>getComputedStyle(el).backgroundColor')
+        assert middle_color not in (light_color,'rgb(254, 200, 9)'), 'Theme colors did not interpolate'
+        page.wait_for_timeout(250)
+        assert card.evaluate('(el)=>getComputedStyle(el).backgroundColor')=='rgb(254, 200, 9)'
+        assert card.evaluate('(el)=>getComputedStyle(el,"::after").backgroundColor')=='rgb(2, 48, 92)'
+        assert before_box==logo.bounding_box(), 'Logo jumps when changing theme'
+        assert page.locator('.ml-brand-ink').evaluate('(el)=>getComputedStyle(el).backgroundColor')=='rgb(249, 246, 240)'
+        page.emulate_media(reduced_motion='reduce')
+        page.get_by_label('Appearance',exact=True).select_option('light')
+        assert card.evaluate('(el)=>getComputedStyle(el).transitionDuration')=='0s'
+        assert card.evaluate('(el)=>getComputedStyle(el).backgroundColor')==light_color
+        assert page.locator('.ml-brand-ink').evaluate('(el)=>getComputedStyle(el).backgroundColor')=='rgb(2, 48, 92)'
 
         for width in (320,390,1440):
             page.set_viewport_size(dict(width=width,height=844 if width<700 else 1000))

@@ -18,7 +18,7 @@ test('phone link forwards app/auth traffic but never development files or admin 
   t.after(() => { proxy.closeAllConnections(); proxy.close(); upstream.closeAllConnections(); upstream.close(); });
   const origin = `http://127.0.0.1:${proxy.address().port}`;
   for (const path of ['/', '/static/client.js?hash=abc', '/assets/index-Ab12.js', '/assets/index-Ab12.css',
-    '/static/assets/brand/logo-compact.png', '/static/assets/brand/logo-reversed.png',
+    '/static/assets/brand/logo-compact.png', '/static/assets/brand/logo-reversed.png', '/static/assets/brand/logo-master.png',
     '/static/assets/brand/app-icon.png', '/static/assets/brand/Figtree.ttf']) {
     assert.equal((await fetch(origin + path)).status, 200, path);
   }

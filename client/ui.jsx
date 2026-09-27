@@ -30,8 +30,10 @@ export function ThemeControl(){
   </label>;
 }
 export function BrandLogo({reversed=false}) {
-  const {resolved}=useTheme();
-  return <img src={`/static/assets/brand/logo-${reversed||resolved==='dark'?'reversed':'compact'}.png`} alt="M Local" width="112" height="40" style={{display:'block',width:112,height:40,objectFit:'contain',flexShrink:0}}/>;
+  // One transparent silhouette keeps both themes optically identical.
+  return <span role="img" aria-label="M Local" className="ml-brand" style={reversed?{'--ml-logo-ink':'#F9F6F0'}:undefined}>
+    <span aria-hidden="true" className="ml-brand-ink"/><span aria-hidden="true" className="ml-brand-square"/>
+  </span>;
 }
 
 export function UiFoundation() {
@@ -44,9 +46,16 @@ export function UiFoundation() {
     @font-face{font-family:Figtree;src:url('/static/assets/brand/Figtree.ttf') format('truetype');font-style:normal;font-weight:300 900;font-display:swap}
     :root{--ml-bg:#F9F6F0;--ml-surface:#FFFFFF;--ml-sunken:#EFE9DE;--ml-border:#DDD5C7;--ml-ink:#0B1F38;--ml-text:#3A4657;--ml-muted:#5F6B7A;--ml-accent:#02305C;--ml-accent-soft:#E3ECF7;--ml-accent-text:#FFFFFF;--ml-maize:#FEC809;--ml-good:#1E6B3F;--ml-good-soft:#E4F2E8;--ml-warn:#7A4A00;--ml-warn-soft:#FFF1CF;--ml-bad:#B42318;--ml-bad-soft:#FDECEA;--ml-focus:#2365A0;--ml-hover:#02305C22;--ml-disabled:#687787;--ml-ticket:#02305C;--ml-ticket-text:#F9F6F0;--ml-shadow:#001D3D18;--ml-chart-cancelled:#AF633C;--ml-chart-expired:#84745A}
     :root[data-theme=dark]{--ml-bg:#091624;--ml-surface:#12243A;--ml-sunken:#1C3047;--ml-border:#34485F;--ml-ink:#F9F6F0;--ml-text:#D6DFE9;--ml-muted:#B0C0D1;--ml-accent:#FEC809;--ml-accent-soft:#323220;--ml-accent-text:#0B1F38;--ml-good:#91D6A7;--ml-good-soft:#153B2E;--ml-warn:#F5D58B;--ml-warn-soft:#3A3020;--ml-bad:#FFB4AA;--ml-bad-soft:#482A30;--ml-focus:#FEC809;--ml-hover:#FEC80944;--ml-disabled:#60748B;--ml-ticket:#17365A;--ml-ticket-text:#F9F6F0;--ml-shadow:#00000044;--ml-chart-cancelled:#E7A882;--ml-chart-expired:#B6A98F}
+    :root{--ml-logo-ink:#02305C;--ml-on-accent-mark:#FEC809;--ml-theme-time:220ms;--ml-theme-ease:cubic-bezier(.22,.61,.36,1)}
+    :root[data-theme=dark]{--ml-logo-ink:#F9F6F0;--ml-on-accent-mark:#02305C}
     html,body,#root{background:var(--ml-bg);color:var(--ml-ink);font-family:Figtree,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+    html,body,#root,#root *,#root *:before,#root *:after{transition:background-color var(--ml-theme-time) var(--ml-theme-ease),color var(--ml-theme-time) var(--ml-theme-ease),border-color var(--ml-theme-time) var(--ml-theme-ease),fill var(--ml-theme-time) var(--ml-theme-ease),stroke var(--ml-theme-time) var(--ml-theme-ease)}
+    .ml-brand{position:relative;display:block;width:112px;height:40px;flex-shrink:0}
+    .ml-brand-ink,.ml-brand-square{position:absolute;inset:0;-webkit-mask:url('/static/assets/brand/logo-master.png') center/contain no-repeat;mask:url('/static/assets/brand/logo-master.png') center/contain no-repeat}
+    .ml-brand-ink{background:var(--ml-logo-ink);clip-path:polygon(0 0,30% 0,30% 32%,42% 32%,42% 0,100% 0,100% 100%,0 100%)}
+    .ml-brand-square{background:var(--ml-maize);clip-path:inset(0 58% 68% 30%)}
     #root input,#root textarea,#root select,#root button{font-family:Figtree,system-ui,sans-serif}
-    #root button,#root [role=button],#root input,#root select,#root textarea{transition:background-color 150ms ease,border-color 150ms ease,box-shadow 150ms ease}
+    #root button,#root [role=button],#root input,#root select,#root textarea{transition:background-color var(--ml-theme-time) var(--ml-theme-ease),color var(--ml-theme-time) var(--ml-theme-ease),border-color var(--ml-theme-time) var(--ml-theme-ease),box-shadow 150ms ease,transform 150ms ease}
     #root button:not(:disabled):hover,#root [role=button]:not([aria-disabled=true]):hover{box-shadow:inset 0 0 0 1px var(--ml-hover)}
     #root button:focus-visible,#root [role=button]:focus-visible,#root input:focus-visible,#root select:focus-visible,#root textarea:focus-visible{outline:3px solid var(--ml-focus);outline-offset:3px}
     #root button:disabled,#root [aria-disabled=true]{opacity:.55;cursor:default}
@@ -54,14 +63,14 @@ export function UiFoundation() {
     #root a{color:var(--ml-accent);text-underline-offset:3px}
     [data-testid=app-tabbar]{padding-bottom:max(10px,env(safe-area-inset-bottom))!important}
     [data-testid=app-masthead]{padding-top:max(16px,env(safe-area-inset-top))!important}
-    .ml-welcome-choice{position:relative;transition:transform 150ms ease,box-shadow 150ms ease}
-    .ml-welcome-choice:first-child:after{content:'';position:absolute;right:22px;top:-7px;width:18px;height:18px;border-radius:3px;background:#FEC809}
+    .ml-welcome-choice{position:relative}
+    .ml-welcome-choice:first-child:after{content:'';position:absolute;right:22px;top:-7px;width:18px;height:18px;border-radius:3px;background:var(--ml-on-accent-mark)}
     .ml-welcome-choice:active{transform:translateY(1px)}
     .ml-qr-ticket{position:relative;border:1px solid var(--ml-border);box-shadow:0 8px 24px var(--ml-shadow)}
-    .ml-qr-ticket:before{content:'';position:absolute;right:18px;top:-9px;width:20px;height:20px;border-radius:3px;background:#FEC809}
+    .ml-qr-ticket:before{content:'';position:absolute;right:18px;top:-9px;width:20px;height:20px;border-radius:3px;background:var(--ml-maize)}
     .ml-scan-window{position:relative;min-height:240px;border-radius:20px;background:#0E1622;overflow:hidden;display:flex;align-items:center;justify-content:center}
     .ml-scan-reticle{position:absolute;inset:30px;pointer-events:none;background:linear-gradient(#FEC809,#FEC809) left top/36px 4px no-repeat,linear-gradient(#FEC809,#FEC809) left top/4px 36px no-repeat,linear-gradient(#FEC809,#FEC809) right top/36px 4px no-repeat,linear-gradient(#FEC809,#FEC809) right top/4px 36px no-repeat,linear-gradient(#FEC809,#FEC809) left bottom/36px 4px no-repeat,linear-gradient(#FEC809,#FEC809) left bottom/4px 36px no-repeat,linear-gradient(#FEC809,#FEC809) right bottom/36px 4px no-repeat,linear-gradient(#FEC809,#FEC809) right bottom/4px 36px no-repeat}
-    @media(prefers-reduced-motion:reduce){#root *,#root *:before,#root *:after{transition:none!important;animation:none!important}}
+    @media(prefers-reduced-motion:reduce){html,body,#root,#root *,#root *:before,#root *:after{transition:none!important;animation:none!important}}
   `}</style>;
 }
 

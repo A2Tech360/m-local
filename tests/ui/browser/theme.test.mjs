@@ -16,16 +16,17 @@ async function choose(ui,value){
   await until(()=>ui.document.querySelector('select[aria-label="Appearance"]').value===value);
 }
 
-test('welcome appearance follows system, persists selection, and swaps the logo without loading offers',async()=>{
+test('welcome appearance follows system, persists selection, and keeps one logo without loading offers',async()=>{
   let changeDevice;
   const ui=await app({role:'guest',configureWindow(window){changeDevice=deviceTheme(window,true);}});
   try{
     await until(()=>ui.document.documentElement.dataset.theme==='dark');
-    assert.ok(ui.document.querySelector('img[alt="M Local"]').src.endsWith('logo-reversed.png'));
+    const logo=ui.document.querySelector('[role="img"][aria-label="M Local"]');
+    assert.ok(logo);
     await choose(ui,'light');
     await until(()=>ui.document.documentElement.dataset.theme==='light');
     assert.equal(ui.window.localStorage.getItem('mlocal_theme'),'light');
-    assert.ok(ui.document.querySelector('img[alt="M Local"]').src.endsWith('logo-compact.png'));
+    assert.equal(ui.document.querySelector('[role="img"][aria-label="M Local"]'),logo,'theme switching keeps the same logo element');
     changeDevice(false);changeDevice(true);
     assert.equal(ui.document.documentElement.dataset.theme,'light');
     await choose(ui,'system');
