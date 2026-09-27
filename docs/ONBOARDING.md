@@ -2,7 +2,8 @@
 
 On a first visit, choose **Find local deals** or **List my business**. The app
 opens that path's email form and remembers the choice on this browser, including
-after sign-out. The other path's signup and login controls stay hidden. An
+after sign-out. Use **Switch to business** or **Switch to U-M deals** on the
+email form to change paths. An
 existing authenticated account's server role overrides a stale browser choice.
 The browser preference controls presentation only; server permissions still
 control every action. A new browser or a new temporary phone-link domain asks
@@ -13,6 +14,17 @@ The server constructs the address. Business owners enter their full work email.
 A six-digit email code creates an account or resumes its existing Jac session.
 No university password is collected. Email verification proves inbox access,
 not current enrollment or official U-M endorsement.
+
+**Create an account** asks for your name and email. **I already have an account**
+switches to returning sign-in, which only needs your email. The server checks
+account existence after successful email verification. Returning sign-in never
+overwrites your saved name or changes your account type.
+
+Signed-in members can open **Account** to edit their display name, cancel unsaved
+changes, and view their email and access status. Email and account type are not
+editable profile fields. Demo accounts may save a name without gaining verified
+email status. Profile reads and writes use `get_account_profile` and
+`save_account_profile(display_name)` under the authenticated Jac root.
 
 ## Turn on email delivery
 
@@ -87,7 +99,7 @@ user's filesystem permissions and never expose it through the web server.
 
 ## Business creation and optional AI
 
-After business email verification, choose **Create a business profile**. Business signup
+After business email verification, choose **Business profile**. Business signup
 opens this form immediately. Paste a public `https://` homepage or type details
 manually. Import reads at most the homepage and one same-site menu HTML page;
 PDF menus remain links. JavaScript-only sites may require manual entry. It reads
@@ -109,6 +121,21 @@ Trusted merchant provisioning still controls existing restaurants. A reviewer UI
 and the approval-to-listing workflow are a later increment; applications are
 currently retained locally in the private onboarding store.
 
+An existing application opens with its saved fields and **Pending review**
+status. Edits require the representation confirmation again. If the saved
+profile cannot load, retry before editing so an empty form cannot overwrite it.
+Student accounts cannot use business draft or website import endpoints.
+
+Approved merchant accounts use **Manage** to edit their restaurant profile and
+create offers. **New offer** opens a form with explicit **Publish offer** action;
+a future Ann Arbor start time schedules the offer. **Save changes** edits that
+same offer. Paused offers remain paused, and existing claims retain their
+promised price, terms and deadline. There is no server-side draft for the offer
+form. Rejected writes preserve the entered values and never report success.
+Money supports at most two decimals, quantity is 1 to 10,000, and expiry must
+be in the future. Times use Ann Arbor's Eastern timezone, including validation
+of daylight-saving gaps and repeated hours.
+
 ## Existing demos and deployment
 
 Before updating an already-provisioned demo, run in its actual runtime directory:
@@ -125,7 +152,8 @@ runtime accounts cannot claim offers until verified or explicitly provisioned.
 
 Only expose the compiled app and exact application RPCs through public ingress.
 Add `request_email_code`, `verify_email_code`, `get_business_draft`,
-`import_business_website`, and `save_business_draft` to the phone gateway allowlist.
+`import_business_website`, `save_business_draft`, `get_account_profile`, and
+`save_account_profile` to the phone gateway allowlist.
 Keep `/user/register`, arbitrary RPCs, graph/admin endpoints and private files
 blocked. Apply `scripts/onboarding-ingress.mjs` using a trusted client IP from
 your reverse proxy (never arbitrary `X-Forwarded-For` from a browser).
@@ -161,6 +189,13 @@ using locally injected test challenges. Run it only in a disposable workspace
 named `onboarding-check`, with a local server at port 8240. It sends no email and
 does not prove real inbox receipt. Real model extraction and physical phone
 behavior need separate checks with configured services/devices.
+
+`tests/integration/account_posts_http.py` checks account name edits, returning
+sign-in, company draft isolation, merchant profile edits and real offer
+publication. It uses the same isolated workspace name and port, requires local
+demo provisioning plus a restart with `.jac/qr-demo.env`, and saves its private
+receipt under `.jac/`. Restart and rerun with `--verify-restart` to verify
+persistence. It sends no email and never runs against the shared phone demo.
 
 ### Implementation checkpoint
 

@@ -27,15 +27,19 @@ def _draft_view(raw: dict[str, any], message: str = "") -> BusinessDraftView {
 }
 
 def:protect get_business_draft() -> BusinessDraftView {
-    if not verified_account(_actor_id()) {
-        return BusinessDraftView(message="Verify an email address to create a business profile.");
+    if verified_account(_actor_id()).get("kind") != "business" {
+        return BusinessDraftView(message="Sign in with a verified business account to edit a business profile.");
     }
-    return _draft_view(read_draft(_actor_id()));
+    try {
+        return _draft_view(read_draft(_actor_id()));
+    } except Exception {
+        return BusinessDraftView(message="Could not load your business profile. Please try again.");
+    }
 }
 
 def:protect import_business_website(website: str) -> BusinessDraftView {
-    if not verified_account(_actor_id()) {
-        return BusinessDraftView(message="Verify an email address before importing a website.");
+    if verified_account(_actor_id()).get("kind") != "business" {
+        return BusinessDraftView(message="Sign in with a verified business account before importing a website.");
     }
     try {
         store().reserve_import(_actor_id());
@@ -66,6 +70,9 @@ def:protect import_business_website(website: str) -> BusinessDraftView {
 
 def:protect save_business_draft(name: str, cuisine: str, description: str, address: str,
     website: str, menu_text: str, menu_url: str, image_url: str, confirmed: bool) -> BusinessDraftView {
+    if verified_account(_actor_id()).get("kind") != "business" {
+        return BusinessDraftView(message="Sign in with a verified business account to edit a business profile.");
+    }
     if not confirmed {
         return BusinessDraftView(message="Confirm you may represent this business and use the selected content.");
     }

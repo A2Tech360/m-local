@@ -29,6 +29,13 @@ def account_email(value: str, kind: str) -> str:
     return value
 
 
+def validated_name(value: str) -> str:
+    value = value.strip()
+    if not 1 <= len(value) <= 80 or any(ord(c) < 32 or 127 <= ord(c) < 160 for c in value):
+        raise ValueError('Enter your name (up to 80 characters, without control characters).')
+    return value
+
+
 class CodeStore:
     def __init__(self, directory: Path, clock=time.time):
         self.clock = clock
@@ -51,6 +58,7 @@ class CodeStore:
             db.execute('CREATE TABLE IF NOT EXISTS sends (email TEXT, at REAL)')
             db.execute('CREATE INDEX IF NOT EXISTS sends_email_at ON sends(email, at)')
             db.execute('CREATE TABLE IF NOT EXISTS accounts (actor TEXT PRIMARY KEY, email TEXT UNIQUE, kind TEXT, name TEXT)')
+            db.execute('CREATE TABLE IF NOT EXISTS display_names (actor TEXT PRIMARY KEY, name TEXT)')
             db.execute('CREATE TABLE IF NOT EXISTS provisioning (email TEXT PRIMARY KEY, marker TEXT, kind TEXT, name TEXT)')
             db.execute('CREATE TABLE IF NOT EXISTS drafts (actor TEXT PRIMARY KEY, body TEXT, updated REAL)')
             db.execute('CREATE TABLE IF NOT EXISTS imports (actor TEXT, at REAL)')
@@ -75,9 +83,9 @@ class CodeStore:
 
     def request(self, value, kind, name, send):
         email = account_email(value, kind)
-        name = name.strip()
-        if not 1 <= len(name) <= 80 or any(ord(c) < 32 for c in name):
-            raise ValueError('Enter your name (up to 80 characters).')
+        # Blank means returning sign-in; account existence is checked only after
+        # inbox proof. Named requests keep the existing create-or-resume flow.
+        name = validated_name(name) if name else ''
         now = self.clock()
         challenge = secrets.token_urlsafe(32)
         code = f'{secrets.randbelow(1000000):06d}'
@@ -142,6 +150,25 @@ class CodeStore:
         with self.transaction() as db:
             row = db.execute('SELECT email,kind,name FROM accounts WHERE actor=?', (actor,)).fetchone()
             return dict(row) if row else {}
+
+    def display_name(self, actor: str, fallback: str = '') -> str:
+        with self.transaction() as db:
+            row = db.execute('SELECT name FROM accounts WHERE actor=?', (actor,)).fetchone()
+            if row is None:
+                row = db.execute('SELECT name FROM display_names WHERE actor=?', (actor,)).fetchone()
+            return row['name'] if row else fallback
+
+    def save_display_name(self, actor: str, name: str) -> str:
+        if not actor:
+            raise ValueError('Sign in before editing your profile.')
+        name = validated_name(name)
+        with self.transaction() as db:
+            changed = db.execute('UPDATE accounts SET name=? WHERE actor=?', (name, actor)).rowcount
+            if not changed:
+                # Demo and other runtime accounts may have preferences without
+                # gaining a verified email record or application authority.
+                db.execute('INSERT INTO display_names VALUES (?,?) ON CONFLICT(actor) DO UPDATE SET name=excluded.name', (actor, name))
+        return name
 
     def reserve_import(self, actor):
         now = self.clock()

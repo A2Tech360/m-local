@@ -9,6 +9,7 @@ test('student email has a fixed suffix and missing sender never shows a code-sen
   assert.ok(ui.text().includes('@umich.edu'));
   assert.equal(ui.document.querySelector('input[placeholder="uniqname"]').getAttribute('aria-label'),'U-M uniqname');
   assert.equal(ui.document.querySelector('input[value="@umich.edu"]'),null);
+  ui.click('Create an account');await until(()=>ui.document.querySelector('[placeholder="Your name"]'));
   ui.fill('Your name','Fixture');ui.fill('uniqname','fixture');ui.click('Send verification code');
   await until(()=>ui.text().includes('Email sign-in is not enabled yet.'));
   assert.equal(ui.document.querySelector('input[autocomplete="one-time-code"]'),null);
@@ -24,6 +25,7 @@ test('code flow sends only the uniqname and enables code autofill without univer
  }});
  try{
   ui.click('Open sign in');await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'));
+  ui.click('Create an account');await until(()=>ui.document.querySelector('[placeholder="Your name"]'));
   ui.fill('Your name','Fixture');ui.fill('uniqname','fixture');ui.click('Send verification code');
   await until(()=>ui.document.querySelector('input[autocomplete="one-time-code"]'));
   assert.equal(ui.document.querySelector('input[type="password"]'),null);
@@ -114,7 +116,7 @@ test('business import fills an editable draft and requires confirmation before s
   if(name==='save_business_draft')return rpc({...body,ok:true,status:'pending_review',message:'Business profile saved for review.'});
  }});
  try{
-  if(ui.find('Create a business profile'))ui.click('Create a business profile');await until(()=>ui.document.querySelector('input[placeholder="Business name"]'));
+  if(ui.find('Business profile'))ui.click('Business profile');await until(()=>ui.document.querySelector('input[placeholder="Business name"]'));
   await until(()=>!ui.document.querySelector('input[placeholder="Business name"]').disabled);
   ui.fill('https://your-business.com','https://example.com');ui.click('Import website details');
   await until(()=>ui.document.querySelector('input[placeholder="Business name"]').value==='Imported Cafe');

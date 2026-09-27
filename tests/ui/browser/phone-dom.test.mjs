@@ -31,7 +31,7 @@ test('offer and profile save failures keep values and enable retry',async()=>{
  const ui=await app({role:'merchant',intercept(name){if(name in attempts&&attempts[name]++===0)throw new Error('Synthetic offline');}});
  try{ui.click('Manage');await until(()=>ui.text().includes('Restaurant profile'));ui.fill('Restaurant name','Edited fixture name');ui.click('Save profile');await until(()=>ui.text().includes('Profile could not be saved'));assert.equal(ui.document.querySelector('[placeholder="Restaurant name"]').value,'Edited fixture name');assert.equal(ui.text().includes('Saving...'),false);
  ui.click('Save profile');await until(()=>attempts.update_profile===2&&!ui.text().includes('Profile could not be saved')&&!ui.text().includes('Saving...'),'profile retry');
- ui.click('New offer');await until(()=>ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));ui.fill('Lunch bowl for $7','Unsaved fixture bowl');ui.click('Save offer');await until(()=>ui.text().includes('Could not save the offer.'));assert.equal(ui.document.querySelector('[placeholder="Lunch bowl for $7"]').value,'Unsaved fixture bowl');assert.equal(ui.text().includes('Saving...'),false);ui.click('Save offer');await until(()=>ui.text().includes('Fixture offer saved'),'offer retry');assert.equal(attempts.save_offer,2);assert.deepEqual(ui.errors,[]);
+ ui.click('New offer');await until(()=>ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));ui.fill('Lunch bowl for $7','Unsaved fixture bowl');ui.fill('7.00','7.00');ui.fill('One per student. Dine-in only.','One per student.');ui.click('Publish offer');await until(()=>ui.text().includes('Could not save the offer.'));assert.equal(ui.document.querySelector('[placeholder="Lunch bowl for $7"]').value,'Unsaved fixture bowl');assert.equal(ui.text().includes('Saving...'),false);ui.click('Publish offer');await until(()=>ui.text().includes('Fixture offer saved'),'offer retry');assert.equal(attempts.save_offer,2);assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
 });
 
@@ -47,7 +47,7 @@ test('confirmed offer save survives a failed portal refresh and refresh can be r
  try{
   ui.click('Manage');await until(()=>ui.text().includes('Restaurant profile'));
   ui.click('New offer');await until(()=>ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
-  ui.fill('Lunch bowl for $7','Confirmed fixture bowl');ui.click('Save offer');
+  ui.fill('Lunch bowl for $7','Confirmed fixture bowl');ui.fill('7.00','7.00');ui.fill('One per student. Dine-in only.','One per student.');ui.click('Publish offer');
   await until(()=>portalReads===2&&!ui.text().includes('Saving...'),'save completed and portal refresh failed');
   assert.ok(ui.text().includes('Fixture offer saved'),'retain the server-confirmed save outcome when only the subsequent refresh fails');
   assert.ok(ui.text().includes('restaurant list could not refresh'),'explain that the refresh failed after the successful save');
