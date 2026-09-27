@@ -50,7 +50,7 @@ test('student heart adds the place to the favorites strip and can remove it',asy
 test('student menu is Offers and Account, and log out hides the deals',async()=>{
  const ui=await app({verified:true});
  try{
-  assert.ok(has(ui,'Nearby'));assert.ok(has(ui,'Account'));
+  assert.ok(has(ui,'Offers'));assert.ok(has(ui,'Account'));
   assert.equal(has(ui,'Manage'),false);assert.equal(has(ui,'Redeem'),false);
   assert.ok(has(ui,'Log out'));
   ui.click('Account');await until(()=>ui.text().includes('YOUR ACCOUNT'));
