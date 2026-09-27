@@ -308,6 +308,15 @@ def _home(actor: str, price_range: str, window: str, diets: str, now: float) -> 
     wanted = clean_choices(_split(diets), DIETS);
     keys = [str(r[0]) for r in PRICE_RANGES];
     chosen_range = price_range.strip() if price_range.strip() in keys else "";
+    # Custom slider range "lo-hi" in whole dollars, e.g. "3-12".
+    lo_cents = -1;
+    hi_cents = -1;
+    bounds = price_range.strip().split("-");
+    if not chosen_range and len(bounds) == 2 and bounds[0].isdigit() and bounds[1].isdigit() {
+        lo_cents = int(bounds[0]) * 100;
+        hi_cents = int(bounds[1]) * 100;
+        if lo_cents <= hi_cents { chosen_range = price_range.strip(); } else { lo_cents = -1; hi_cents = -1; }
+    }
     eod = _end_of_today(now);
     candidates: list[Candidate] = [];
     views: dict[str, OfferView] = {};
@@ -322,7 +331,9 @@ def _home(actor: str, price_range: str, window: str, diets: str, now: float) -> 
             # changes. Only its owner bypasses discovery rules, until expiry.
             if v.my_status != "claimed" {
                 if not discoverable { continue; }
-                if chosen_range and price_range_of(o.price_cents) != chosen_range {
+                if lo_cents >= 0 {
+                    if o.price_cents < lo_cents or o.price_cents > hi_cents { continue; }
+                } elif chosen_range and price_range_of(o.price_cents) != chosen_range {
                     continue;
                 }
                 if window == "now" and o.start_ts > now {
