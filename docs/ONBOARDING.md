@@ -11,29 +11,69 @@ not current enrollment or official U-M endorsement.
 No sender is configured by default. Until one is configured the form reports
 that email sign-in is unavailable; it does not pretend to send a code.
 
-In **WSL Bash**, from the checkout:
+### Fastest test setup without a domain
 
-```bash
-mkdir -p .jac
-cp .env.example .jac/onboarding.env
-chmod 600 .jac/onboarding.env
+Use a dedicated Gmail account for this small team test. Your real `@umich.edu`
+accounts are recipients; you do not need university SMTP access or SSO approval.
+
+1. [Create a Google account](https://accounts.google.com/signup) with a Gmail address.
+2. Enable **2-Step Verification** on that account, then create an
+   [app password](https://myaccount.google.com/apppasswords) named **M-Local**.
+   Google requires you to complete its account/security steps. See Google's
+   [app-password instructions](https://support.google.com/accounts/answer/185833).
+3. From the checkout that actually hosts the phone demo, run in **PowerShell**:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-email.ps1 -Provider gmail
 ```
 
-Edit `.jac/onboarding.env` locally. Set `MLOCAL_SMTP_HOST`, `MLOCAL_SMTP_PORT`,
-`MLOCAL_SMTP_USERNAME`, `MLOCAL_SMTP_PASSWORD`, and `MLOCAL_SMTP_FROM`.
-Use a sender address authorized by your email provider. Never use a university
-password here. `scripts/dev.sh` loads this ignored file on startup. Other launchers
-must source it before starting Jac. Port 465 uses TLS immediately; other ports
-must support STARTTLS. Unencrypted delivery is not supported.
+Enter the dedicated Gmail address and app password at the hidden prompt.
+Do not paste the app password into chat, a command argument, or a Git file.
+The helper uses `smtp.gmail.com:465` with TLS, checks authentication without
+sending mail, and only then saves `.jac/onboarding.env`. It preserves other
+settings in that file. The Gmail sender and login address are the same account.
+This does not use your normal Google password or a university password.
+
+The equivalent command in **WSL Bash** is:
+
+```bash
+python3 scripts/configure-email.py --provider gmail
+```
+
+4. Restart the app. For the phone demo, use **M-Local - Stop Phone Demo**, then
+   **M-Local - Start Phone Demo**. The new tunnel has a new phone link.
+5. Open that link, enter a real U-M uniqname, receive and enter the six-digit
+   code, then sign out and sign in with a fresh code. Check spam folders too.
+
+To check saved credentials without sending email, run the PowerShell helper
+with `-Check`, or `python3 scripts/configure-email.py --check` in WSL.
+Authentication success does not prove inbox delivery or verify the sender's
+authorization at every provider. Complete the real code test before announcing
+email signup as ready.
+
+If **App passwords** is missing, confirm the correct dedicated account and
+2-Step Verification. Google may withhold the option for some account/security
+configurations; do not weaken account security to bypass that restriction.
+A domain-backed sender is the alternative. Personal Gmail also has
+[sending limits](https://support.google.com/mail/answer/22839) and may reject or
+filter mail. Move to a transactional provider before a wider launch.
+
+### Domain-backed sender or another SMTP provider
 
 For example, [Resend SMTP](https://resend.com/docs/send-with-smtp) uses host
 `smtp.resend.com`, port `465`, username `resend`, and an API key as the password.
-Configure an address on your verified sending domain. A provider account/domain
-and credentials still have to be supplied by the team; none were created here.
+You must own and verify a sending domain; `umich.edu` and `gmail.com` cannot be
+verified by the team. Use the helper with `-Provider resend` or `-Provider custom`
+(WSL: `--provider resend` or `--provider custom`). A provider account/domain and
+credentials still have to be supplied by the team; none were created here.
 
-Restart, request a code to an inbox you control, verify it, sign out, and sign
-back in with a fresh code. Check spam folders and sender-domain configuration
-if delivery fails. Provider acceptance is not proof of inbox receipt.
+For manual setup, `.env.example` documents `MLOCAL_SMTP_HOST`, `MLOCAL_SMTP_PORT`,
+`MLOCAL_SMTP_USERNAME`, `MLOCAL_SMTP_PASSWORD`, and `MLOCAL_SMTP_FROM`. Edit the
+ignored `.jac/onboarding.env` locally using shell-quoted values. `scripts/dev.sh`
+loads it on startup; other launchers must source it before starting Jac. The phone
+demo launcher does this. Port 465 uses TLS immediately; other ports must support
+STARTTLS. Unencrypted delivery is not supported. Keep the file under your local
+user's filesystem permissions and never expose it through the web server.
 
 ## Business creation and optional AI
 
@@ -114,7 +154,7 @@ behavior need separate checks with configured services/devices.
 
 ### Implementation checkpoint
 
-Verified on Windows/WSL with Jac 0.37.23: 21 Python onboarding/security/migration
+Verified on Windows/WSL with Jac 0.37.23: 26 Python onboarding/security/setup/migration
 tests, 22 existing core Jac tests, one typed MockLLM extraction test, 18 compiled
 browser tests, and 12 QR/scan/proxy tests. `jac check` and the sealed application
 build passed (the existing project still emits warnings). The isolated HTTP test
