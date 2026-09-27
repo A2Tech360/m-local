@@ -270,7 +270,7 @@ def:pub statusColors(state: str) -> list[str] {
 }
 
 
-def:pub money(v: float) -> str {
+def money(v: float) -> str {
     cents: int = int(round(v * 100));
     whole = cents // 100;
     rest = cents % 100;

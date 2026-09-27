@@ -50,7 +50,7 @@ glob BUDGETS: list[str] = ["", "5", "8", "10"];
 
 
 def Chip(label: str, on: bool, onPress: any) -> JsxElement {
-    return <Pressable style={[styles.chip, styles.chipOn if on else {}]} onPress={onPress}>
+    return <Pressable accessibilityRole="button" style={[styles.chip, styles.chipOn if on else {}]} onPress={onPress}>
         <Text style={[styles.chipText, styles.chipTextOn if on else {}]}>{label}</Text>
     </Pressable>;
 }
@@ -85,6 +85,7 @@ def Field(
     return <View style={[styles.field, styles.flex1]}>
         <Text style={styles.label}>{label}</Text>
         <TextInput
+            accessibilityLabel={label}
             style={[styles.input, styles.inputMulti if multiline else {}]}
             value={value}
             placeholder={placeholder}
@@ -97,29 +98,32 @@ def Field(
 
 
 def OfferCard(o: OfferView, onOpen: any) -> JsxElement {
+    hasSavedClaim = o.my_claim_id != "" and o.my_status in ["claimed", "redeemed"];
     saving = o.regular_price - o.price;
     live = o.state == "active";
     status = (
         "Your QR is ready" if o.my_qr_payload and o.my_status == "claimed"
+        else "Saved claim redeemed" if hasSavedClaim and o.my_status == "redeemed"
+        else "Open your saved claim" if hasSavedClaim
         else o.time_label + "  ·  " + str(o.remaining) + " left" if live
         else o.time_label if o.state == "scheduled" else o.state.capitalize()
     );
-    return <Pressable style={[styles.card, {} if live else styles.cardMuted]} onPress={onOpen}>
+    return <Pressable accessibilityRole="button" style={[styles.card, {} if live or hasSavedClaim else styles.cardMuted]} onPress={onOpen}>
         <View style={styles.rowBetween}>
             <Text style={styles.restaurant}>{o.restaurant.replace(" (Demo)", "")}</Text>
             {(<DemoTag />) if o.is_demo else <View />}
         </View>
-        <Text style={styles.offerTitle}>{o.title}</Text>
+        <Text style={styles.offerTitle}>{o.my_title if hasSavedClaim else o.title}</Text>
         <View style={styles.rowBetween}>
             <View style={styles.row}>
-                <Text style={styles.price}>{money(o.price)}</Text>
-                {(<Text style={styles.strike}>{money(o.regular_price)}</Text>) if saving > 0 else <View />}
+                <Text style={styles.price}>{money(o.my_price_cents / 100) if hasSavedClaim else money(o.price)}</Text>
+                {(<Text style={styles.strike}>{money(o.regular_price)}</Text>) if saving > 0 and not hasSavedClaim else <View />}
             </View>
             {(
                 <View style={styles.badge}>
                     <Text style={styles.badgeText}>{"Save " + money(saving)}</Text>
                 </View>
-            ) if saving > 0 else <View />}
+            ) if saving > 0 and not hasSavedClaim else <View />}
         </View>
         <Text style={[styles.small, {"color": C["accent"], "fontWeight": "700"} if o.my_qr_payload else {}]}>{status}</Text>
     </Pressable>;
@@ -131,6 +135,7 @@ def:pub app -> JsxElement {
         session: SessionView | None = None,
         email: str = "",
         password: str = "",
+        emailInput: Ref[HTMLInputElement] = Ref(),
         authOpen: bool = False,
         authBusy: bool = False,
         authMsg: str = "",
@@ -264,8 +269,13 @@ def:pub app -> JsxElement {
         }
     }
 
+    def openSignIn() {
+        authOpen = True;
+        if emailInput.current { emailInput.current.focus(); }
+    }
+
     async def changeClaim(cancel: bool) {
-        if not session or session.role != "student" { authOpen = True; return; }
+        if not session or session.role != "student" { openSignIn(); return; }
         if busyRef.current or not selected { return; }
         busyRef.current = True; busy = True;
         epoch = sessionEpoch.current; requestId = detailRequest.current; oid = selected;
@@ -377,7 +387,15 @@ def:pub app -> JsxElement {
             if epoch != sessionEpoch.current { return; }
             if res.ok {
                 editing = False; mOk = True; mMsg = res.message;
-                await reloadPortal(); await refresh();
+                # The save is confirmed even if fetching the updated list fails.
+                try { await reloadPortal(); }
+                except Exception {
+                    if epoch == sessionEpoch.current {
+                        mOk = False;
+                        mMsg = res.message + " The restaurant list could not refresh. Use Refresh restaurant to update it.";
+                    }
+                }
+                if epoch == sessionEpoch.current { await refresh(); }
             } else { eMsg = res.message; }
         } except Exception {
             if epoch == sessionEpoch.current { eMsg = "Could not save the offer. Your entries are kept; check the connection and retry."; mOk = False; mMsg = eMsg; }
@@ -420,7 +438,7 @@ def:pub app -> JsxElement {
                         <Text style={styles.body}>{session.display_name or "Signed in"}</Text>
                         <Text style={styles.small}>{session.role.capitalize() + (" · demo account" if session.is_demo else "")}</Text>
                     </View>
-                    <Pressable style={styles.btnGhost} disabled={authBusy} onPress={lambda { logout(); }}><Text style={styles.btnGhostText}>Sign out</Text></Pressable>
+                    <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={authBusy} onPress={lambda { logout(); }}><Text style={styles.btnGhostText}>Sign out</Text></Pressable>
                 </View>
             ) if session and session.authenticated else (
                 <View style={{"gap": 12}}>
@@ -429,13 +447,13 @@ def:pub app -> JsxElement {
                     {(
                         <View style={{"gap": 12}}>
                             <Text style={styles.label}>Email</Text>
-                            <TextInput style={styles.input} value={email} placeholder="Email" keyboardType="email-address" autoCapitalize="none" autoCorrect={False} onChangeText={lambda (v: str) { email = v; }} />
+                            <TextInput ref={emailInput} accessibilityLabel="Email" autoFocus={True} style={styles.input} value={email} placeholder="Email" keyboardType="email-address" autoCapitalize="none" autoCorrect={False} onChangeText={lambda (v: str) { email = v; }} />
                             <Text style={styles.label}>Password</Text>
-                            <TextInput style={styles.input} value={password} placeholder="Password" secureTextEntry={True} autoCapitalize="none" autoCorrect={False} onChangeText={lambda (v: str) { password = v; }} onSubmitEditing={lambda { login(); }} />
-                            <Pressable style={styles.btn} disabled={authBusy} onPress={lambda { login(); }}><Text style={styles.btnText}>{"Signing in..." if authBusy else "Sign in"}</Text></Pressable>
-                            <Pressable style={styles.btnGhost} disabled={authBusy} onPress={lambda { authOpen = False; password = ""; }}><Text style={styles.btnGhostText}>Keep browsing</Text></Pressable>
+                            <TextInput accessibilityLabel="Password" style={styles.input} value={password} placeholder="Password" secureTextEntry={True} autoCapitalize="none" autoCorrect={False} onChangeText={lambda (v: str) { password = v; }} onSubmitEditing={lambda { login(); }} />
+                            <Pressable accessibilityRole="button" style={styles.btn} disabled={authBusy} onPress={lambda { login(); }}><Text style={styles.btnText}>{"Signing in..." if authBusy else "Sign in"}</Text></Pressable>
+                            <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={authBusy} onPress={lambda { authOpen = False; password = ""; }}><Text style={styles.btnGhostText}>Keep browsing</Text></Pressable>
                         </View>
-                    ) if authOpen else <Pressable style={styles.btnGhost} onPress={lambda { authOpen = True; }}><Text style={styles.btnGhostText}>Open sign in</Text></Pressable>}
+                    ) if authOpen else <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { openSignIn(); }}><Text style={styles.btnGhostText}>Open sign in</Text></Pressable>}
                     <Message text={authMsg} good={False} />
                 </View>
             )}
@@ -474,7 +492,7 @@ def:pub app -> JsxElement {
             {(
                 <View style={styles.empty}><Text style={styles.subtitle}>Finding deals...</Text></View>
             ) if loading else (
-                <View style={styles.msgBad}><Text style={styles.msgBadText}>{loadError}</Text><Pressable style={styles.btnGhost} onPress={lambda { refresh(); }}><Text style={styles.btnGhostText}>Refresh offers</Text></Pressable></View>
+                <View style={styles.msgBad}><Text style={styles.msgBadText}>{loadError}</Text><Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { refresh(); }}><Text style={styles.btnGhostText}>Refresh offers</Text></Pressable></View>
             ) if loadError else (
                 <View style={styles.empty}>
                     <Text style={styles.h2}>Nothing matches yet</Text>
@@ -491,17 +509,18 @@ def:pub app -> JsxElement {
             return <View style={styles.content}>
                 <View style={styles.empty}>
                     <Text style={styles.subtitle}>{"Loading offer..." if detailLoading else detailError or "Offer not found."}</Text>
-                    <Pressable style={styles.btnGhost} onPress={lambda { closeDetail(); }}><Text style={styles.btnGhostText}>Back to offers</Text></Pressable>
-                    {(<Pressable style={styles.btnGhost} onPress={lambda { openOffer(selected); }}><Text style={styles.btnGhostText}>Retry offer</Text></Pressable>) if detailError else <View />}
+                    <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { closeDetail(); }}><Text style={styles.btnGhostText}>Back to offers</Text></Pressable>
+                    {(<Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { openOffer(selected); }}><Text style={styles.btnGhostText}>Retry offer</Text></Pressable>) if detailError else <View />}
                 </View>
             </View>;
         }
         o = detail;
         claimable = o.state == "active" and o.my_status in ["", "cancelled", "expired"];
         studentSession = session and session.role == "student";
+        hasSavedClaim = o.my_claim_id != "" and o.my_status in ["claimed", "redeemed"];
         saving = o.regular_price - o.price;
         return <View style={styles.content}>
-            <Pressable onPress={lambda { closeDetail(); }}>
+            <Pressable accessibilityRole="button" onPress={lambda { closeDetail(); }}>
                 <Text style={styles.link}>Back to offers</Text>
             </Pressable>
             <View style={styles.header}>
@@ -509,20 +528,20 @@ def:pub app -> JsxElement {
                     <Text style={styles.restaurant}>{o.restaurant.replace(" (Demo)", "")}</Text>
                     {(<DemoTag />) if o.is_demo else <View />}
                 </View>
-                <Text style={styles.title}>{o.title}</Text>
-                <Text style={styles.subtitle}>{o.description}</Text>
+                <Text style={styles.title}>{o.my_title if hasSavedClaim else o.title}</Text>
+                {(<Text style={styles.subtitle}>{o.description}</Text>) if not hasSavedClaim else <View />}
             </View>
             <View style={styles.row}>
-                <Text style={styles.priceBig}>{money(o.price)}</Text>
-                {(<Text style={styles.strike}>{money(o.regular_price)}</Text>) if saving > 0 else <View />}
+                <Text style={styles.priceBig}>{money(o.my_price_cents / 100) if hasSavedClaim else money(o.price)}</Text>
+                {(<Text style={styles.strike}>{money(o.regular_price)}</Text>) if saving > 0 and not hasSavedClaim else <View />}
                 {(
                     <View style={styles.badge}><Text style={styles.badgeText}>{"Save " + money(saving)}</Text></View>
-                ) if saving > 0 else <View />}
+                ) if saving > 0 and not hasSavedClaim else <View />}
             </View>
             <View style={styles.row}>
-                <StatusPill state={o.state} />
+                <StatusPill state={o.my_status if hasSavedClaim else o.state} />
                 <Text style={styles.small}>
-                    {o.time_label + ("  ·  " + str(o.remaining) + " left" if o.state == "active" else "")}
+                    {("Hold expires " + o.my_expires if o.my_status == "claimed" else "Saved claim redeemed") if hasSavedClaim else o.time_label + ("  ·  " + str(o.remaining) + " left" if o.state == "active" else "")}
                 </Text>
             </View>
             {(
@@ -534,7 +553,7 @@ def:pub app -> JsxElement {
                         for r in o.reasons
                     ]}
                 </View>
-            ) if o.reasons else <View />}
+            ) if o.reasons and not hasSavedClaim else <View />}
             {(
                 <View style={styles.section}>
                     <Text style={styles.h2}>{"Your saved claim" if o.my_status == "claimed" else "Saved claim · " + o.my_status}</Text>
@@ -546,13 +565,13 @@ def:pub app -> JsxElement {
                     {(<View style={{"gap": 12}}>
                         <Text style={styles.label}>Show this QR at the counter</Text>
                         {(<ClaimQr payload={o.my_qr_payload} expiresTs={o.my_expires_ts} />) if isClaimPayload(o.my_qr_payload) else <Text style={styles.body}>Claim QR unavailable. Refresh this offer.</Text>}
-                        <Pressable style={styles.btnGhost} disabled={busy} onPress={lambda { changeClaim(True); }}><Text style={styles.btnGhostText}>{"Updating..." if busy else "Cancel this hold"}</Text></Pressable>
+                        <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={busy} onPress={lambda { changeClaim(True); }}><Text style={styles.btnGhostText}>{"Updating..." if busy else "Cancel this hold"}</Text></Pressable>
                     </View>) if o.my_status == "claimed" and o.my_qr_payload else <StatusPill state={o.my_status} />}
                 </View>
             ) if o.my_claim_id else <View />}
             <Message text={claimMsg} good={claimOk} />
-            <Pressable style={styles.btnGhost} disabled={busy} onPress={lambda { openOffer(o.id); }}><Text style={styles.btnGhostText}>Refresh offer and claim</Text></Pressable>
-            <Pressable
+            <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={busy} onPress={lambda { openOffer(o.id); }}><Text style={styles.btnGhostText}>Refresh offer and claim</Text></Pressable>
+            <Pressable accessibilityRole="button"
                 style={[styles.btn, {} if claimable else styles.btnDisabled]}
                 disabled={not claimable or busy or (session is not None and session.role == "merchant")}
                 onPress={lambda { changeClaim(False); }}
@@ -564,15 +583,18 @@ def:pub app -> JsxElement {
             <Text style={styles.small}>Prices exclude tax unless the saved terms say otherwise. The restaurant checks the stated ID requirement.</Text>
             {(
                 <View style={styles.note}>
-                    <Text style={[styles.noteText, {"fontWeight": "800"}]}>{"Getting in" + (" · updated " + o.note_date if o.note_date else "")}</Text>
+                    <Text style={[styles.noteText, {"fontWeight": "800"}]}>Unverified restaurant note</Text>
                     <Text style={styles.noteText}>{o.entrance_note}</Text>
+                    <Text style={styles.noteText}>{("Date provided: " + o.note_date + ". " if o.note_date else "") + "Not independently checked. Confirm current access with the restaurant."}</Text>
                 </View>
             ) if o.entrance_note else <View />}
             <View style={styles.section}>
                 <Text style={styles.body}>{o.address + (" · " + o.neighborhood if o.neighborhood else "")}</Text>
-                <View style={styles.divider} />
-                <Text style={styles.small}>{"For: " + o.eligibility}</Text>
-                <Text style={styles.small}>{o.terms or "No additional terms."}</Text>
+                {(<View style={{"gap": 8}}>
+                    <View style={styles.divider} />
+                    <Text style={styles.small}>{"For: " + o.eligibility}</Text>
+                    <Text style={styles.small}>{o.terms or "No additional terms."}</Text>
+                </View>) if not hasSavedClaim else <View />}
             </View>
         </View>;
     }
@@ -600,10 +622,10 @@ def:pub app -> JsxElement {
             <Field label="Dietary tags" value={eDiets} onChange={lambda (t: str) { eDiets = t; }} placeholder="vegetarian, vegan, gluten-free, halal" multiline={False} />
             <Message text={eMsg} good={False} />
             <View style={styles.row}>
-                <Pressable style={[styles.btn, styles.flex1]} disabled={busy} onPress={lambda { submitOffer(); }}>
+                <Pressable accessibilityRole="button" style={[styles.btn, styles.flex1]} disabled={busy} onPress={lambda { submitOffer(); }}>
                     <Text style={styles.btnText}>{"Saving..." if busy else "Save offer"}</Text>
                 </Pressable>
-                <Pressable style={styles.btnGhost} onPress={lambda { editing = False; }}>
+                <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { editing = False; }}>
                     <Text style={styles.btnGhostText}>Cancel</Text>
                 </Pressable>
             </View>
@@ -617,7 +639,7 @@ def:pub app -> JsxElement {
                 <Text style={styles.brand}>MERCHANT</Text>
                 <Text style={styles.title}>Profile and offers</Text>
             </View>
-            <Pressable style={styles.btnGhost} disabled={mLoading} onPress={lambda { openMerchant(); }}><Text style={styles.btnGhostText}>Refresh restaurant</Text></Pressable>
+            <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={mLoading} onPress={lambda { openMerchant(); }}><Text style={styles.btnGhostText}>Refresh restaurant</Text></Pressable>
             <Message text={mMsg} good={mOk} />
             {(
                 <View style={styles.empty}><Text style={styles.subtitle}>Loading restaurant...</Text></View>
@@ -627,7 +649,7 @@ def:pub app -> JsxElement {
                 <View style={styles.section}>
                     <View style={styles.rowBetween}>
                         <Text style={styles.h2}>Your offers</Text>
-                        <Pressable style={styles.btnGhost} onPress={lambda { newOffer(); }}>
+                        <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { newOffer(); }}>
                             <Text style={styles.btnGhostText}>New offer</Text>
                         </Pressable>
                     </View>
@@ -641,10 +663,10 @@ def:pub app -> JsxElement {
                             <Text style={styles.body}>{money(o.price) + "  ·  " + o.time_label}</Text>
                             <Text style={styles.small}>{str(o.remaining) + " of " + str(o.quantity) + " available"}</Text>
                             <View style={styles.row}>
-                                <Pressable style={styles.btnGhost} onPress={lambda { editOffer(o); }}>
+                                <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { editOffer(o); }}>
                                     <Text style={styles.btnGhostText}>Edit</Text>
                                 </Pressable>
-                                <Pressable style={styles.btnGhost} onPress={lambda { toggleStatus(o); }}>
+                                <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { toggleStatus(o); }}>
                                     <Text style={styles.btnGhostText}>{"Resume" if o.state == "paused" else "Pause"}</Text>
                                 </Pressable>
                             </View>
@@ -661,7 +683,7 @@ def:pub app -> JsxElement {
                     <Field label="Neighborhood" value={pHood} onChange={lambda (t: str) { pHood = t; }} placeholder="Kerrytown" multiline={False} />
                     <Field label="Entrance or construction note" value={pNote} onChange={lambda (t: str) { pNote = t; }} placeholder="Use the side door while sidewalk work continues" multiline={True} />
                     <Field label="Note date" value={pNoteDate} onChange={lambda (t: str) { pNoteDate = t; }} placeholder="2026-09-26" multiline={False} />
-                    <Pressable style={styles.btn} disabled={busy} onPress={lambda { saveProfile(); }}>
+                    <Pressable accessibilityRole="button" style={styles.btn} disabled={busy} onPress={lambda { saveProfile(); }}>
                         <Text style={styles.btnText}>{"Saving..." if busy else "Save profile"}</Text>
                     </Pressable>
                 </View>
@@ -678,7 +700,7 @@ def:pub app -> JsxElement {
                 <Text style={styles.subtitle}>Review the saved offer before redeeming.</Text>
             </View>
             <Message text={mMsg} good={mOk} />
-            <Pressable style={styles.btnGhost} disabled={mLoading} onPress={lambda { openMerchant(); }}><Text style={styles.btnGhostText}>Refresh restaurant</Text></Pressable>
+            <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={mLoading} onPress={lambda { openMerchant(); }}><Text style={styles.btnGhostText}>Refresh restaurant</Text></Pressable>
             {(<Text style={styles.small}>Loading your restaurant...</Text>) if mLoading else <View />}
             {(<View />) if portal is None else <View style={{"gap": 16}}>
                 <View style={styles.section}>
@@ -706,7 +728,7 @@ def:pub app -> JsxElement {
 
     def TabButton(id: str, label: str, sub: str) -> JsxElement {
         on = tab == id;
-        return <Pressable style={[styles.tab, styles.tabOn if on else {}]} onPress={lambda { goTab(id); }}>
+        return <Pressable accessibilityRole="button" style={[styles.tab, styles.tabOn if on else {}]} onPress={lambda { goTab(id); }}>
             <Text style={[styles.tabText, styles.tabTextOn if on else {}]}>{label}</Text>
             <Text style={styles.tabSub}>{sub}</Text>
         </Pressable>;
@@ -719,8 +741,8 @@ def:pub app -> JsxElement {
             <ScrollView style={[styles.scroll, {"height": viewport.height}]}>{SessionPanel()}{body}</ScrollView>
             <View style={styles.tabbar}>
                 {TabButton("discover", "Offers", "Student")}
-                {TabButton("merchant", "Manage", "Merchant")}
-                {TabButton("redeem", "Redeem", "Merchant")}
+                {TabButton("merchant", "Manage", "Merchant") if session and session.role == "merchant" else <View />}
+                {TabButton("redeem", "Redeem", "Merchant") if session and session.role == "merchant" else <View />}
             </View>
         </View>
     </View>;
