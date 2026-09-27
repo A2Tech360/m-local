@@ -1,0 +1,706 @@
+{
+  "raw_element_count": 1002,
+  "retained_count": 841,
+  "excluded_counts": {
+    "unnamed": 160
+  },
+  "excluded_records": [
+    {
+      "source_id": "osm:node:3074088121",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:node:6355883685",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:node:12610616706",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:43230480",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:93676953",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:93763058",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:206046594",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:222483552",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:381409672",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:381409673",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:381409674",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:394236839",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:470403619",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:479357975",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:564385558",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:571766878",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:571766879",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:571766880",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:571766881",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:571778333",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:578595791",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:584992992",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:585193913",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:586139892",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:586139916",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:587089012",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:587089013",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:587301115",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:587301119",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:587301120",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:587301121",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:587892241",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:587892243",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:587892259",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:587892260",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:587892261",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:589346678",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:589346698",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:589707635",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:589707636",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:589707644",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:589707645",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:589707646",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:589707647",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:589707649",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:589757247",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:589757248",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:590197602",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:590322854",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:590322855",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:590322860",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:591104544",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:591104545",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:591253454",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:591253455",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:591253456",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:591253459",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:591253462",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:591301434",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:591301435",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:591301437",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:591301446",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:591301447",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:591301448",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:591301449",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:597943374",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:597954367",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:597954369",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:597954370",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:599459776",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:604288780",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:656812467",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:660580168",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:673488998",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:673488999",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:678673391",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:686384077",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:686384078",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:686510442",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:686510443",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:686510444",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:686510445",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:686510446",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:723678092",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:723678097",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875742",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875743",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875744",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875745",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875746",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875747",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875748",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875749",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875750",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875751",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875752",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875753",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875754",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875755",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875756",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875757",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875758",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875759",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875760",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875761",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875762",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875763",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875764",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875765",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875766",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875768",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875770",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875771",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875772",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875773",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875774",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875775",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875776",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875777",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875778",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875779",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875780",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875781",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875782",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875783",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875784",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875786",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875787",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:752875788",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:934498326",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:940601459",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:996169433",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1004798125",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1022003435",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1022003437",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1022003439",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1116142399",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1161979334",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1188478155",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1188478156",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1229957704",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1229957736",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1233530979",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1330695157",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1330695158",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1330695159",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1338695753",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1361047879",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1361047880",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1361047881",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1361047882",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1386309745",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1408604249",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1408604250",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1408604252",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1408604253",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1447625351",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1448280984",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:way:1448280985",
+      "reason": "unnamed"
+    },
+    {
+      "source_id": "osm:relation:8277399",
+      "reason": "unnamed"
+    }
+  ],
+  "category_counts": {
+    "bakery": 13,
+    "bar": 29,
+    "bookshop": 16,
+    "cafe": 85,
+    "dessert": 20,
+    "entertainment": 23,
+    "fast_food": 112,
+    "gallery": 7,
+    "library": 18,
+    "museum": 9,
+    "park": 141,
+    "restaurant": 257,
+    "retail": 111
+  },
+  "scope_counts": {
+    "boundary_buffer": 101,
+    "city": 740
+  },
+  "missing_fields": {
+    "website": 232,
+    "opening_hours": 260,
+    "cuisine": 448
+  },
+  "missing_street_address": 120,
+  "possible_duplicates": [
+    {
+      "place_ids": [
+        "osm:way:1278920687",
+        "osm:way:1278920688"
+      ],
+      "distance_meters": 6.6,
+      "reason": "same_name_within_50_meters"
+    },
+    {
+      "place_ids": [
+        "osm:node:305088494",
+        "osm:way:639118285"
+      ],
+      "distance_meters": 2.7,
+      "reason": "same_name_within_50_meters"
+    }
+  ],
+  "automatically_merged": 0,
+  "boundary_closed_rings": 90,
+  "boundary_incomplete_rings": 0,
+  "limitations": [
+    "Selected OSM categories are not a complete business census or freshness audit.",
+    "Merchant ownership, participation, public access and current opening status are unverified.",
+    "City scope is based on point or bounding-box center containment; centers are not entrances.",
+    "The 1500 m source buffer measures distance to city boundary lines, including township holes.",
+    "Straight-line distances are not pedestrian routes or walking times.",
+    "Nearby same-name candidates remain distinct until manually reviewed."
+  ],
+  "retrieved_at": "2026-09-27T03:49:41+00:00",
+  "source_snapshot_id": "osm-126b6023ca83be25",
+  "missing_since_previous_snapshot_requires_review": []
+}
