@@ -36,7 +36,7 @@ test('account edit persists on reopen, refreshes session name, and cannot edit e
   await until(()=>!ui.document.querySelector('[placeholder="Display name"]').disabled);
   assert.ok(ui.text().includes('fixture@umich.edu'));assert.ok(ui.text().includes('Email verified'));
   assert.equal(ui.document.querySelector('input[type="email"]'),null);
-  assert.equal(ui.document.querySelector('select'),null);
+  assert.equal(ui.document.querySelector('select[aria-label="Account type"]'),null);
   ui.fill('Display name','Updated fixture');ui.click('Save account');await until(()=>ui.text().includes('Account profile saved.'));
   await until(()=>ui.find('Updated fixture'));
   assert.deepEqual(ui.calls.find(c=>c.name==='save_account_profile').body,{display_name:'Updated fixture'});

@@ -1,6 +1,6 @@
 import React, {useEffect, useRef, useState} from 'react';
 
-const ink='#0B1F38',muted='#5F6B7A',accent='#02305C',line='#DDD5C7',paper='#ffffff',good='#1E6B3F',goodSoft='#E4F2E8';
+const ink='var(--ml-ink)',muted='var(--ml-muted)',accent='var(--ml-accent)',line='var(--ml-border)',paper='var(--ml-surface)',good='var(--ml-good)',goodSoft='var(--ml-good-soft)';
 const font='Figtree, system-ui, sans-serif';
 const wrap={display:'flex',flexDirection:'column',gap:8,minWidth:0,color:ink,fontFamily:font};
 const grid={display:'grid',gridTemplateColumns:'repeat(2, minmax(0, 1fr))',gap:16,paddingRight:8,paddingBottom:8,paddingTop:8,alignItems:'stretch'};
@@ -18,7 +18,7 @@ const foot={display:'flex',justifyContent:'space-between',alignItems:'center',ga
 const link={background:'none',border:0,padding:'2px 0',color:accent,fontWeight:700,fontSize:13,cursor:'pointer',fontFamily:font};
 const css='@keyframes ml-whatnow-flip{from{transform:rotateY(70deg);opacity:.2}to{transform:none;opacity:1}}'
  +'.ml-whatnow-face{animation:ml-whatnow-flip .22s ease-out}'
- +'.ml-whatnow-next:focus-visible,.ml-whatnow-deal:focus-visible{outline:3px solid #02305C;outline-offset:3px}'
+ +'.ml-whatnow-next:focus-visible,.ml-whatnow-deal:focus-visible{outline:3px solid var(--ml-focus);outline-offset:3px}'
  +'@media (max-width:379px){.ml-whatnow-grid{gap:12px!important}.ml-whatnow-card{aspect-ratio:auto!important;min-height:150px}.ml-whatnow-next{padding:10px 10px 4px!important;overflow:visible!important;flex:1 0 auto!important}}'
  +'@media (prefers-reduced-motion:reduce){.ml-whatnow-face{animation:none}}';
 

@@ -9,7 +9,8 @@ const clientRequire = createRequire(`${runtime}/.jac/client/package.json`);
 const testRequire = createRequire(resolve(process.env.MLOCAL_UI_TEST_MODULES || `${runtime}/.jac/ui-test-runtime/node_modules`, '../package.json'));
 const {buildSync} = clientRequire('esbuild');
 const {JSDOM} = testRequire('jsdom');
-const bundle = buildSync({stdin:{contents:`import React from 'react'; import {createRoot} from 'react-dom/client'; import {EmailOnboarding} from './client/onboarding.jsx'; window.renderAuth = props => { window.authRoot ||= createRoot(document.getElementById('root')); window.authRoot.render(React.createElement(EmailOnboarding, props)); };`,resolveDir:source,loader:'jsx'},bundle:true,write:false,format:'iife',nodePaths:[`${runtime}/.jac/client/node_modules`]}).outputFiles[0].text;
+// Exercise the actual Jac-compiled component, including reactive state lowering.
+const bundle = buildSync({stdin:{contents:`import React from 'react'; import {createRoot} from 'react-dom/client'; import {EmailOnboarding} from './client/onboarding.js'; window.renderAuth = props => { window.authRoot ||= createRoot(document.getElementById('root')); window.authRoot.render(React.createElement(EmailOnboarding, props)); };`,resolveDir:resolve(runtime,'.jac/client/compiled'),loader:'jsx'},bundle:true,write:false,format:'iife',alias:{'@jac/runtime':resolve(runtime,'.jac/client/compiled/client_runtime.js'),'@jac/prelude':resolve(runtime,'.jac/client/compiled/jac_prelude.js')},nodePaths:[`${runtime}/.jac/client/node_modules`]}).outputFiles[0].text;
 
 async function until(predicate) {
  const deadline=Date.now()+2000;
@@ -20,6 +21,8 @@ async function auth(props={}) {
  const w=dom.window;w.eval(bundle);
  const settings={kind:'business',initialMode:'signin',onSwitchAudience(){},onCancel(){},requestCode:async()=>({ok:false,message:'Delivery unavailable.'}),verifyCode:async()=>({ok:false,message:'Try again.'}),onVerified(){},...props};
  w.renderAuth(settings);await until(()=>w.document.querySelector('form'));
+ // Native Jac subscribes state and focuses the initial field after mounting.
+ await until(()=>w.document.activeElement===w.document.querySelector('input[type="email"],input[placeholder="uniqname"]'));
  return {w,doc:w.document,settings,
   click(text){const button=[...w.document.querySelectorAll('button')].find(b=>b.textContent===text);assert.ok(button,`Missing ${text}`);button.click();},
   fill(selector,value){const input=w.document.querySelector(selector);Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype,'value').set.call(input,value);input.dispatchEvent(new w.Event('input',{bubbles:true}));},
