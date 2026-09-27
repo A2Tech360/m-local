@@ -27,7 +27,8 @@ cd -- "$test_root"
 if [[ "$suite" == context ]]; then
     "$JAC_BIN" test services/context.test.jac
 else
-    "$JAC_BIN" test services/promo.test.jac services/qr.test.jac services/session.test.jac
+    "$JAC_BIN" test services/promo.test.jac services/qr.test.jac services/session.test.jac \
+        services/taste.test.jac services/taste_sandbox.test.jac services/foryou.test.jac
 fi
 if [[ "$suite" == all ]]; then
     exit_code=0
