@@ -27,7 +27,7 @@ jobs:
       - name: Run business insights tests
         run: ./scripts/test.sh insights
       - name: Run onboarding security tests
-        run: python3 -m unittest discover -s tests/onboarding
+        run: bash scripts/test.sh onboarding
       - name: Test deployment source and data separation
         run: python3 -m unittest discover -s tests/tooling -p 'test_*.py'
       - name: Build compiled app and client dependencies

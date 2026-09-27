@@ -105,11 +105,11 @@ The HTTP scripts require an isolated `onboarding-check` workspace on port 8240,
 local demo provisioning, and a restarted server with `.jac/qr-demo.env` sourced:
 
 ```bash
-python3 tests/integration/cold_post_http.py --api http://127.0.0.1:8240 --accounts .jac/qr-demo-accounts.json
-python3 tests/integration/account_posts_http.py
-python3 tests/integration/qr_http.py --api http://127.0.0.1:8240
+bash scripts/python.sh tests/integration/cold_post_http.py --api http://127.0.0.1:8240 --accounts .jac/qr-demo-accounts.json
+bash scripts/python.sh tests/integration/account_posts_http.py
+bash scripts/python.sh tests/integration/qr_http.py --api http://127.0.0.1:8240
 # Restart the same isolated server, then verify the saved receipt:
-python3 tests/integration/account_posts_http.py --verify-restart
+bash scripts/python.sh tests/integration/account_posts_http.py --verify-restart
 ```
 
 The opt-in real browser script requires Python Playwright and Chromium. From
