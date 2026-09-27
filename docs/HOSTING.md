@@ -54,6 +54,15 @@ Read `.jac/stable-link/deployment.json` for active commit, last check time, fail
 revision and status. Candidate and app logs are in the same ignored directory.
 Review logs before sharing them; never share private account/configuration files.
 
+`/healthz` checks both runtime readiness and an anonymous `home_feed` response
+within five seconds. A missing, failing, or malformed feed returns HTTP 503 with
+`{"ready":false}`; a valid empty catalog is healthy. The page reports an invalid
+feed as a connection error, rather than the "Offers are on their way" empty state.
+The visible offers page refreshes every 30 seconds, on returning to the tab or
+regaining connectivity, and when **Refresh offers** is pressed. This recovers
+from a brief outage; it does not eliminate downtime during a backend restart or
+loss of the laptop's internet connection.
+
 From **PowerShell** in the helper checkout:
 
 ```powershell

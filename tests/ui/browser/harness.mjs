@@ -30,7 +30,7 @@ const tastes=()=>({ok:true,message:'',signed_in:true,completed:true,categories:[
 export async function until(fn,message='condition',timeout=3000) {
  const end=Date.now()+timeout;while(Date.now()<end){if(fn())return;await new Promise(r=>setTimeout(r,10));}throw new Error(`Timed out: ${message}`);
 }
-export async function app({role='student',verified=false,audience='student',item=offer(),intercept}={}) {
+export async function app({role='student',verified=false,audience='student',item=offer(),intercept,configureWindow}={}) {
  const errors=[],calls=[];let activeRole=role;
  const virtualConsole=new VirtualConsole();virtualConsole.on('jsdomError',e=>errors.push(e.message));
  // Jac build emits the real bundle; its HTTP server supplies the HTML shell at runtime.
@@ -39,6 +39,7 @@ export async function app({role='student',verified=false,audience='student',item
  w.matchMedia=()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}});
  w.ResizeObserver=class{observe(){}unobserve(){}disconnect(){}};
  w.TextEncoder=TextEncoder;w.TextDecoder=TextDecoder;w.Response=Response;w.Request=Request;w.Headers=Headers;
+ if(configureWindow)configureWindow(w);
  if(audience)w.localStorage.setItem('mlocal_audience',audience);
  if(role!=='guest')w.localStorage.setItem('jac_token','synthetic-ui-token');
  const session=()=>({authenticated:activeRole!=='guest',role:activeRole,actor_id:`fixture-${activeRole}`,restaurant_id:activeRole==='merchant'?'fixture-restaurant':'',display_name:`Fixture ${activeRole}`,is_demo:!verified,email_verified:verified});
@@ -62,7 +63,8 @@ export async function app({role='student',verified=false,audience='student',item
  w.addEventListener('error',e=>errors.push(e.message));
  w.eval(executable);
  const initialTitle=item.my_claim_id&&['claimed','redeemed'].includes(item.my_status)?item.my_title:item.title;
- await until(()=>w.document.body.textContent.includes(initialTitle)||['Welcome to M-Local','Sign in to M-Local','List your business','YOUR BUSINESS','Profile and offers'].some(mark=>w.document.body.textContent.includes(mark)),'initial app render');
+ try{await until(()=>[initialTitle,'Welcome to M-Local','Offers are on their way','Could not load offers.','Sign in to M-Local','List your business','YOUR BUSINESS','Profile and offers'].some(text=>w.document.body.textContent.includes(text)),'initial app render');}
+ catch(error){dom.window.close();throw error;}
  return {window:w,document:w.document,calls,errors,text:()=>w.document.body.textContent,
   find(text){return [...w.document.querySelectorAll('*')].find(n=>n.textContent===text&&n.children.length===0);},
   click(text){const n=this.find(text);if(!n)throw new Error(`Missing control: ${text}`);n.dispatchEvent(new w.MouseEvent('click',{bubbles:true}));},

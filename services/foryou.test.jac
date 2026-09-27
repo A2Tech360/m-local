@@ -3,8 +3,9 @@
 Outside a served request there is one root, so the caller's identity is passed
 to the internal helpers. Privacy between real accounts is checked over HTTP."""
 
-import from services.promo { _claim, _redeem }
+import from services.promo { _claim, _redeem, list_offers }
 import from services.session { _merchant_for_actor }
+import from unittest.mock { patch }
 
 def _reset -> TasteProfile {
     for p in [root -->[?:TasteProfile]] {
@@ -190,4 +191,87 @@ test "sample listings show only when the server turns demo mode on" {
     }
     _ensure_seed();
     assert _home("", "", "any", "", time.time()).show_samples == demo_mode(os.environ.get(DEMO_MODE_ENV, ""));
+}
+
+
+def _claim_fixture(slug: str, now: float) -> Offer {
+    r = Restaurant(slug=slug, name="Claim visibility cafe", cuisine="Cafe", source="business_signup");
+    root.shared ++> r;
+    o = Offer(title="Saved lunch", price=7.0, price_cents=700, regular_price_cents=900,
+        start_ts=now - 60, end_ts=now + 3600, quantity=3, qr_ready=True,
+        terms="Original lunch terms", eligibility="Student ID");
+    r +>:Publishes():+> o;
+    return o;
+}
+
+
+def _listed_claim(actor: str, offer_id: str, now: float, budget: str = "", window: str = "any", diets: str = "") -> list[OfferView] {
+    with patch.dict(list_offers.__globals__, {"_actor_id": lambda () -> str { return actor; }}) {
+        with patch.object(time, "time", return_value=now) {
+            return [v for v in list_offers(budget, window, diets) if v.id == offer_id];
+        }
+    }
+}
+
+
+test "home retains a real saved QR after pause or shortened offer end until hold expiry" {
+    _ensure_seed();
+    _reset();
+    now = time.time();
+    o = _claim_fixture("paused-claim-cafe", now);
+    oid = jid(o);
+    actor = "saved-claim-student";
+    public = [i for i in _home("", "", "any", "", now).items if i.offer.id == oid];
+    assert len(public) == 1 and not public[0].offer.is_demo;
+    assert public[0].offer.my_qr_payload == "";
+    result = _claim(oid, actor, now);
+    assert result.ok;
+    expires = _view(o, now, actor).my_expires_ts;
+    for status in ["paused", "active"] {
+        o.status = status;
+        o.end_ts = now + 3600 if status == "paused" else now + 10;
+        held = [i for i in _home(actor, "", "any", "", now + 20).items if i.offer.id == oid];
+        assert len(held) == 1, "Saved QR disappeared after pause or shortened end";
+        assert held[0].offer.my_qr_payload == result.qr_payload and not held[0].offer.is_demo;
+        assert held[0].offer.my_terms == "Original lunch terms";
+        assert len(_listed_claim(actor, oid, now + 20)) == 1;
+        for stranger in ["", "unrelated-student"] {
+            assert not [i for i in _home(stranger, "", "any", "", now + 20).items if i.offer.id == oid];
+            assert _listed_claim(stranger, oid, now + 20) == [];
+        }
+        assert not [i for i in _home(actor, "", "any", "", expires).items if i.offer.id == oid];
+        assert _listed_claim(actor, oid, expires) == [];
+    }
+}
+
+
+test "home retains only the owner's live claim across price diet and time filters" {
+    _ensure_seed();
+    _reset();
+    now = time.time();
+    o = _claim_fixture("filtered-claim-cafe", now);
+    oid = jid(o);
+    actor = "filtered-claim-student";
+    result = _claim(oid, actor, now);
+    assert result.ok;
+    expires = _view(o, now, actor).my_expires_ts;
+    for (price, budget, window, diets, scheduled) in [
+        ("under5", "4.99", "any", "", False),
+        ("", "", "any", "vegan", False),
+        ("", "", "now", "", True),
+        ("", "", "today", "", True)
+    ] {
+        o.start_ts = now + 86400 if scheduled else now - 60;
+        o.end_ts = now + 172800;
+        held = [i for i in _home(actor, price, window, diets, now + 1).items if i.offer.id == oid];
+        assert len(held) == 1, "Discovery filters hid a saved QR";
+        assert held[0].offer.my_qr_payload == result.qr_payload and held[0].offer.my_status == "claimed";
+        assert len(_listed_claim(actor, oid, now + 1, budget, window, diets)) == 1;
+        for stranger in ["", "unrelated-student"] {
+            assert not [i for i in _home(stranger, price, window, diets, now + 1).items if i.offer.id == oid];
+            assert _listed_claim(stranger, oid, now + 1, budget, window, diets) == [];
+        }
+        assert not [i for i in _home(actor, price, window, diets, expires).items if i.offer.id == oid];
+        assert _listed_claim(actor, oid, expires, budget, window, diets) == [];
+    }
 }

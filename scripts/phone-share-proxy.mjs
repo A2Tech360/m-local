@@ -4,6 +4,7 @@ import http from 'node:http';
 import {isIP} from 'node:net';
 import { pathToFileURL } from 'node:url';
 import {createOnboardingLimit} from './onboarding-ingress.mjs';
+import {validateHomeFeed} from '../client/feed-validation.mjs';
 
 const functions = new Set(['list_offers', 'get_offer', 'claim_offer', 'merchant_portal',
   'update_profile', 'save_offer', 'set_offer_status', 'resolve_claim', 'redeem_claim',
@@ -26,17 +27,50 @@ export function createShareProxy({ upstreamHost = 'localhost', upstreamPort = 82
     res.setHeader('permissions-policy', 'camera=(self), microphone=(), geolocation=()');
     res.setHeader('cache-control', 'no-store');
     if (healthCheck && read && path === '/healthz') {
+      let active;
+      let finished=false;
       const finish = ready => {
-        if (res.writableEnded) return;
+        if (finished || res.destroyed) return;
+        finished=true;
+        clearTimeout(deadline);
         res.writeHead(ready ? 200 : 503, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ ready }));
       };
-      const check = http.get({ hostname: upstreamHost, port: upstreamPort, path: '/ready', timeout: 5000 }, response => {
+      // Runtime readiness alone misses missing RPCs and an unavailable catalog.
+      // Use one deadline for both anonymous probes and expose no diagnostics.
+      const deadline=setTimeout(()=>{finish(false);active?.destroy();},5000);
+      res.on('close',()=>{clearTimeout(deadline);active?.destroy();});
+      const checkFeed=()=>{
+        if(finished)return;
+        if(!functions.has('home_feed')){finish(false);return;}
+        active=http.request({hostname:upstreamHost,port:upstreamPort,path:'/function/home_feed',method:'POST',
+          headers:{'content-type':'application/json','content-length':'2','accept-encoding':'identity'}},response=>{
+          if(response.statusCode!==200){response.resume();finish(false);return;}
+          let body='';
+          response.setEncoding('utf8');
+          response.on('data',chunk=>{
+            body+=chunk;
+            if(body.length>4*1024*1024){finish(false);response.destroy();}
+          });
+          response.on('error',()=>finish(false));
+          response.on('end',()=>{
+            try{
+              const reply=JSON.parse(body),feed=reply?.data?.result;
+              if(reply?.ok!==true){finish(false);return;}
+              validateHomeFeed(feed);
+              finish(true);
+            }catch{finish(false);}
+          });
+        });
+        active.on('error',()=>finish(false));
+        active.end('{}');
+      };
+      active = http.get({ hostname: upstreamHost, port: upstreamPort, path: '/ready' }, response => {
+        response.on('error',()=>finish(false));
+        response.on('end',()=>{if(response.statusCode===200)checkFeed();else finish(false);});
         response.resume();
-        finish(response.statusCode === 200);
       });
-      check.on('timeout', () => check.destroy());
-      check.on('error', () => finish(false));
+      active.on('error', () => finish(false));
       return;
     }
     if (!allowed) { res.writeHead(403); res.end('This endpoint is not available.'); return; }

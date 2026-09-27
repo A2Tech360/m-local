@@ -315,23 +315,26 @@ def _home(actor: str, price_range: str, window: str, diets: str, now: float) -> 
     total = 0;
     for r in [root.shared -->[?:Restaurant]] {
         for o in [r ->:Publishes:->] {
-            if o.status == "paused" or now >= o.end_ts {
-                continue;
-            }
-            total += 1;
-            if chosen_range and price_range_of(o.price_cents) != chosen_range {
-                continue;
-            }
-            if window == "now" and o.start_ts > now {
-                continue;
-            }
-            if window == "today" and o.start_ts > eod {
-                continue;
-            }
-            if wanted and [w for w in wanted if w not in with_implied(o.dietary)] {
-                continue;
-            }
             v = _view(o, now, actor);
+            discoverable = o.status != "paused" and now < o.end_ts;
+            if discoverable { total += 1; }
+            # A live saved QR must remain reachable after offer edits or filter
+            # changes. Only its owner bypasses discovery rules, until expiry.
+            if v.my_status != "claimed" {
+                if not discoverable { continue; }
+                if chosen_range and price_range_of(o.price_cents) != chosen_range {
+                    continue;
+                }
+                if window == "now" and o.start_ts > now {
+                    continue;
+                }
+                if window == "today" and o.start_ts > eod {
+                    continue;
+                }
+                if wanted and [w for w in wanted if w not in with_implied(o.dietary)] {
+                    continue;
+                }
+            }
             oid = jid(o);
             views[oid] = v;
             places[oid] = r;

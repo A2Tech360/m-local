@@ -146,6 +146,10 @@ def main():
     require(not other_business.call('save_offer', **post)['ok'], 'incomplete business cannot publish a post')
     own_post = business.call('save_offer', **{**post, 'title': 'Self-service fixture ' + run})
     require(own_post['ok'], 'newly registered company can publish immediately')
+    public_items = Api(api).call('home_feed')['items']
+    matching = [item['offer'] for item in public_items if item['offer']['id'] == own_post['code']]
+    require(len(matching) == 1 and not matching[0]['is_demo'] and matching[0]['state'] == 'active',
+            'real business publication appears exactly once in the public home feed')
     require(not merchant.call('save_offer', **{**post, 'offer_id': own_post['code']})['ok'],
             'provisioned merchant cannot edit the new company post')
     require(other_business.call('save_business_draft', **draft)['ok'], 'second company can also activate')
@@ -155,6 +159,18 @@ def main():
             'second self-service merchant cannot edit the first company post')
     claim = student.call('claim_offer', offer_id=own_post['code'])
     require(claim['ok'], 'student can claim a self-service business offer')
+    require(business.call('set_offer_status', offer_id=own_post['code'], status='paused')['ok'],
+            'business pauses an offer with a saved student claim')
+    held_items = student.call('home_feed', price_range='8to12', diets='vegan')['items']
+    held = [item['offer'] for item in held_items if item['offer']['id'] == own_post['code']]
+    require(len(held) == 1 and held[0]['my_status'] == 'claimed'
+            and held[0]['my_qr_payload'] == claim['qr_payload'],
+            'saved QR stays reachable after pausing and nonmatching discovery filters')
+    for visitor in (Api(api), other_student):
+        require(not any(item['offer']['id'] == own_post['code'] for item in visitor.call('home_feed')['items']),
+                'paused claimed offer stays hidden from other visitors')
+    require(business.call('set_offer_status', offer_id=own_post['code'], status='active')['ok'],
+            'business resumes the offer without changing its claim')
     require(business.call('resolve_claim', qr_payload=claim['qr_payload'])['ok'],
             'self-service owner can access its private claim')
     require(not other_business.call('redeem_claim', qr_payload=claim['qr_payload'])['ok'],

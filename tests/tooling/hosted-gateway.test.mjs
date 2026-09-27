@@ -5,6 +5,8 @@ import { gzipSync } from 'node:zlib';
 import test from 'node:test';
 import { createShareProxy } from '../../scripts/phone-share-proxy.mjs';
 
+const emptyFeed={items:[],favorites:[],note:'',price_range:'',total_deals:0,signed_in:false,personalized:false,completed:false};
+
 async function serve(t, handler, options = {}) {
   const upstream = http.createServer(handler).listen(0, '127.0.0.1');
   await once(upstream, 'listening');
@@ -30,6 +32,13 @@ test('public ingress refuses password sign-in and still forwards email verificat
 test('host readiness reflects the backend and does not expose its diagnostics', async t => {
   let ready = false;
   const origin = await serve(t, (req, res) => {
+    if(req.url === '/function/home_feed') {
+      assert.equal(req.method, 'POST');
+      assert.equal(req.headers.authorization, undefined);
+      res.writeHead(200, {'content-type':'application/json'});
+      res.end(JSON.stringify({ok:true,data:{result:emptyFeed}}));
+      return;
+    }
     assert.equal(req.url, '/ready');
     res.writeHead(ready ? 200 : 503, { 'content-type': 'application/json' });
     res.end('{"private":"backend diagnostics"}');
@@ -44,6 +53,34 @@ test('host readiness reflects the backend and does not expose its diagnostics', 
   assert.equal((await fetch(origin + '/ready')).status, 403);
 });
 
+test('readiness requires a working feed RPC, and accepts a genuinely empty catalog', async t => {
+  let status=404, body={detail:'private missing endpoint diagnostics'};
+  const origin=await serve(t,(req,res)=>{
+    if(req.url==='/ready'){res.writeHead(200);res.end('{}');return;}
+    assert.equal(req.url,'/function/home_feed');
+    res.writeHead(status,{'content-type':'application/json'});res.end(JSON.stringify(body));
+  },{healthCheck:true});
+  for(const failure of [
+    [404,{detail:'private missing endpoint diagnostics'}],
+    [500,{ok:false,error:'private backend diagnostics'}],
+    [200,{ok:false,data:{result:{items:[],favorites:[]}}}],
+    [200,{ok:true,data:{result:null}}],
+    [200,{ok:true,data:{result:{items:{},favorites:[]}}}],
+    [200,{ok:true,data:{result:{items:[],favorites:[]}}}],
+    [200,{ok:true,data:{result:{...emptyFeed,items:[null]}}}],
+    [200,{ok:true,data:{result:{...emptyFeed,favorites:[null]}}}]
+  ]) {
+    [status,body]=failure;
+    const response=await fetch(origin+'/healthz');
+    assert.equal(response.status,503,`unusable feed must be unhealthy: ${JSON.stringify(failure)}`);
+    assert.deepEqual(await response.json(),{ready:false});
+  }
+  status=200;body={ok:true,data:{result:emptyFeed}};
+  const response=await fetch(origin+'/healthz');
+  assert.equal(response.status,200);
+  assert.deepEqual(await response.json(),{ready:true});
+});
+
 test('compressed API responses retain their encoding and parse correctly on a phone', async t => {
   const origin = await serve(t, (req, res) => {
     res.writeHead(200, { 'content-type': 'application/json', 'content-encoding': 'gzip' });
@@ -53,6 +90,17 @@ test('compressed API responses retain their encoding and parse correctly on a ph
   assert.match(response.headers.get('content-type'), /application\/json/);
   assert.equal(response.headers.get('content-encoding'), 'gzip');
   assert.deepEqual(await response.json(), { ok: true, data: [{ title: 'Lunch special' }] });
+});
+
+test('readiness fails within its deadline when the feed response never completes', {timeout:10000}, async t => {
+  const origin=await serve(t,(req,res)=>{
+    if(req.url==='/ready'){res.end('{}');return;}
+    res.writeHead(200,{'content-type':'application/json'});
+    res.write('{"ok":');
+  },{healthCheck:true});
+  const response=await fetch(origin+'/healthz');
+  assert.equal(response.status,503);
+  assert.deepEqual(await response.json(),{ready:false});
 });
 
 test('direct hosting cannot bypass signup limits by spoofing edge headers', async t => {
