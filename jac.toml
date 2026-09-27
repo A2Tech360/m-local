@@ -10,8 +10,12 @@ kind = "web-app"
 
 [serve]
 host = "127.0.0.1"
+docs_enabled = false
 # Private redemption credentials must not be exposed by the graph inspector.
 graph_enabled = false
+
+[scale.admin]
+enabled = false
 
 
 [dependencies]
