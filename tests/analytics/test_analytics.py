@@ -137,6 +137,56 @@ class AnalyticsTests(unittest.TestCase):
         self.assertEqual(empty["offers"], [])
         self.assertTrue(all(value == 0 for value in empty["totals"].values()))
 
+    def test_sales_by_day_and_time_of_day_add_up_and_never_export_people(self):
+        lunch = dict(offer_start_ts=stamp("2026-03-06T11:00"), offer_end_ts=stamp("2026-03-06T14:00"))
+        records = [
+            claim("a", "p1", "2026-03-06T11:30", **lunch),
+            claim("b", "p2", "2026-03-06T15:50", redeemed_ts=stamp("2026-03-06T16:05"), **lunch),
+            claim("c", "p3", "2026-03-06T12:10", status="cancelled", redeemed_ts=0, cancelled_ts=stamp("2026-03-06T12:15"), **lunch),
+            claim("d", "p4", "2026-03-06T23:30", offer_id="offer-2", offer_title="Late slice", status="claimed", redeemed_ts=0),
+            claim("e", "p5", "2026-03-07T01:15", offer_id="offer-2", offer_title="Late slice", price_cents=300),
+            claim("f", "p6", "2026-03-07T06:00", offer_id="offer-3", offer_title="Early coffee", price_cents=None),
+            claim("g", "p7", "2026-03-07T10:30", offer_id="offer-3", offer_title="Early coffee", price_cents=250),
+            claim("old", "p8", "2026-02-20T12:00"),
+            claim("future", "p9", "2026-03-09T12:00"),
+        ]
+        view = summarize(records + [records[0]], now="2026-03-08T12:00")
+        sales = view["sales"]
+        self.assertEqual([block["key"] for block in sales["blocks"]], ["morning", "lunch", "dinner", "late"])
+        self.assertEqual([block["hours"] for block in sales["blocks"]], ["6 AM to 11 AM", "11 AM to 4 PM", "4 PM to 9 PM", "9 PM to 6 AM"])
+        self.assertEqual([day["date"] for day in sales["days"]], [frame["date"] for frame in view["frames"][1:]])
+        days = {day["date"]: day for day in sales["days"]}
+        self.assertEqual(days["2026-03-06"]["total"], {"redemptions": 2, "value_cents": 1000})
+        self.assertEqual(days["2026-03-06"]["lunch"], {"redemptions": 1, "value_cents": 500})
+        self.assertEqual(days["2026-03-06"]["dinner"], {"redemptions": 1, "value_cents": 500})
+        self.assertEqual(days["2026-03-07"]["late"], {"redemptions": 1, "value_cents": 300})
+        self.assertEqual(days["2026-03-07"]["morning"], {"redemptions": 2, "value_cents": 250})
+        self.assertEqual(days["2026-03-08"]["total"], {"redemptions": 0, "value_cents": 0})
+        for day, frame in zip(sales["days"], view["frames"][1:]):
+            self.assertEqual(day["total"]["redemptions"], frame["daily"]["redemptions"])
+            self.assertEqual(day["total"]["value_cents"], frame["daily"]["value_cents"])
+            self.assertEqual(sum(day[key]["redemptions"] for key in ("morning", "lunch", "dinner", "late")), day["total"]["redemptions"])
+            self.assertEqual(sum(day[key]["value_cents"] for key in ("morning", "lunch", "dinner", "late")), day["total"]["value_cents"])
+        self.assertEqual(sum(day["total"]["value_cents"] for day in sales["days"]), view["totals"]["value_cents"])
+        offers = sales["offers"]
+        self.assertEqual([offer["title"] for offer in offers], ["Original lunch", "Early coffee", "Late slice"])
+        self.assertEqual((offers[0]["claims"], offers[0]["redemptions"], offers[0]["value_cents"], offers[0]["busiest"]), (3, 2, 1000, "Lunch"))
+        self.assertEqual(offers[0]["schedule"], "Mar 6, 11 AM to 2 PM")
+        self.assertEqual(offers[2]["schedule"], "")
+        self.assertEqual(offers[2]["busiest"], "Late night")
+        exported = json.dumps(sales)
+        for private in ("offer-1", "offer-2", "p1", "p5", "actor", "claim_id"):
+            self.assertNotIn(private, exported)
+
+    def test_sales_cover_every_day_with_no_activity_and_schedules_can_span_days(self):
+        view = summarize([], days=30)
+        self.assertEqual(len(view["sales"]["days"]), 30)
+        self.assertTrue(all(day["total"] == {"redemptions": 0, "value_cents": 0} for day in view["sales"]["days"]))
+        self.assertEqual(view["sales"]["offers"], [])
+        long = summarize([claim("a", claimed="2026-03-07T18:30", offer_start_ts=stamp("2026-03-06T17:30"), offer_end_ts=stamp("2026-03-09T21:00"))])
+        self.assertEqual(long["sales"]["offers"][0]["schedule"], "Mar 6, 5:30 PM to Mar 9, 9 PM")
+        self.assertEqual(long["sales"]["offers"][0]["busiest"], "Dinner")
+
     def test_unsupported_period_rejected(self):
         with self.assertRaises(ValueError):
             summarize([], days=8)

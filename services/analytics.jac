@@ -42,7 +42,8 @@ def _insights_for(r: Restaurant, days: int, now: float) -> dict[str, any] {
                 "expires_ts": c.expires_ts, "redeemed_ts": c.redeemed_ts,
                 "cancelled_ts": c.cancelled_ts, "status": c.status,
                 "price_cents": c.price_cents_snapshot,
-                "regular_price_cents": c.regular_price_cents_snapshot
+                "regular_price_cents": c.regular_price_cents_snapshot,
+                "offer_start_ts": o.start_ts, "offer_end_ts": o.end_ts
             });
         }
     }
