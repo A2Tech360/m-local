@@ -17,7 +17,9 @@ test('phone link forwards app/auth traffic but never development files or admin 
   await once(proxy, 'listening');
   t.after(() => { proxy.closeAllConnections(); proxy.close(); upstream.closeAllConnections(); upstream.close(); });
   const origin = `http://127.0.0.1:${proxy.address().port}`;
-  for (const path of ['/', '/static/client.js?hash=abc', '/assets/index-Ab12.js', '/assets/index-Ab12.css']) {
+  for (const path of ['/', '/static/client.js?hash=abc', '/assets/index-Ab12.js', '/assets/index-Ab12.css',
+    '/static/assets/brand/logo-compact.png', '/static/assets/brand/logo-reversed.png',
+    '/static/assets/brand/app-icon.png', '/static/assets/brand/Figtree.ttf']) {
     assert.equal((await fetch(origin + path)).status, 200, path);
   }
   for (const path of ['/function/list_offers', '/function/current_session',
@@ -32,7 +34,9 @@ test('phone link forwards app/auth traffic but never development files or admin 
   const before = seen.length;
   for (const path of ['/graph/data', '/docs', '/openapi.json', '/.env', '/@fs/etc/passwd',
     '/node_modules/foo', '/compiled/main.js', '/assets/private.map', '/assets/%2e%2e/.env',
-    '/function/internal_admin', '/user/login', '/user/register', '/user/delete']) {
+    '/function/internal_admin', '/user/login', '/user/register', '/user/delete',
+    '/static/assets/brand/OFL.txt', '/static/assets/brand/README.md', '/static/assets/brand/%2e%2e/x.png',
+    '/static/assets/other/logo.png', '/static/assets/brand/sub/logo.png', '/static/main.jac']) {
     assert.equal((await fetch(origin + path, { method: 'POST', body: '{}' })).status, 403, path);
     assert.equal((await fetch(origin + path)).status, 403, path);
   }
