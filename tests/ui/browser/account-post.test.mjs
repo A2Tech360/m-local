@@ -5,7 +5,7 @@ import {app,home,offer,rpc,until} from './harness.mjs';
 test('returning email sign-in needs no name and can switch to business signup',async()=>{
  const ui=await app({role:'guest',intercept(name){if(name==='request_email_code')return rpc({ok:false,message:'Fixture delivery disabled.'});}});
  try{
-  ui.click('Sign in');await until(()=>ui.document.querySelector('[placeholder="uniqname"]'));
+  await until(()=>ui.document.querySelector('[placeholder="uniqname"]'));
   assert.equal(ui.document.querySelector('[placeholder="Your name"]'),null,'returning users should not have to invent a name again');
   ui.fill('uniqname','fixture');ui.click('Send verification code');await until(()=>ui.text().includes('Fixture delivery disabled.'));
   assert.equal(ui.calls.find(c=>c.name==='request_email_code').body.name,'');

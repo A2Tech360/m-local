@@ -17,30 +17,13 @@ test('budget filter exposes native button semantics and applies the selection',a
  }finally{ui.close();}
 });
 
-test('guest claim hands focus to a named email input',async()=>{
+test('guest lands on a named email input with no password field',async()=>{
  const ui=await app({role:'guest'});
  try{
-  ui.click('Current bowl');await until(()=>ui.find('Sign in to claim'),'guest claim action');
-  ui.click('Sign in to claim');
   await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'),'sign-in inputs appear');
   const email=ui.document.querySelector('input[placeholder="uniqname"]');
-  assert.ok(ui.document.activeElement===email,'focus must move to the newly opened sign-in panel');
   assert.equal(email.getAttribute('aria-label'),'U-M uniqname');
   assert.equal(ui.document.querySelector('input[type="password"]'),null);
-  assert.deepEqual(ui.errors,[]);
- }finally{ui.close();}
-});
-
-test('guest claim opens the sign-in screen and leaves the feed behind',async()=>{
- const ui=await app({role:'guest'});
- try{
-  ui.click('Current bowl');await until(()=>ui.find('Sign in to claim'));
-  ui.click('Sign in to claim');
-  await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'),'sign-in screen opens');
-  assert.ok(ui.text().includes('Sign in to M-Local'));
-  assert.equal(ui.find('Sign in to claim'),undefined,'the offer is not drawn under the sign-in screen');
-  assert.equal(ui.find('Nearby')===undefined,true,'no app menu before sign-in');
-  ui.click('Keep browsing');await until(()=>ui.find('Sign in to claim'),'closing sign-in returns to the same offer');
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
 });

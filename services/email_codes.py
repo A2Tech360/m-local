@@ -95,7 +95,8 @@ class CodeStore:
             db.execute('DELETE FROM sends WHERE at < ?', (now - 86400,))
             db.execute('DELETE FROM codes WHERE expires < ?', (now,))
             recent = db.execute('SELECT at FROM sends WHERE email=? AND at>?', (email, now - 3600)).fetchall()
-            if recent and now - max(r['at'] for r in recent) < 60:
+            waiting = db.execute('SELECT 1 FROM codes WHERE email=?', (email,)).fetchone()
+            if waiting and recent and now - max(r['at'] for r in recent) < 60:
                 raise ValueError('Please wait 60 seconds before requesting another code.')
             if len(recent) >= 5:
                 raise ValueError('Too many code requests. Please try again in an hour.')

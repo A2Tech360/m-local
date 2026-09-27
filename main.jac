@@ -294,7 +294,7 @@ def:pub app -> JsxElement {
 
     viewport = useWindowDimensions();
     useFeedRefresh({
-        "enabled": sessionReady and audience != "" and tab == "discover" and selected == "" and not tastesOpen,
+        "enabled": sessionReady and session is not None and session.authenticated and audience != "" and tab == "discover" and selected == "" and not tastesOpen,
         "onRefresh": lambda { return refresh(); },
         "busy": loading
     });
@@ -402,9 +402,12 @@ def:pub app -> JsxElement {
                 if restoredAudience { audience = restoredAudience; rememberAudience(restoredAudience); }
             }
         } except Exception {
-            if epoch == sessionEpoch.current { authMsg = "Could not check your session. You can still browse; retry sign-in when connected."; }
+            if epoch == sessionEpoch.current { authMsg = "Could not check your session. Retry sign-in when connected."; }
         }
-        if epoch == sessionEpoch.current { sessionReady = True; await loadOffers("", "any", []); }
+        if epoch == sessionEpoch.current {
+            sessionReady = True;
+            if restored is not None and restored.authenticated { await loadOffers("", "any", []); }
+        }
         if epoch == sessionEpoch.current and restored is not None and restored.authenticated and restored.role == "merchant" {
             tab = "merchant"; await openMerchant();
         }
@@ -474,7 +477,7 @@ def:pub app -> JsxElement {
 
     def logout() {
         signOut(); clearPrivate(); session = None;
-        tab = "discover"; authOpen = False; businessOpen = False; authMsg = ""; refresh();
+        tab = "discover"; authOpen = False; businessOpen = False; authMsg = ""; home = None;
     }
 
     def pickBudget(v: str) { maxPrice = v; loadOffers(v, timeWin, diets); }
@@ -671,7 +674,7 @@ def:pub app -> JsxElement {
 
     def closeAuth() {
         authOpen = False; authMsg = "";
-        if audience == "business" and not (session and session.authenticated) { audience = ""; }
+        if not (session and session.authenticated) { audience = ""; }
     }
 
     def LogoutLink() -> JsxElement {
@@ -689,7 +692,7 @@ def:pub app -> JsxElement {
             <View style={styles.section}>
                 <EmailOnboarding kind={audience} initialMode={authMode} onSwitchAudience={switchAudience} requestCode={request_email_code} verifyCode={verify_email_code}
                     onVerified={finishEmail}
-                    inputRef={emailInput} onCancel={lambda { closeAuth(); }} />
+                    inputRef={emailInput} onCancel={lambda { closeAuth(); }} cancelLabel="Back" />
             </View>
         </View>;
     }
@@ -1067,7 +1070,7 @@ def:pub app -> JsxElement {
     role: str = session.role if session is not None and session.authenticated else "guest";
     company: bool = role in ["business", "merchant"];
 
-    if not signedIn and (authOpen or audience == "business") {
+    if not signedIn {
         return <View style={[styles.screen, {"height": viewport.height}]}>
             <View style={styles.frame}>
                 <ScrollView style={[styles.scroll, {"height": viewport.height}]}>{AuthScreen()}</ScrollView>

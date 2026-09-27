@@ -45,7 +45,7 @@ export function AudienceWelcome({onChoose}) {
  </main>;
 }
 
-export function EmailOnboarding({kind='student',initialMode='signin',onSwitchAudience,requestCode,verifyCode,onVerified,onCancel,inputRef}) {
+export function EmailOnboarding({kind='student',initialMode='signin',onSwitchAudience,requestCode,verifyCode,onVerified,onCancel,cancelLabel='Keep browsing',inputRef}) {
  const [name,setName]=useState(''),[value,setValue]=useState('');
  const [mode,setMode]=useState(initialMode);
  const [code,setCode]=useState(''),[challenge,setChallenge]=useState(null),[message,setMessage]=useState('');
@@ -82,7 +82,7 @@ export function EmailOnboarding({kind='student',initialMode='signin',onSwitchAud
   <Notice>{message}</Notice>
   <button style={secondary} type="button" disabled={busy} onClick={()=>{setMode(mode==='signup'?'signin':'signup');setChallenge(null);setCode('');setMessage('');setCooldown(0);}}>{mode==='signup'?'I already have an account':'Create an account'}</button>
   {!challenge&&<button style={secondary} type="button" disabled={busy} onClick={()=>onSwitchAudience(kind==='student'?'business':'student')}>{kind==='student'?'Switch to business':'Switch to U-M deals'}</button>}
-  <button style={secondary} type="button" disabled={busy} onClick={onCancel}>Keep browsing</button>
+  <button style={secondary} type="button" disabled={busy} onClick={onCancel}>{cancelLabel}</button>
  </form>;
 }
 

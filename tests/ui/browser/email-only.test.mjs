@@ -8,7 +8,6 @@ for (const audience of ['student','business']) {
    if(name==='request_email_code')return rpc({ok:true,challenge:'fixture-code',email:audience==='student'?'fixture@umich.edu':'owner@example.test',retry_after:60,message:'Check your inbox.'});
   }});
   try{
-   if(audience==='student')ui.click('Sign in');
    const field=audience==='student'?'uniqname':'you@business.com';
    await until(()=>ui.document.querySelector(`[placeholder="${field}"]`));
    assert.equal(ui.find('Demo sign-in'),undefined);
@@ -38,7 +37,7 @@ test('account presentation uses verification status without demo branding',async
 });
 
 test('public browsing keeps real offers and hides seeded sample listings',async()=>{
- const ui=await app({role:'guest',intercept(name){
+ const ui=await app({intercept(name){
   if(name==='home_feed')return rpc(home([offer(),offer({id:'sample-offer',title:'Seeded sample lunch',restaurant:'Seeded sample cafe',is_demo:true})]));
  }});
  try{
@@ -52,7 +51,7 @@ test('public browsing keeps real offers and hides seeded sample listings',async(
 });
 
 test('visible deal count excludes sample rows and the unfiltered server total',async()=>{
- const ui=await app({role:'guest',intercept(name){
+ const ui=await app({intercept(name){
   if(name==='home_feed')return rpc(home([
    offer(),
    offer({id:'second-real',title:'Real evening bowl',is_demo:false}),
@@ -91,7 +90,7 @@ test('favorites retain real businesses and hide sample businesses even without a
 for(const [description,items] of [['sample-only',[offer({id:'sample-offer',title:'Seeded sample lunch',is_demo:true})]],['empty',[]]]) {
 test(`a ${description} feed has an honest empty state instead of a filter error`,async()=>{
  let reads=0;
- const ui=await app({role:'guest',intercept(name){
+ const ui=await app({intercept(name){
   if(name==='home_feed'&&reads++>0)return rpc(home(items));
  }});
  try{

@@ -5,7 +5,7 @@ import {app,rpc,until} from './harness.mjs';
 test('student email has a fixed suffix and missing sender never shows a code-sent state',async()=>{
  const ui=await app({role:'guest',intercept(name){if(name==='request_email_code')return rpc({ok:false,message:'Email sign-in is not enabled yet.'});}});
  try{
-  ui.click('Sign in');await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'));
+  await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'));
   assert.ok(ui.text().includes('@umich.edu'));
   assert.equal(ui.document.querySelector('input[placeholder="uniqname"]').getAttribute('aria-label'),'U-M uniqname');
   assert.equal(ui.document.querySelector('input[value="@umich.edu"]'),null);
@@ -24,7 +24,7 @@ test('code flow sends only the uniqname and enables code autofill without univer
   if(name==='verify_email_code')return rpc({ok:false,message:'That code is invalid or expired.'});
  }});
  try{
-  ui.click('Sign in');await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'));
+  await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'));
   ui.click('Create an account');await until(()=>ui.document.querySelector('[placeholder="Your name"]'));
   ui.fill('Your name','Fixture');ui.fill('uniqname','fixture');ui.click('Send verification code');
   await until(()=>ui.document.querySelector('input[autocomplete="one-time-code"]'));
@@ -59,9 +59,10 @@ test('first visit asks for a path and choosing deals removes business signup',as
   assert.equal(ui.find('List my business'),undefined);
   assert.equal(ui.find('Existing restaurant sign-in'),undefined);
   assert.equal(ui.document.querySelector('input[placeholder="you@business.com"]'),null);
-  ui.click('Keep browsing');await until(()=>ui.find('Sign in'));ui.click('Sign in');
-  await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'));
+  assert.equal(ui.find('Current bowl'),undefined,'deals need a signed-in account');
   assert.equal(ui.find('Business owner'),undefined);
+  ui.click('Back');await until(()=>ui.find('Find local deals'));
+  assert.equal(ui.find('Current bowl'),undefined,'deals need a signed-in account');
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
 });
@@ -104,7 +105,7 @@ test('restored business session replaces a stale student preference and keeps it
   assert.equal(ui.document.querySelector('input[placeholder="uniqname"]'),null);
   assert.equal(ui.find('Find local deals'),undefined);
   assert.equal(ui.find('Current bowl'),undefined);
-  ui.click('Keep browsing');await until(()=>ui.find('Find local deals'));
+  ui.click('Back');await until(()=>ui.find('Find local deals'));
   assert.equal(ui.find('Sign in to claim'),undefined);
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
