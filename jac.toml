@@ -15,6 +15,11 @@ graph_enabled = false
 
 
 [dependencies]
+
+# Install Jac's llm capability; website AI calls still require MLOCAL_IMPORT_MODEL.
+[byllm.model]
+default_model = "gpt-4o-mini"
+
 [dependencies.npm]
 react = "^18.2.0"
 react-dom = "^18.2.0"

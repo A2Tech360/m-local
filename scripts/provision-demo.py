@@ -68,7 +68,9 @@ def main():
     mapping = {'arbor-leaf-kitchen': accounts['merchant_leaf']['root_id'],
                'maize-noodle-lab': accounts['merchant_noodle']['root_id']}
     private_write(account_path, json.dumps(accounts, indent=2) + '\n')
-    private_write(env_path, 'export MLOCAL_MERCHANT_OWNERS=' + shlex.quote(json.dumps(mapping)) + '\n')
+    students = [accounts[role]['root_id'] for role in ('student_a', 'student_b')]
+    private_write(env_path, 'export MLOCAL_MERCHANT_OWNERS=' + shlex.quote(json.dumps(mapping)) + '\n'
+                  + 'export MLOCAL_DEMO_STUDENTS=' + shlex.quote(json.dumps(students)) + '\n')
     print('Created .jac/qr-demo-accounts.json (private login details) and .jac/qr-demo.env.')
     print('Stop dev, run: source .jac/qr-demo.env; bash scripts/dev.sh')
     print('Keep these ignored local files private. Do not paste passwords into a PR or report.')
