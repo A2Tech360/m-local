@@ -24,6 +24,14 @@ METRICS = (
 )
 
 
+TIME_BLOCKS = (
+    ("morning", "Morning", "6 AM to 11 AM", 6, 11),
+    ("lunch", "Lunch", "11 AM to 4 PM", 11, 16),
+    ("dinner", "Dinner", "4 PM to 9 PM", 16, 21),
+    ("late", "Late night", "9 PM to 6 AM", 21, 30),
+)
+
+
 @dataclass(frozen=True)
 class _Claim:
     identity: str
@@ -36,6 +44,8 @@ class _Claim:
     resolved: float
     price: int | None
     regular: int | None
+    starts: float = 0.0
+    ends: float = 0.0
 
 
 def _timestamp(value: Any) -> float:
@@ -122,10 +132,94 @@ def _normalize(records: list[dict[str, Any]], is_demo: bool, now: float) -> tupl
                 gaps["authenticated account identifiers"] += 1
         rows.append(_Claim(identity, actor, str(raw.get("offer_id", "")),
                            str(raw.get("offer_title", "")) or "Untitled claimed offer",
-                           claimed, redeemed, outcome, resolved, price, regular))
+                           claimed, redeemed, outcome, resolved, price, regular,
+                           _timestamp(raw.get("offer_start_ts")), _timestamp(raw.get("offer_end_ts"))))
     warnings = [f"{count} recorded claim(s) have missing or invalid {kind}; affected metrics show only known evidence."
                 for kind, count in sorted(gaps.items())]
     return rows, warnings
+
+
+def _block_of(timestamp: float, zone: ZoneInfo) -> str:
+    hour = datetime.fromtimestamp(timestamp, zone).hour
+    for key, _label, _hours, first, last in TIME_BLOCKS:
+        if first <= hour < last or first <= hour + 24 < last:
+            return key
+    return "late"
+
+
+def _clock(moment: datetime) -> str:
+    return moment.strftime("%I:%M %p").lstrip("0").replace(":00", "")
+
+
+def _schedule(starts: float, ends: float, zone: ZoneInfo) -> str:
+    if not starts or not ends or ends <= starts:
+        return ""
+    first, last = datetime.fromtimestamp(starts, zone), datetime.fromtimestamp(ends, zone)
+    day = lambda moment: moment.strftime("%b ") + str(moment.day)
+    if first.date() == last.date():
+        return f"{day(first)}, {_clock(first)} to {_clock(last)}"
+    return f"{day(first)}, {_clock(first)} to {day(last)}, {_clock(last)}"
+
+
+def _sales(rows: list[_Claim], start_date: date, days: int, start_ts: float, now: float, zone: ZoneInfo) -> dict[str, Any]:
+    """Redeemed offer value for every day of the period, split by time of day.
+
+    A redemption counts on the local date and in the time block it was redeemed.
+    Claims count in the block they were claimed. The schedule is the offer's
+    current one, which the business can edit, so it is context and never used
+    to count anything.
+    """
+    keys = [key for key, *_rest in TIME_BLOCKS]
+    cell = lambda: {"redemptions": 0, "value_cents": 0}
+    calendar = [{"date": (start_date + timedelta(days=index)).isoformat(), "total": cell(), **{key: cell() for key in keys}}
+                for index in range(days)]
+    offers: dict[str, dict[str, Any]] = {}
+
+    def offer_for(row: _Claim) -> dict[str, Any]:
+        found = offers.setdefault(row.offer, {
+            "id": row.offer, "title": row.title, "starts": 0.0, "ends": 0.0, "claims": 0, "redemptions": 0,
+            "value_cents": 0, "blocks": {key: {"claims": 0, "redemptions": 0, "value_cents": 0} for key in keys},
+        })
+        found["title"] = row.title
+        if row.starts and row.ends:
+            found["starts"], found["ends"] = row.starts, row.ends
+        return found
+
+    for row in rows:
+        if start_ts <= row.claimed <= now:
+            mine = offer_for(row)
+            mine["claims"] += 1
+            mine["blocks"][_block_of(row.claimed, zone)]["claims"] += 1
+        if start_ts <= row.redeemed <= now:
+            index = (_local_date(row.redeemed, zone) - start_date).days
+            if not 0 <= index < days:
+                continue
+            key = _block_of(row.redeemed, zone)
+            worth = row.price if row.price is not None else 0
+            for target in (calendar[index]["total"], calendar[index][key]):
+                target["redemptions"] += 1
+                target["value_cents"] += worth
+            mine = offer_for(row)
+            mine["redemptions"] += 1
+            mine["value_cents"] += worth
+            mine["blocks"][key]["redemptions"] += 1
+            mine["blocks"][key]["value_cents"] += worth
+
+    labels = {key: label for key, label, *_rest in TIME_BLOCKS}
+    listed = []
+    for item in sorted(offers.values(), key=lambda item: (-item["redemptions"], -item["claims"], item["id"])):
+        best = max(TIME_BLOCKS, key=lambda block: (item["blocks"][block[0]]["redemptions"], item["blocks"][block[0]]["claims"]))
+        busiest = item["blocks"][best[0]]
+        listed.append({
+            "title": item["title"], "schedule": _schedule(item["starts"], item["ends"], zone),
+            "claims": item["claims"], "redemptions": item["redemptions"], "value_cents": item["value_cents"],
+            "busiest": labels[best[0]] if busiest["redemptions"] or busiest["claims"] else "",
+            "blocks": [{"key": key, "label": labels[key], **item["blocks"][key]} for key in keys],
+        })
+    return {
+        "blocks": [{"key": key, "label": label, "hours": hours} for key, label, hours, *_rest in TIME_BLOCKS],
+        "days": calendar, "offers": listed,
+    }
 
 
 def build_insights(records: list[dict[str, Any]], business_name: str,
@@ -224,4 +318,5 @@ def build_insights(records: list[dict[str, Any]], business_name: str,
         "coverage_start_date": _local_date(min(coverage), zone).isoformat() if coverage else "",
         "warnings": warnings, "engagement_available": False, "frames": frames,
         "totals": frames[-1]["totals"], "offers": frames[-1]["offers"],
+        "sales": _sales(rows, start_date, days, start_ts, now, zone),
     }

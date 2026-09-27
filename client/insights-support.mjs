@@ -23,6 +23,56 @@ function offers(value) {
   }).sort((a, b) => b.redemptions - a.redemptions || a.title.localeCompare(b.title));
 }
 
+export const SALES_KEYS = ['morning', 'lunch', 'dinner', 'late'];
+const whole = value => Number.isSafeInteger(value) && value >= 0;
+function cell(value) {
+  if (!value || !whole(value.redemptions) || !whole(value.value_cents)) throw new Error('The sales summary contains an invalid total.');
+  return {redemptions: value.redemptions, value_cents: value.value_cents};
+}
+export function salesSummary(value, frames) {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'object' || !Array.isArray(value.blocks) || !Array.isArray(value.days) || !Array.isArray(value.offers)) throw new Error('The sales summary is incomplete.');
+  if (value.blocks.length !== SALES_KEYS.length || value.blocks.some((block, index) => !block || block.key !== SALES_KEYS[index])) throw new Error('The sales summary is out of order.');
+  if (value.days.length !== frames.length - 1) throw new Error('The sales summary does not cover the selected period.');
+  const days = value.days.map((day, index) => {
+    if (!day || day.date !== frames[index + 1].date) throw new Error('The sales summary dates do not match the timeline.');
+    const parts = Object.fromEntries(SALES_KEYS.map(key => [key, cell(day[key])]));
+    const total = cell(day.total);
+    if (SALES_KEYS.reduce((sum, key) => sum + parts[key].redemptions, 0) !== total.redemptions || SALES_KEYS.reduce((sum, key) => sum + parts[key].value_cents, 0) !== total.value_cents) throw new Error('The sales summary does not add up.');
+    return {date: day.date, total, ...parts};
+  });
+  const offers = value.offers.slice(0, 50).map(offer => {
+    if (!offer || !whole(offer.claims) || !whole(offer.redemptions) || !whole(offer.value_cents) || !Array.isArray(offer.blocks)) throw new Error('The sales summary contains an invalid offer.');
+    const blocks = SALES_KEYS.map(key => {
+      const found = offer.blocks.find(block => block && block.key === key);
+      if (!found || !whole(found.claims) || !whole(found.redemptions) || !whole(found.value_cents)) throw new Error('The sales summary contains an invalid offer.');
+      return {key, label: text(found.label, 40), claims: found.claims, redemptions: found.redemptions, value_cents: found.value_cents};
+    });
+    return {title: text(offer.title) || 'Untitled offer', schedule: text(offer.schedule, 80), claims: offer.claims, redemptions: offer.redemptions, value_cents: offer.value_cents, busiest: text(offer.busiest, 40), blocks};
+  });
+  return {blocks: value.blocks.map(block => ({key: block.key, label: text(block.label, 40), hours: text(block.hours, 40)})), days, offers};
+}
+export function salesChart(sales, key, cutoff, ceiling = 0) {
+  const shown = Math.max(0, Math.min(sales.days.length, Math.trunc(Number(cutoff)) || 0));
+  const values = sales.days.map(day => day[key].value_cents);
+  const maximum = Math.max(1, ceiling, ...values.slice(0, shown));
+  const step = sales.days.length > 1 ? 696 / sales.days.length : 696;
+  const bars = values.map((value, index) => {
+    const height = index < shown && value ? Math.max(2, Math.round(value / maximum * 120)) : 0;
+    return {day: index + 1, date: sales.days[index].date, value, x: Math.round((12 + step * index + step * 0.15) * 10) / 10, width: Math.round(step * 0.7 * 10) / 10, y: 132 - height, height};
+  });
+  const past = sales.days.slice(0, shown);
+  const best = past.reduce((top, day) => day[key].value_cents > (top ? top[key].value_cents : 0) ? day : top, null);
+  return {key, maximum, bars, shown,
+    value_cents: past.reduce((sum, day) => sum + day[key].value_cents, 0),
+    redemptions: past.reduce((sum, day) => sum + day[key].redemptions, 0),
+    best_date: best ? best.date : '', best_value_cents: best ? best[key].value_cents : 0};
+}
+export function salesPeak(sales, cutoff) {
+  const shown = Math.max(0, Math.min(sales.days.length, Math.trunc(Number(cutoff)) || 0));
+  return Math.max(1, ...sales.days.slice(0, shown).flatMap(day => SALES_KEYS.map(key => day[key].value_cents)));
+}
+
 export function normalizeInsights(reply, expectedPeriod) {
   if (!reply || reply.ok !== true) throw new Error(text(reply?.message) || 'Your business insights could not be loaded.');
   if (!PERIODS.includes(reply.period_days) || (expectedPeriod && reply.period_days !== expectedPeriod)) throw new Error('The metrics response is for a different period.');
@@ -44,6 +94,7 @@ export function normalizeInsights(reply, expectedPeriod) {
     as_of: reply.as_of, coverage_start_date: reply.coverage_start_date ? date(reply.coverage_start_date) : '',
     warnings: Array.isArray(reply.warnings) ? reply.warnings.filter(item => typeof item === 'string').map(item => text(item, 400)).slice(0, 12) : [],
     frames,
+    sales: salesSummary(reply.sales, frames),
   };
 }
 
