@@ -1,5 +1,9 @@
 # PromoPusher (prototype)
 
+**Open on phones:** on Windows, double-click **Start Phone Demo.cmd** for an HTTPS
+link. Keep the host awake; **Stop Phone Demo.cmd** closes sharing.
+[Setup, private demo logins, and troubleshooting](docs/PHONE-LINK.md).
+
 **Hackathon team: [start here](docs/START-HERE.md).** The mission, impact goals,
 four engineering assignments and copy-ready model prompts are documented there.
 Read the [shared contract](docs/TEAM-CONTRACT.md) and
