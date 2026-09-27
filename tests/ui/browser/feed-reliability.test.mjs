@@ -1,3 +1,4 @@
+import {setMaximumPrice} from './harness.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {app,home,offer,rpc,until} from './harness.mjs';
@@ -126,9 +127,9 @@ test('revalidation uses current filter values and skips an already busy manual r
   }
  }});
  try{
-  ui.click('Under $5');await until(()=>ui.find('Filtered bowl 2')&&refreshReady(ui));
+  await setMaximumPrice(ui,5);await until(()=>ui.find('Filtered bowl 2')&&refreshReady(ui));
   clock.event('focus');await until(()=>ui.find('Filtered bowl 3')&&refreshReady(ui));
-  assert.equal(feedCalls(ui).at(-1).body.price_range,'under5','auto refresh must use the latest filter closure');
+  assert.equal(feedCalls(ui).at(-1).body.price_range,'0-5','auto refresh must use the latest filter closure');
   hold=true;ui.click('Refresh offers');await until(()=>feedCalls(ui).length===4);
   clock.event('focus');clock.event('online');clock.tick();await settle();
   assert.equal(feedCalls(ui).length,4,'manual loading also suppresses automatic refresh');
@@ -145,12 +146,12 @@ test('a transient refresh failure recovers on online without a false empty state
   }
  }});
  try{
-  ui.click('Under $5');await until(()=>ui.find('Filtered bowl')&&refreshReady(ui));
+  await setMaximumPrice(ui,5);await until(()=>ui.find('Filtered bowl')&&refreshReady(ui));
   offline=true;clock.event('focus');await until(()=>ui.text().includes('Could not load offers.'));
   assert.equal(ui.text().includes('Offers are on their way'),false);
   assert.equal(ui.text().includes('Nothing matches yet'),false);
   offline=false;published=true;clock.event('online');await until(()=>ui.find('Recovered new lunch'));
-  assert.equal(feedCalls(ui).at(-1).body.price_range,'under5');
+  assert.equal(feedCalls(ui).at(-1).body.price_range,'0-5');
   assert.equal(ui.text().includes('Could not load offers.'),false);
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}

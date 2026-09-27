@@ -1,3 +1,5 @@
+import {openSignIn} from './harness.mjs';
+import {setMaximumPrice} from './harness.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {app,home,offer,rpc,until} from './harness.mjs';
@@ -8,6 +10,7 @@ for (const audience of ['student','business']) {
    if(name==='request_email_code')return rpc({ok:true,challenge:'fixture-code',email:audience==='student'?'fixture@umich.edu':'owner@example.test',retry_after:60,message:'Check your inbox.'});
   }});
   try{
+   await openSignIn(ui,audience);
    const field=audience==='student'?'uniqname':'you@business.com';
    await until(()=>ui.document.querySelector(`[placeholder="${field}"]`));
    assert.equal(ui.find('Demo sign-in'),undefined);
@@ -94,9 +97,9 @@ test(`a ${description} feed has an honest empty state instead of a filter error`
   if(name==='home_feed'&&reads++>0)return rpc(home(items));
  }});
  try{
-  ui.click('Under $5');await until(()=>ui.text().includes('Nothing matches yet'));
+  await setMaximumPrice(ui,5);await until(()=>ui.text().includes('Nothing matches yet'));
   assert.equal(ui.text().includes('Seeded sample lunch'),false);
-  ui.click('Any price');await until(()=>ui.text().includes('Offers are on their way'));
+  await setMaximumPrice(ui,20);await until(()=>ui.text().includes('Offers are on their way'));
   assert.equal(ui.text().includes('Try removing a filter.'),false);
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}

@@ -7,23 +7,23 @@ import from "@jac/mobui" { StyleSheet }
 
 
 glob:pub C: dict[str, str] = {
-         "bg": "#faf7f2",
+         "bg": "#F9F6F0",
          "surface": "#ffffff",
-         "sunken": "#f3eee6",
-         "border": "#e7dfd3",
-         "ink": "#1d1a16",
-         "text": "#3a342c",
-         "muted": "#7a7064",
-         "accent": "#d9480f",
-         "accentSoft": "#fff0e6",
+         "sunken": "#EFE9DE",
+         "border": "#DDD5C7",
+         "ink": "#0B1F38",
+         "text": "#3A4657",
+         "muted": "#5F6B7A",
+         "accent": "#02305C",
+         "accentSoft": "#E3ECF7",
          "accentText": "#ffffff",
-         "brand": "#1f3a5f",
-         "good": "#2b8a3e",
-         "goodSoft": "#e9f7ec",
-         "warn": "#b35c00",
-         "warnSoft": "#fff4db",
-         "bad": "#c92a2a",
-         "badSoft": "#fdecec"
+         "brand": "#02305C",
+         "good": "#1E6B3F",
+         "goodSoft": "#E4F2E8",
+         "warn": "#7A4A00",
+         "warnSoft": "#FFF1CF",
+         "bad": "#B42318",
+         "badSoft": "#FDECEA"
      },
      S: dict[str, int] = {"xs": 4, "sm": 8, "md": 12, "lg": 16, "xl": 20, "xxl": 28},
      R: dict[str, int] = {"sm": 8, "md": 12, "lg": 18, "pill": 999},
@@ -33,6 +33,7 @@ glob:pub C: dict[str, str] = {
 def:pub buildStyles(T: dict[str, str]) -> any {
     return StyleSheet.create(
         {
+            "hidden": {"display": "none"},
             "screen": {"flex": 1, "backgroundColor": T["bg"]},
             "frame": {
                 "flex": 1,
@@ -45,33 +46,33 @@ def:pub buildStyles(T: dict[str, str]) -> any {
             "content": {
                 "paddingHorizontal": S["xl"],
                 "paddingTop": S["xl"],
-                "paddingBottom": 110,
+                "paddingBottom": 120,
                 "gap": S["lg"]
             },
-            "header": {"gap": S["xs"]},
+            "header": {"gap": 8},
             "brandRow": {
                 "flexDirection": "row",
                 "alignItems": "center",
                 "justifyContent": "space-between"
             },
             "brand": {
-                "fontSize": F["md"],
+                "fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["md"],
                 "fontWeight": "800",
                 "color": T["accent"],
                 "letterSpacing": 0.5
             },
             "title": {
-                "fontSize": F["xxl"],
+                "fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["xxl"],
                 "fontWeight": "800",
                 "color": T["ink"],
-                "lineHeight": 36
+                "lineHeight": 34, "letterSpacing": -0.7
             },
-            "h2": {"fontSize": F["lg"], "fontWeight": "800", "color": T["ink"]},
-            "subtitle": {"fontSize": F["md"], "color": T["muted"], "lineHeight": 21},
-            "body": {"fontSize": F["md"], "color": T["text"], "lineHeight": 22},
-            "small": {"fontSize": F["sm"], "color": T["muted"], "lineHeight": 19},
+            "h2": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["lg"], "fontWeight": "800", "color": T["ink"]},
+            "subtitle": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["md"], "color": T["muted"], "lineHeight": 21},
+            "body": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["md"], "color": T["text"], "lineHeight": 22},
+            "small": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["sm"], "color": T["muted"], "lineHeight": 19},
             "label": {
-                "fontSize": F["xs"],
+                "fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["xs"],
                 "fontWeight": "700",
                 "color": T["muted"],
                 "textTransform": "uppercase",
@@ -102,31 +103,32 @@ def:pub buildStyles(T: dict[str, str]) -> any {
                 "padding": S["lg"],
                 "gap": S["md"]
             },
-            "restaurant": {"fontSize": F["sm"], "fontWeight": "700", "color": T["brand"]},
+            "restaurant": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["sm"], "fontWeight": "700", "color": T["brand"]},
             "offerTitle": {
-                "fontSize": F["lg"],
+                "fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["lg"],
                 "fontWeight": "800",
                 "color": T["ink"],
                 "lineHeight": 24
             },
-            "price": {"fontSize": F["xl"], "fontWeight": "800", "color": T["ink"]},
-            "priceBig": {"fontSize": 40, "fontWeight": "800", "color": T["ink"]},
+            "price": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["xl"], "fontWeight": "800", "color": T["ink"]},
+            "priceBig": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 40, "fontWeight": "800", "color": T["ink"]},
             "strike": {
-                "fontSize": F["md"],
+                "fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["md"],
                 "color": T["muted"],
                 "textDecorationLine": "line-through"
             },
-            "save": {"fontSize": F["sm"], "fontWeight": "800", "color": T["good"]},
+            "save": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["sm"], "fontWeight": "800", "color": T["good"]},
             "chip": {
-                "paddingVertical": 6,
+                "minHeight": 44, "justifyContent": "center",
+                "paddingVertical": 10,
                 "paddingHorizontal": S["md"],
                 "borderRadius": R["pill"],
                 "borderWidth": 1,
                 "borderColor": T["border"],
                 "backgroundColor": T["surface"]
             },
-            "chipOn": {"backgroundColor": T["ink"], "borderColor": T["ink"]},
-            "chipText": {"fontSize": F["sm"], "fontWeight": "600", "color": T["text"]},
+            "chipOn": {"backgroundColor": T["brand"], "borderColor": T["brand"]},
+            "chipText": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["sm"], "fontWeight": "600", "color": T["text"]},
             "chipTextOn": {"color": T["accentText"]},
             "tag": {
                 "paddingVertical": 3,
@@ -134,21 +136,21 @@ def:pub buildStyles(T: dict[str, str]) -> any {
                 "borderRadius": R["pill"],
                 "backgroundColor": T["sunken"]
             },
-            "tagText": {"fontSize": F["xs"], "fontWeight": "700", "color": T["text"]},
+            "tagText": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["xs"], "fontWeight": "700", "color": T["text"]},
             "badge": {
                 "paddingVertical": 3,
                 "paddingHorizontal": S["sm"],
                 "borderRadius": R["pill"],
                 "backgroundColor": T["goodSoft"]
             },
-            "badgeText": {"fontSize": F["xs"], "fontWeight": "800", "color": T["good"]},
+            "badgeText": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["xs"], "fontWeight": "800", "color": T["good"]},
             "note": {
                 "backgroundColor": T["warnSoft"],
                 "borderRadius": R["md"],
                 "padding": S["md"],
                 "gap": S["xs"]
             },
-            "noteText": {"fontSize": F["sm"], "color": T["warn"], "lineHeight": 19},
+            "noteText": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["sm"], "color": T["warn"], "lineHeight": 19},
             "input": {
                 "paddingVertical": S["md"],
                 "paddingHorizontal": S["md"],
@@ -157,21 +159,23 @@ def:pub buildStyles(T: dict[str, str]) -> any {
                 "borderColor": T["border"],
                 "backgroundColor": T["surface"],
                 "color": T["ink"],
-                "fontSize": 16
+                "fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 16
             },
             "inputMulti": {"minHeight": 72, "textAlignVertical": "top"},
             "field": {"gap": 6, "flexShrink": 0},
             "fieldRow": {"flexDirection": "row", "gap": S["md"]},
             "flex1": {"flex": 1},
             "btn": {
+                "minHeight": 54, "justifyContent": "center",
                 "paddingVertical": 14,
                 "paddingHorizontal": S["lg"],
                 "borderRadius": R["md"],
                 "backgroundColor": T["accent"],
                 "alignItems": "center"
             },
-            "btnText": {"color": T["accentText"], "fontWeight": "800", "fontSize": F["md"]},
+            "btnText": {"color": T["accentText"], "fontWeight": "800", "fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["md"]},
             "btnGhost": {
+                "minHeight": 44, "justifyContent": "center",
                 "paddingVertical": 10,
                 "paddingHorizontal": S["md"],
                 "borderRadius": R["md"],
@@ -180,21 +184,21 @@ def:pub buildStyles(T: dict[str, str]) -> any {
                 "backgroundColor": T["surface"],
                 "alignItems": "center"
             },
-            "btnGhostText": {"color": T["ink"], "fontWeight": "700", "fontSize": F["sm"]},
-            "btnDisabled": {"backgroundColor": T["border"]},
-            "link": {"color": T["accent"], "fontWeight": "700", "fontSize": F["md"]},
+            "btnGhostText": {"color": T["ink"], "fontWeight": "700", "fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["sm"]},
+            "btnDisabled": {"backgroundColor": "#687787"},
+            "link": {"color": T["accent"], "fontWeight": "700", "fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["md"]},
             "msgGood": {
                 "backgroundColor": T["goodSoft"],
                 "borderRadius": R["md"],
                 "padding": S["md"]
             },
-            "msgGoodText": {"color": T["good"], "fontWeight": "700", "fontSize": F["md"]},
+            "msgGoodText": {"color": T["good"], "fontWeight": "700", "fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["md"]},
             "msgBad": {
                 "backgroundColor": T["badSoft"],
                 "borderRadius": R["md"],
                 "padding": S["md"]
             },
-            "msgBadText": {"color": T["bad"], "fontWeight": "700", "fontSize": F["md"]},
+            "msgBadText": {"color": T["bad"], "fontWeight": "700", "fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["md"]},
             "reason": {"flexDirection": "row", "gap": S["sm"], "alignItems": "flex-start"},
             "dot": {
                 "width": 8,
@@ -225,22 +229,31 @@ def:pub buildStyles(T: dict[str, str]) -> any {
                 "paddingHorizontal": S["sm"]
             },
             "tab": {
+                "borderTopWidth": 3, "borderTopColor": "transparent", "minHeight": 64,
                 "flex": 1,
                 "alignItems": "center",
                 "paddingVertical": S["sm"],
-                "borderRadius": R["md"],
-                "gap": 2
+                "borderRadius": 0,
+                "gap": 4
             },
-            "tabOn": {"backgroundColor": T["accentSoft"]},
-            "tabText": {"fontSize": F["sm"], "fontWeight": "700", "color": T["muted"]},
+            "tabOn": {"backgroundColor": T["surface"], "borderTopColor": "#FEC809"},
+            "tabText": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["sm"], "fontWeight": "700", "color": T["muted"]},
             "tabTextOn": {"color": T["accent"]},
-            "tabSub": {"fontSize": 11, "color": T["muted"]},
+            "tabSub": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 11, "color": T["muted"]},
             "status": {
                 "paddingVertical": 3,
                 "paddingHorizontal": S["sm"],
                 "borderRadius": R["pill"]
             },
-            "statusText": {"fontSize": F["xs"], "fontWeight": "800"},
+            "statusText": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["xs"], "fontWeight": "800"},
+            "masthead": {"paddingHorizontal": 20, "paddingTop": 16, "paddingBottom": 4, "flexDirection": "row", "alignItems": "center", "justifyContent": "space-between", "gap": 12},
+            "sessionPanel": {"marginHorizontal": 20, "marginTop": 12, "padding": 16, "gap": 12, "borderRadius": 18, "backgroundColor": T["surface"], "borderWidth": 1, "borderColor": T["border"]},
+            "filterPanel": {"padding": 14, "gap": 12, "backgroundColor": T["surface"], "borderRadius": 16, "borderWidth": 1, "borderColor": T["border"]},
+            "claimPass": {"backgroundColor": T["brand"], "padding": 20, "borderRadius": 24, "gap": 14},
+            "claimHeading": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 22, "fontWeight": "800", "color": "#F9F6F0", "letterSpacing": -0.3},
+            "claimBody": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 15, "color": "#F9F6F0", "lineHeight": 22},
+            "claimLabel": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 12, "fontWeight": "800", "color": "#FEC809", "letterSpacing": 0.7},
+            "claimPrice": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 32, "fontWeight": "800", "color": "#F9F6F0"},
             "divider": {"height": 1, "backgroundColor": T["border"]}
         }
     );

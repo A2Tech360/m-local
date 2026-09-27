@@ -1,9 +1,10 @@
 import React, {useEffect, useRef, useState} from 'react';
+import {formStack, formInput, formSecondary, formHint} from './ui.jsx';
 
-const stack={display:'flex',flexDirection:'column',gap:14,minWidth:0,fontFamily:'system-ui, sans-serif',color:'#1d1a16'};
-const input={boxSizing:'border-box',width:'100%',minWidth:0,minHeight:48,padding:12,fontSize:16,border:'1px solid #c9bfb2',borderRadius:10,background:'#fff',color:'#1d1a16'};
-const button={...input,fontWeight:700,cursor:'pointer'};
-const hint={fontSize:13,lineHeight:1.5,margin:0,color:'#6b6157'};
+const stack=formStack;
+const input=formInput;
+const button=formSecondary;
+const hint=formHint;
 const row={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,180px),1fr))',gap:12};
 
 function validate(d){
@@ -51,9 +52,9 @@ export function OfferEditor({initial,onDraftChange,onBusyChange,saveOffer,onSave
   {text('eligibility','Eligibility *','Students with a valid ID',300,{required:true})}
   {multi('terms','Terms *','One per student. Dine-in only.')}
   {text('dietary','Dietary tags, separated by commas','vegetarian, vegan, gluten-free, halal',200)}
-  {message&&<p ref={errorRef} tabIndex={-1} role="alert" style={{...hint,color:'#9d2c13'}}>{message}</p>}
+  {message&&<p ref={errorRef} tabIndex={-1} role="alert" style={{...hint,color:'#B42318'}}>{message}</p>}
   <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-   <button style={{...button,flex:'1 1 180px',background:'#b83a0b',borderColor:'#b83a0b',color:'#fff'}} disabled={busy}>{busy?'Saving...':draft.offer_id?'Save changes':'Publish offer'}</button>
+   <button style={{...button,flex:'1 1 180px',background:'#02305C',borderColor:'#02305C',color:'#fff'}} disabled={busy}>{busy?'Saving...':draft.offer_id?'Save changes':'Publish offer'}</button>
    <button style={{...button,flex:'1 1 120px'}} disabled={busy} type="button" onClick={onCancel}>Cancel</button>
   </div>
  </form>;

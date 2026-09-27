@@ -2,20 +2,25 @@ import React, {useEffect, useRef, useState} from 'react';
 import {QRCodeSVG} from 'qrcode.react';
 import {BrowserQRCodeReader} from '@zxing/browser';
 import {createScanController, isClaimPayload} from './scan-controller.mjs';
+import {uiFont, formButton, formSecondary} from './ui.jsx';
 
-const box = {display:'flex',flexDirection:'column',gap:12,color:'#28221d',fontFamily:'inherit'};
-const button = {minHeight:46,padding:'12px 16px',borderRadius:12,border:'1px solid #dad3c8',background:'#b24a2f',color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer'};
-const secondary = {...button,background:'#fff',color:'#28221d'};
+const box = {display:'flex',flexDirection:'column',gap:16,color:'#0B1F38',fontFamily:uiFont};
+const button = formButton;
+const secondary = formSecondary;
 const price = cents => '$'+(cents/100).toFixed(2);
 
 // Browser-only React bridge: MobUI has no video capture primitive.
 export function ClaimQr({payload, expiresTs}) {
   const [now,setNow] = useState(Date.now()/1000);
   useEffect(() => {const timer=setInterval(()=>setNow(Date.now()/1000),1000);return ()=>clearInterval(timer);},[]);
-  if (!isClaimPayload(payload)) return <p role="alert">This claim QR is unavailable. Refresh the offer to try again.</p>;
-  if (!expiresTs || now >= expiresTs) return <p role="status">This hold has expired. Refresh the offer to check availability.</p>;
-  return <div style={{background:'#fff',padding:12,borderRadius:12,alignSelf:'center',width:'100%',maxWidth:264,boxSizing:'border-box'}}>
-    <QRCodeSVG value={payload} size={240} level="M" marginSize={4} title="Show this M-Local claim QR to the restaurant" style={{display:'block',width:'100%',maxWidth:240,height:'auto'}} />
+  const notice = {margin:0,padding:14,borderRadius:12,background:'#FFF1CF',color:'#7A4A00',fontFamily:uiFont,lineHeight:1.5};
+  if (!isClaimPayload(payload)) return <p role="alert" style={notice}>This claim QR is unavailable. Refresh the offer to try again.</p>;
+  if (!expiresTs || now >= expiresTs) return <p role="status" style={notice}>This hold has expired. Refresh the offer to check availability.</p>;
+  const seconds = Math.max(0,Math.ceil(expiresTs-now));
+  const remaining = `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
+  return <div className="ml-qr-ticket" style={{background:'#F9F6F0',color:'#0B1F38',fontFamily:uiFont,padding:16,borderRadius:20,alignSelf:'center',width:'100%',maxWidth:280,boxSizing:'border-box'}}>
+    <QRCodeSVG data-testid="claim-qr" value={payload} size={240} level="M" marginSize={4} title="Show this M-Local claim QR to the restaurant" style={{display:'block',width:'100%',maxWidth:240,height:'auto'}} />
+    <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:8,paddingTop:14,borderTop:'1px solid #DDD5C7',marginTop:12}}><span style={{fontSize:13,color:'#5F6B7A'}}>Hold expires in</span><strong style={{fontSize:24,fontVariantNumeric:'tabular-nums',letterSpacing:.5}}>{remaining}</strong></div>
   </div>;
 }
 
@@ -42,9 +47,13 @@ export function ClaimScanner({resolveClaim, redeemClaim, onRedeemed}) {
   const active=['requesting','scanning','resolving'].includes(state.phase), confirming=state.phase==='redeeming';
   return <section aria-label="Scan a student claim" style={box}>
     <p style={{margin:0,lineHeight:1.5}}>Scan the student’s QR, review the saved offer, then confirm redemption.</p>
-    <video ref={video} muted playsInline aria-label="QR camera preview" style={{width:'100%',maxHeight:320,background:'#171513',borderRadius:12,display:active?'block':'none'}} />
+    <div className="ml-scan-window">
+      <video ref={video} muted playsInline aria-label="QR camera preview" style={{width:'100%',maxHeight:320,background:'#0E1622',display:active?'block':'none'}} />
+      {!active&&<div style={{textAlign:'center',padding:54,color:'#F9F6F0',lineHeight:1.5}}><strong style={{display:'block',fontSize:20,marginBottom:8}}>Scan a student’s QR</strong><span style={{fontSize:14,color:'#C9D4E2'}}>Review the saved offer before confirming.</span></div>}
+      <div className="ml-scan-reticle" aria-hidden="true"/>
+    </div>
     {state.message && <p role={state.phase==='error'?'alert':'status'} aria-live="polite" style={{margin:0,lineHeight:1.5}}>{state.message}</p>}
-    {state.preview && <div style={{...box,background:'#f3f0e9',padding:16,borderRadius:12}}>
+    {state.preview && <div style={{...box,background:'#F9F6F0',padding:20,borderRadius:20,border:'1px solid #DDD5C7'}}>
       <strong>{state.preview.title_snapshot}</strong>
       <strong style={{fontSize:26}}>{price(state.preview.price_cents)}</strong>
       <span>{state.preview.restaurant}</span>

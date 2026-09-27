@@ -1,3 +1,4 @@
+import {setMaximumPrice} from './harness.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {app,offer,held,until,rpc,home} from './harness.mjs';
@@ -63,14 +64,14 @@ test('confirmed offer save survives a failed portal refresh and refresh can be r
 
 test('the newest filter response wins even when an earlier request arrives last',async()=>{
  let release;const slow=new Promise(r=>{release=r;});
- const ui=await app({intercept:async(name,body)=>{if(name==='home_feed'&&body.price_range==='under5'){await slow;return rpc(home([offer({title:'Old delayed result'})]));}if(name==='home_feed'&&body.price_range==='5to8')return rpc(home([offer({title:'Latest filter result'})]));}});
- try{ui.click('Under $5');await until(()=>ui.calls.some(c=>c.name==='home_feed'&&c.body.price_range==='under5'));ui.click('$5 to $8');await until(()=>ui.text().includes('Latest filter result'));release();await new Promise(r=>setTimeout(r,80));assert.equal(ui.text().includes('Old delayed result'),false);assert.ok(ui.text().includes('Latest filter result'));assert.deepEqual(ui.errors,[]);}finally{release();ui.close();}
+ const ui=await app({intercept:async(name,body)=>{if(name==='home_feed'&&body.price_range==='0-5'){await slow;return rpc(home([offer({title:'Old delayed result'})]));}if(name==='home_feed'&&body.price_range==='0-8')return rpc(home([offer({title:'Latest filter result'})]));}});
+ try{await setMaximumPrice(ui,5);await until(()=>ui.calls.some(c=>c.name==='home_feed'&&c.body.price_range==='0-5'));await setMaximumPrice(ui,8);await until(()=>ui.text().includes('Latest filter result'));release();await new Promise(r=>setTimeout(r,80));assert.equal(ui.text().includes('Old delayed result'),false);assert.ok(ui.text().includes('Latest filter result'));assert.deepEqual(ui.errors,[]);}finally{release();ui.close();}
 });
 
 test('signout ignores a delayed private detail response',async()=>{
  let release;const slow=new Promise(r=>{release=r;});let first=true;
  const ui=await app({item:held(),intercept:async(name)=>{if(name==='get_offer'&&first){first=false;await slow;return rpc(held());}}});
- try{ui.click('Saved bowl');await until(()=>ui.calls.some(c=>c.name==='get_offer'));ui.click('Log out');await until(()=>ui.text().includes('Sign in'));release();await new Promise(r=>setTimeout(r,80));assert.equal(ui.text().includes('Your saved claim'),false);assert.equal(ui.document.querySelector('svg[role="img"]')!==null,false);assert.deepEqual(ui.errors,[]);}finally{release();ui.close();}
+ try{ui.click('Saved bowl');await until(()=>ui.calls.some(c=>c.name==='get_offer'));ui.click('Log out');await until(()=>ui.find('Find local deals'));release();await new Promise(r=>setTimeout(r,80));assert.equal(ui.text().includes('Your saved claim'),false);assert.equal(ui.document.querySelector('[data-testid=claim-qr]')!==null,false);assert.deepEqual(ui.errors,[]);}finally{release();ui.close();}
 });
 
 test('actual scanner composition recovers from denied camera permission',async()=>{
@@ -81,10 +82,10 @@ test('actual scanner composition recovers from denied camera permission',async()
 
 test('signout removes an already visible claim QR and saved terms',async()=>{
  const ui=await app({item:held()});
- try{ui.click('Saved bowl');await until(()=>ui.document.querySelector('svg')&&ui.text().includes('Saved meal terms'),'visible claim QR');ui.click('Log out');await until(()=>ui.text().includes('Sign in'));assert.equal(ui.document.querySelector('svg'),null);assert.equal(ui.text().includes('Saved meal terms'),false);assert.equal(ui.text().includes('Your QR is ready'),false);assert.deepEqual(ui.errors,[]);}finally{ui.close();}
+ try{ui.click('Saved bowl');await until(()=>ui.document.querySelector('[data-testid=claim-qr]')&&ui.text().includes('Saved meal terms'),'visible claim QR');ui.click('Log out');await until(()=>ui.find('Find local deals'));assert.equal(ui.document.querySelector('[data-testid=claim-qr]'),null);assert.equal(ui.text().includes('Saved meal terms'),false);assert.equal(ui.text().includes('Your QR is ready'),false);assert.deepEqual(ui.errors,[]);}finally{ui.close();}
 });
 
 test('a stale displayed hold hides its QR after the saved deadline',async()=>{
  const ui=await app({item:held({my_expires_ts:Date.now()/1000-5})});
- try{ui.click('Saved bowl');await until(()=>ui.text().includes('This hold has expired.'));assert.equal(ui.document.querySelector('svg'),null);assert.equal(ui.calls.some(c=>c.name==='redeem_claim'),false);assert.deepEqual(ui.errors,[]);}finally{ui.close();}
+ try{ui.click('Saved bowl');await until(()=>ui.text().includes('This hold has expired.'));assert.equal(ui.document.querySelector('[data-testid=claim-qr]'),null);assert.equal(ui.calls.some(c=>c.name==='redeem_claim'),false);assert.deepEqual(ui.errors,[]);}finally{ui.close();}
 });

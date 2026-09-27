@@ -1,3 +1,4 @@
+import {openSignIn} from './harness.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {app,home,offer,feedItem,rpc,until} from './harness.mjs';
@@ -8,6 +9,7 @@ const has=(ui,text)=>ui.find(text)!==undefined;
 test('guest gets the sign-in screen and never sees or loads deals',async()=>{
  const ui=await app({role:'guest'});
  try{
+  await openSignIn(ui);
   await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'));
   assert.ok(ui.text().includes('Sign in to M-Local'));
   assert.equal(has(ui,'Current bowl'),false);assert.equal(has(ui,'Your favorites'),false);
@@ -53,7 +55,7 @@ test('student menu is Offers and Account, and log out hides the deals',async()=>
   assert.ok(has(ui,'Log out'));
   ui.click('Account');await until(()=>ui.text().includes('YOUR ACCOUNT'));
   assert.ok(has(ui,'Log out'));assert.ok(has(ui,'Edit my tastes'));
-  ui.click('Log out');await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'));
+  ui.click('Log out');await until(()=>ui.find('Find local deals'));
   assert.equal(ui.window.localStorage.getItem('jac_token'),null);
   assert.equal(has(ui,'Nearby'),false);assert.equal(has(ui,'Log out'),false);assert.equal(has(ui,'Current bowl'),false);
   assert.deepEqual(ui.errors,[]);
@@ -73,7 +75,7 @@ test('restaurant lands on Insights with business navigation and can log out',asy
   assert.equal(has(ui,'Nearby'),false);assert.equal(has(ui,'Your favorites'),false);
   ui.click('Redeem');await until(()=>ui.text().includes('Scan a claim'));
   assert.ok(has(ui,'Log out'));
-  ui.click('Log out');await until(()=>ui.document.querySelector('input[placeholder="you@business.com"]'));
+  ui.click('Log out');await until(()=>ui.find('Find local deals'));
   assert.equal(ui.window.localStorage.getItem('jac_token'),null);
   assert.equal(has(ui,'Manage'),false);assert.equal(has(ui,'Current bowl'),false);
   assert.deepEqual(ui.errors,[]);
@@ -85,7 +87,7 @@ test('business without a restaurant sees only its own account and can log out',a
  try{
   assert.ok(ui.text().includes('YOUR BUSINESS'));assert.ok(has(ui,'Business profile'));assert.ok(has(ui,'Log out'));
   assert.equal(has(ui,'Current bowl'),false);assert.equal(has(ui,'Nearby'),false);assert.equal(has(ui,'Manage'),false);
-  ui.click('Log out');await until(()=>ui.document.querySelector('input[placeholder="you@business.com"]'));
+  ui.click('Log out');await until(()=>ui.find('Find local deals'));
   assert.equal(has(ui,'Business profile'),false);
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
@@ -109,6 +111,7 @@ test('sign in, log out and sign in again requests and accepts a second code',asy
   if(name==='home_feed')return rpc(home([offer()],{signed_in:signedIn}));
  }});
  const signIn=async round=>{
+  await openSignIn(ui);
   await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'),`sign-in form, round ${round}`);
   ui.fill('uniqname','fixture');ui.click('Send verification code');
   await until(()=>ui.document.querySelector('input[autocomplete="one-time-code"]'),`code field, round ${round}`);
