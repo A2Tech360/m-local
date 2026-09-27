@@ -92,7 +92,8 @@ test('saving an active business profile refreshes server authority and opens off
   if(name==='current_session')return rpc(businessSession(activated?'merchant':'business'));
  }});
  try{
-  await completeBusiness(ui);await until(()=>ui.find('New offer'),'activated business can create an offer immediately');
+  await completeBusiness(ui);await until(()=>ui.find('Insights'),'activated business opens its dashboard');
+  ui.click('Manage');await until(()=>ui.find('New offer'),'activated business can create an offer immediately');
   assert.ok(ui.find('Manage'));assert.ok(ui.find('Restaurant profile'));
   assert.equal(ui.document.querySelector('[placeholder="Business name"]'),null);
   const request=ui.calls.find(c=>c.name==='save_business_draft');
@@ -116,7 +117,8 @@ test('saved active profile survives a session refresh failure and retries withou
   assert.ok(ui.text().includes('Your business profile was saved'));
   assert.equal(ui.find('New offer'),undefined);
   assert.equal(ui.document.querySelector('[placeholder="Business name"]').value,'Self-service cafe');
-  ui.click('Open offer management');await until(()=>ui.find('New offer'));
+  ui.click('Open offer management');await until(()=>ui.find('Insights'));
+  ui.click('Manage');await until(()=>ui.find('New offer'));
   assert.equal(ui.calls.filter(c=>c.name==='save_business_draft').length,1);
   assert.equal(refreshes,2);assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
