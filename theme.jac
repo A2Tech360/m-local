@@ -160,7 +160,7 @@ def:pub buildStyles(T: dict[str, str]) -> any {
                 "fontSize": 16
             },
             "inputMulti": {"minHeight": 72, "textAlignVertical": "top"},
-            "field": {"gap": 6},
+            "field": {"gap": 6, "flexShrink": 0},
             "fieldRow": {"flexDirection": "row", "gap": S["md"]},
             "flex1": {"flex": 1},
             "btn": {

@@ -29,7 +29,7 @@ test('claim failure clears busy state and allows one explicit retry',async()=>{
 test('offer and profile save failures keep values and enable retry',async()=>{
  const attempts={save_offer:0,update_profile:0};
  const ui=await app({role:'merchant',intercept(name){if(name in attempts&&attempts[name]++===0)throw new Error('Synthetic offline');}});
- try{ui.click('Manage');await until(()=>ui.text().includes('Restaurant profile'));ui.fill('Restaurant name','Edited fixture name');ui.click('Save profile');await until(()=>ui.text().includes('Profile could not be saved'));assert.equal(ui.document.querySelector('[placeholder="Restaurant name"]').value,'Edited fixture name');assert.equal(ui.text().includes('Saving...'),false);
+ try{ui.click("Manage");await until(()=>ui.text().includes("New offer"));ui.click('Manage');await until(()=>ui.text().includes('Restaurant profile'));ui.fill('Restaurant name','Edited fixture name');ui.click('Save profile');await until(()=>ui.text().includes('Profile could not be saved'));assert.equal(ui.document.querySelector('[placeholder="Restaurant name"]').value,'Edited fixture name');assert.equal(ui.text().includes('Saving...'),false);
  ui.click('Save profile');await until(()=>attempts.update_profile===2&&!ui.text().includes('Profile could not be saved')&&!ui.text().includes('Saving...'),'profile retry');
  ui.click('New offer');await until(()=>ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));ui.fill('Lunch bowl for $7','Unsaved fixture bowl');ui.fill('7.00','7.00');ui.fill('One per student. Dine-in only.','One per student.');ui.click('Publish offer');await until(()=>ui.text().includes('Could not save the offer.'));assert.equal(ui.document.querySelector('[placeholder="Lunch bowl for $7"]').value,'Unsaved fixture bowl');assert.equal(ui.text().includes('Saving...'),false);ui.click('Publish offer');await until(()=>ui.text().includes('Fixture offer saved'),'offer retry');assert.equal(attempts.save_offer,2);assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
@@ -44,7 +44,7 @@ test('confirmed offer save survives a failed portal refresh and refresh can be r
    if(saved&&portalReads===2)throw new Error('Synthetic refresh failure after confirmed save');
   }
  }});
- try{
+ try{ui.click("Manage");await until(()=>ui.text().includes("New offer"));
   ui.click('Manage');await until(()=>ui.text().includes('Restaurant profile'));
   ui.click('New offer');await until(()=>ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
   ui.fill('Lunch bowl for $7','Confirmed fixture bowl');ui.fill('7.00','7.00');ui.fill('One per student. Dine-in only.','One per student.');ui.click('Publish offer');
@@ -70,18 +70,18 @@ test('the newest filter response wins even when an earlier request arrives last'
 test('signout ignores a delayed private detail response',async()=>{
  let release;const slow=new Promise(r=>{release=r;});let first=true;
  const ui=await app({item:held(),intercept:async(name)=>{if(name==='get_offer'&&first){first=false;await slow;return rpc(held());}}});
- try{ui.click('Saved bowl');await until(()=>ui.calls.some(c=>c.name==='get_offer'));ui.click('Sign out');await until(()=>ui.text().includes('Open sign in'));release();await new Promise(r=>setTimeout(r,80));assert.equal(ui.text().includes('Your saved claim'),false);assert.equal(ui.document.querySelector('svg[role="img"]')!==null,false);assert.deepEqual(ui.errors,[]);}finally{release();ui.close();}
+ try{ui.click('Saved bowl');await until(()=>ui.calls.some(c=>c.name==='get_offer'));ui.click('Log out');await until(()=>ui.text().includes('Sign in'));release();await new Promise(r=>setTimeout(r,80));assert.equal(ui.text().includes('Your saved claim'),false);assert.equal(ui.document.querySelector('svg[role="img"]')!==null,false);assert.deepEqual(ui.errors,[]);}finally{release();ui.close();}
 });
 
 test('actual scanner composition recovers from denied camera permission',async()=>{
  const ui=await app({role:'merchant'});
- try{Object.defineProperty(ui.window,'isSecureContext',{value:true,configurable:true});Object.defineProperty(ui.window.navigator,'mediaDevices',{value:{getUserMedia:async()=>{throw new ui.window.DOMException('Synthetic denial','NotAllowedError');}},configurable:true});ui.click('Redeem');await until(()=>ui.text().includes('Start camera scan'));ui.click('Start camera scan');await until(()=>ui.text().includes('Camera permission was denied'));assert.ok(ui.text().includes('Retry camera scan'));assert.equal(ui.calls.some(c=>c.name==='redeem_claim'),false);assert.deepEqual(ui.errors,[]);}finally{ui.close();}
+ try{ui.click("Manage");await until(()=>ui.text().includes("New offer"));Object.defineProperty(ui.window,'isSecureContext',{value:true,configurable:true});Object.defineProperty(ui.window.navigator,'mediaDevices',{value:{getUserMedia:async()=>{throw new ui.window.DOMException('Synthetic denial','NotAllowedError');}},configurable:true});ui.click('Redeem');await until(()=>ui.text().includes('Start camera scan'));ui.click('Start camera scan');await until(()=>ui.text().includes('Camera permission was denied'));assert.ok(ui.text().includes('Retry camera scan'));assert.equal(ui.calls.some(c=>c.name==='redeem_claim'),false);assert.deepEqual(ui.errors,[]);}finally{ui.close();}
 });
 
 
 test('signout removes an already visible claim QR and saved terms',async()=>{
  const ui=await app({item:held()});
- try{ui.click('Saved bowl');await until(()=>ui.document.querySelector('svg')&&ui.text().includes('Saved meal terms'),'visible claim QR');ui.click('Sign out');await until(()=>ui.text().includes('Open sign in'));assert.equal(ui.document.querySelector('svg'),null);assert.equal(ui.text().includes('Saved meal terms'),false);assert.equal(ui.text().includes('Your QR is ready'),false);assert.deepEqual(ui.errors,[]);}finally{ui.close();}
+ try{ui.click('Saved bowl');await until(()=>ui.document.querySelector('svg')&&ui.text().includes('Saved meal terms'),'visible claim QR');ui.click('Log out');await until(()=>ui.text().includes('Sign in'));assert.equal(ui.document.querySelector('svg'),null);assert.equal(ui.text().includes('Saved meal terms'),false);assert.equal(ui.text().includes('Your QR is ready'),false);assert.deepEqual(ui.errors,[]);}finally{ui.close();}
 });
 
 test('a stale displayed hold hides its QR after the saved deadline',async()=>{

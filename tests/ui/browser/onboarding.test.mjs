@@ -5,7 +5,7 @@ import {app,rpc,until} from './harness.mjs';
 test('student email has a fixed suffix and missing sender never shows a code-sent state',async()=>{
  const ui=await app({role:'guest',intercept(name){if(name==='request_email_code')return rpc({ok:false,message:'Email sign-in is not enabled yet.'});}});
  try{
-  ui.click('Open sign in');await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'));
+  await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'));
   assert.ok(ui.text().includes('@umich.edu'));
   assert.equal(ui.document.querySelector('input[placeholder="uniqname"]').getAttribute('aria-label'),'U-M uniqname');
   assert.equal(ui.document.querySelector('input[value="@umich.edu"]'),null);
@@ -24,7 +24,7 @@ test('code flow sends only the uniqname and enables code autofill without univer
   if(name==='verify_email_code')return rpc({ok:false,message:'That code is invalid or expired.'});
  }});
  try{
-  ui.click('Open sign in');await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'));
+  await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'));
   ui.click('Create an account');await until(()=>ui.document.querySelector('[placeholder="Your name"]'));
   ui.fill('Your name','Fixture');ui.fill('uniqname','fixture');ui.click('Send verification code');
   await until(()=>ui.document.querySelector('input[autocomplete="one-time-code"]'));
@@ -40,8 +40,9 @@ test('code flow sends only the uniqname and enables code autofill without univer
 test('business account path accepts work email and preserves manual entry fallback',async()=>{
  const ui=await app({role:'guest',audience:'business'});
  try{
-  ui.click('Open sign in');
   await until(()=>ui.document.querySelector('input[placeholder="you@business.com"]'));
+  assert.equal(ui.find('Current bowl'),undefined,'business visitors do not get the student feed');
+  assert.equal(ui.find('Nearby')===undefined,true,'no app menu before sign-in');
   assert.equal(ui.document.querySelector('input[placeholder="uniqname"]'),null);
   assert.ok(ui.text().includes('work email'));
   assert.deepEqual(ui.errors,[]);
@@ -58,9 +59,10 @@ test('first visit asks for a path and choosing deals removes business signup',as
   assert.equal(ui.find('List my business'),undefined);
   assert.equal(ui.find('Existing restaurant sign-in'),undefined);
   assert.equal(ui.document.querySelector('input[placeholder="you@business.com"]'),null);
-  ui.click('Keep browsing');await until(()=>ui.find('Open sign in'));ui.click('Open sign in');
-  await until(()=>ui.document.querySelector('input[placeholder="uniqname"]'));
+  assert.equal(ui.find('Current bowl'),undefined,'deals need a signed-in account');
   assert.equal(ui.find('Business owner'),undefined);
+  ui.click('Back');await until(()=>ui.find('Find local deals'));
+  assert.equal(ui.find('Current bowl'),undefined,'deals need a signed-in account');
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
 });
@@ -81,7 +83,7 @@ test('business first visit sends a business code and remembers only that login p
  const returning=await app({role:'guest',audience:saved});
  try{
   assert.equal(returning.find('Find local deals'),undefined);
-  returning.click('Open sign in');await until(()=>returning.document.querySelector('input[placeholder="you@business.com"]'));
+  await until(()=>returning.document.querySelector('input[placeholder="you@business.com"]'));
   assert.equal(returning.document.querySelector('input[placeholder="uniqname"]'),null);
  }finally{returning.close();}
 });
@@ -99,11 +101,11 @@ test('restored business session replaces a stale student preference and keeps it
  const ui=await app({role:'business',verified:true,audience:'student'});
  try{
   assert.equal(ui.window.localStorage.getItem('mlocal_audience'),'business');
-  ui.click('Sign out');await until(()=>ui.find('Open sign in'));
-  ui.click('Open sign in');await until(()=>ui.document.querySelector('input[placeholder="you@business.com"]'));
+  ui.click('Log out');await until(()=>ui.document.querySelector('input[placeholder="you@business.com"]'));
   assert.equal(ui.document.querySelector('input[placeholder="uniqname"]'),null);
   assert.equal(ui.find('Find local deals'),undefined);
-  ui.click('Keep browsing');ui.click('Current bowl');await until(()=>ui.find('For U-M customers'));
+  assert.equal(ui.find('Current bowl'),undefined);
+  ui.click('Back');await until(()=>ui.find('Find local deals'));
   assert.equal(ui.find('Sign in to claim'),undefined);
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
@@ -125,7 +127,8 @@ test('business import fills an editable draft and requires confirmation before s
   assert.equal(ui.find('Save business profile').disabled,true);
   ui.fill('Business name','Reviewed Cafe');
   ui.document.querySelector('input[type="checkbox"]').click();ui.click('Save business profile');
-  await until(()=>ui.find('New offer'));
+  await until(()=>ui.find('Insights'));
+  ui.click('Manage');await until(()=>ui.find('New offer'));
   const request=ui.calls.find(c=>c.name==='save_business_draft');
   assert.equal(request.body.name,'Reviewed Cafe');assert.equal(request.body.confirmed,true);
   assert.equal('actor_id' in request.body,false);assert.equal('role' in request.body,false);

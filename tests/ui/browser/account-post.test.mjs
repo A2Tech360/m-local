@@ -5,7 +5,7 @@ import {app,home,offer,rpc,until} from './harness.mjs';
 test('returning email sign-in needs no name and can switch to business signup',async()=>{
  const ui=await app({role:'guest',intercept(name){if(name==='request_email_code')return rpc({ok:false,message:'Fixture delivery disabled.'});}});
  try{
-  ui.click('Open sign in');await until(()=>ui.document.querySelector('[placeholder="uniqname"]'));
+  await until(()=>ui.document.querySelector('[placeholder="uniqname"]'));
   assert.equal(ui.document.querySelector('[placeholder="Your name"]'),null,'returning users should not have to invent a name again');
   ui.fill('uniqname','fixture');ui.click('Send verification code');await until(()=>ui.text().includes('Fixture delivery disabled.'));
   assert.equal(ui.calls.find(c=>c.name==='request_email_code').body.name,'');
@@ -92,7 +92,8 @@ test('saving an active business profile refreshes server authority and opens off
   if(name==='current_session')return rpc(businessSession(activated?'merchant':'business'));
  }});
  try{
-  await completeBusiness(ui);await until(()=>ui.find('New offer'),'activated business can create an offer immediately');
+  await completeBusiness(ui);await until(()=>ui.find('Insights'),'activated business opens its dashboard');
+  ui.click('Manage');await until(()=>ui.find('New offer'),'activated business can create an offer immediately');
   assert.ok(ui.find('Manage'));assert.ok(ui.find('Restaurant profile'));
   assert.equal(ui.document.querySelector('[placeholder="Business name"]'),null);
   const request=ui.calls.find(c=>c.name==='save_business_draft');
@@ -116,7 +117,8 @@ test('saved active profile survives a session refresh failure and retries withou
   assert.ok(ui.text().includes('Your business profile was saved'));
   assert.equal(ui.find('New offer'),undefined);
   assert.equal(ui.document.querySelector('[placeholder="Business name"]').value,'Self-service cafe');
-  ui.click('Open offer management');await until(()=>ui.find('New offer'));
+  ui.click('Open offer management');await until(()=>ui.find('Insights'));
+  ui.click('Manage');await until(()=>ui.find('New offer'));
   assert.equal(ui.calls.filter(c=>c.name==='save_business_draft').length,1);
   assert.equal(refreshes,2);assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
@@ -157,7 +159,7 @@ test('offer validation blocks invalid prices and confirmed publication appears i
   if(name==='merchant_portal'&&posted)return rpc({ok:true,name:'Fixture Kitchen',cuisine:'Test cuisine',blurb:'Fixture profile',address:'Test address',neighborhood:'Test area',entrance_note:'',note_date:'',offers:[posted],claims:[],is_demo:true,message:''});
   if(name==='home_feed'&&posted)return rpc(home([posted]));
  }});
- try{
+ try{ui.click("Manage");await until(()=>ui.text().includes("New offer"));
   ui.click('Manage');await until(()=>ui.find('New offer'));ui.click('New offer');
   await until(()=>ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
   ui.fill('Lunch bowl for $7','Posted fixture lunch');ui.fill('7.00','7.123');
@@ -173,7 +175,7 @@ test('offer validation blocks invalid prices and confirmed publication appears i
 
 test('rejected offer publication preserves every entered value and remains editable',async()=>{
  const ui=await app({role:'merchant',intercept(name){if(name==='save_offer')return rpc({ok:false,message:'Fixture publication rejected.',code:''});}});
- try{
+ try{ui.click("Manage");await until(()=>ui.text().includes("New offer"));
   ui.click('Manage');await until(()=>ui.find('New offer'));ui.click('New offer');await until(()=>ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
   ui.fill('Lunch bowl for $7','Keep this lunch');ui.fill('7.00','6.50');ui.fill('One per student. Dine-in only.','Keep these terms');ui.click('Publish offer');
   await until(()=>ui.text().includes('Fixture publication rejected.'));
@@ -200,7 +202,7 @@ test('business load failure blocks overwriting a saved application until retry s
 
 test('merchant profile cancellation restores saved details without sending a write',async()=>{
  const ui=await app({role:'merchant'});
- try{
+ try{ui.click("Manage");await until(()=>ui.text().includes("New offer"));
   ui.click('Manage');await until(()=>ui.document.querySelector('[placeholder="Restaurant name"]')?.value==='Fixture Kitchen');
   ui.fill('Restaurant name','Unsaved name');ui.click('Cancel profile changes');
   await until(()=>ui.document.querySelector('[placeholder="Restaurant name"]')?.value==='Fixture Kitchen');
@@ -211,7 +213,7 @@ test('merchant profile cancellation restores saved details without sending a wri
 
 test('editing an offer keeps absent regular price optional and uses save changes',async()=>{
  const ui=await app({role:'merchant',item:offer({regular_price:0,state:'paused'})});
- try{
+ try{ui.click("Manage");await until(()=>ui.text().includes("New offer"));
   ui.click('Manage');await until(()=>ui.find('Edit'));ui.click('Edit');await until(()=>ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
   assert.equal(ui.document.querySelector('[placeholder="11.50"]').value,'');
   assert.equal(ui.find('Publish offer'),undefined);
@@ -223,12 +225,13 @@ test('editing an offer keeps absent regular price optional and uses save changes
  }finally{ui.close();}
 });
 
-test('unsaved offer details survive moving between Offers and Manage',async()=>{
+test('unsaved offer details survive moving between Redeem and Manage',async()=>{
  const ui=await app({role:'merchant'});
- try{
+ try{ui.click("Manage");await until(()=>ui.text().includes("New offer"));
   ui.click('Manage');await until(()=>ui.find('New offer'));ui.click('New offer');await until(()=>ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
   ui.fill('Lunch bowl for $7','Retain this draft');ui.fill('7.00','6.75');ui.fill('One per student. Dine-in only.','Keep draft terms');
-  ui.click('Offers');await until(()=>!ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
+  assert.equal(ui.find('Nearby')===undefined,true,'restaurants do not get the student feed');
+  ui.click('Redeem');await until(()=>!ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
   ui.click('Manage');await until(()=>ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
   assert.equal(ui.document.querySelector('[placeholder="Lunch bowl for $7"]').value,'Retain this draft');
   assert.equal(ui.document.querySelector('[placeholder="7.00"]').value,'6.75');
@@ -240,11 +243,11 @@ test('unsaved offer details survive moving between Offers and Manage',async()=>{
 test('pending publication blocks navigation and repeat submission until confirmed',async()=>{
  let release;const pending=new Promise(resolve=>{release=resolve;});
  const ui=await app({role:'merchant',intercept:async(name)=>{if(name==='save_offer'){await pending;return rpc({ok:true,message:'Deferred publication complete.',code:'new-post'});}}});
- try{
+ try{ui.click("Manage");await until(()=>ui.text().includes("New offer"));
   ui.click('Manage');await until(()=>ui.find('New offer'));ui.click('New offer');await until(()=>ui.document.querySelector('[placeholder="Lunch bowl for $7"]'));
   ui.fill('Lunch bowl for $7','Publish only once');ui.fill('7.00','6.75');ui.fill('One per student. Dine-in only.','One per student.');ui.click('Publish offer');
   await until(()=>ui.calls.some(c=>c.name==='save_offer'));
-  ui.click('Offers');ui.click('Saving...');
+  ui.click('Redeem');ui.click('Saving...');
   assert.ok(ui.document.querySelector('[placeholder="Lunch bowl for $7"]'),'keep the composer mounted while the write is pending');
   assert.equal(ui.calls.filter(c=>c.name==='save_offer').length,1);
   release();await until(()=>ui.text().includes('Deferred publication complete.'));
@@ -256,7 +259,7 @@ test('pending publication blocks navigation and repeat submission until confirme
 test('merchant profile fields prevent newer edits being overwritten by a pending save',async()=>{
  let release;const pending=new Promise(resolve=>{release=resolve;});
  const ui=await app({role:'merchant',intercept:async(name)=>{if(name==='update_profile')await pending;}});
- try{
+ try{ui.click("Manage");await until(()=>ui.text().includes("New offer"));
   ui.click('Manage');await until(()=>ui.document.querySelector('[placeholder="Restaurant name"]'));
   ui.fill('Restaurant name','Submitted name');ui.click('Save profile');await until(()=>ui.calls.some(c=>c.name==='update_profile'));
   const inputs=[...ui.document.querySelectorAll('[placeholder="Restaurant name"],[placeholder="Noodles"],[placeholder="Short description"],[placeholder="Street address"],[placeholder="Kerrytown"],[placeholder="Use the side door while sidewalk work continues"],[placeholder="2026-09-26"]')];

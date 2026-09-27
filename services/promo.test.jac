@@ -137,6 +137,7 @@ test "claim snapshot survives offer edits pause and deadline equality" {
     r = _restaurant_by_slug("arbor-leaf-kitchen");
     now = time.time();
     o = Offer(qr_ready=True, title="Snapshot test", price=7.25, price_cents=725,
+        regular_price_cents=1000,
         start_ts=now - 60, end_ts=now + 1800, quantity=2,
         terms="Original terms", eligibility="Original student ID");
     r +>:Publishes():+> o;
@@ -145,6 +146,7 @@ test "claim snapshot survives offer edits pause and deadline equality" {
     before = _preview(r, result.qr_payload, now);
     o.title = "Changed title";
     o.price_cents = 999;
+    o.regular_price_cents = 1500;
     o.terms = "Changed terms";
     o.eligibility = "Changed eligibility";
     o.end_ts = now + 10;
@@ -152,6 +154,8 @@ test "claim snapshot survives offer edits pause and deadline equality" {
     after = _preview(r, result.qr_payload, now + 20);
     assert after.ok and after.title_snapshot == "Snapshot test";
     assert after.price_cents == 725 and after.terms == "Original terms";
+    claim = _find_claim(r, result.qr_payload) as Redemption;
+    assert claim.regular_price_cents_snapshot == 1000;
     assert after.eligibility == "Original student ID";
     assert after.expires_ts == before.expires_ts;
     exact = _redeem(r, result.qr_payload, before.expires_ts);
@@ -168,8 +172,11 @@ test "cancellation is idempotent releases once and stale QR cannot redeem" {
     r +>:Publishes():+> o;
     first = _claim(jid(o), "cancel-student", now);
     assert first.ok and _remaining(o, now) == 0;
-    assert _cancel(jid(o), "cancel-student", now).ok;
-    assert _cancel(jid(o), "cancel-student", now).ok;
+    assert _cancel(jid(o), "cancel-student", now + 1).ok;
+    assert _cancel(jid(o), "cancel-student", now + 2).ok;
+    cancelled = _find_claim(r, first.qr_payload) as Redemption;
+    assert cancelled.cancelled_ts == now + 1;
+    assert cancelled.redeemed_ts == 0;
     assert _remaining(o, now) == 1;
     assert not _preview(r, first.qr_payload, now).ok;
     assert not _redeem(r, first.qr_payload, now).ok;
