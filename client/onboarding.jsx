@@ -1,6 +1,6 @@
 import React, {useEffect, useRef, useState} from 'react';
 
-const stack={display:'flex',flexDirection:'column',gap:12,minWidth:0,color:'#1d1a16',fontFamily:'inherit'};
+const stack={display:'flex',flexDirection:'column',gap:12,minWidth:0,color:'#1d1a16',fontFamily:'system-ui, sans-serif'};
 const input={width:'100%',minWidth:0,boxSizing:'border-box',minHeight:48,padding:'12px',fontSize:16,border:'1px solid #c9bfb2',borderRadius:10,background:'#fff',color:'#1d1a16'};
 const button={...input,background:'#b83a0b',color:'#fff',fontWeight:700,cursor:'pointer',borderColor:'#b83a0b'};
 const secondary={...button,background:'#fff',color:'#3a342c',borderColor:'#c9bfb2'};
