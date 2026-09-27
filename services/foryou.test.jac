@@ -156,3 +156,28 @@ test "claims and redemptions teach the feed without any saved tastes" {
     assert h.items[0].offer.title == "$3 oat latte study break";
     assert _history("someone-else", now + 60) == [];
 }
+
+
+test "demo companies are added once, flagged demo and claimable" {
+    _ensure_seed();
+    _reset();
+    assert demo_company_count("30") == 30 and demo_company_count(" 5 ") == 5;
+    for bad in ["", "0", "-3", "many", "201"] {
+        assert demo_company_count(bad) == 0, bad;
+    }
+    before = len([r for r in [root.shared -->[?:Restaurant]]]);
+    added = _seed_demo_companies(12);
+    again = _seed_demo_companies(12);
+    made = [r for r in [root.shared -->[?:Restaurant]] if r.slug.startswith("sandbox-")];
+    assert added + before == len([r for r in [root.shared -->[?:Restaurant]]]) and again == 0;
+    assert len(made) == 12 and all([r.is_demo and r.name.endswith("(Demo)") for r in made]);
+    h = _home("", "", "any", "", time.time());
+    assert h.total_deals >= 5 + 12;
+    sample = [i for i in h.items if i.place.startswith("sandbox-")][0];
+    assert sample.categories != [] and sample.offer.state == "active" and sample.price_cents > 0;
+    _save_taste(sample.categories[0], "", "", time.time());
+    mine = _home("student-demo", "", "any", "", time.time());
+    assert sample.categories[0] in mine.items[0].categories;
+    assert len(mine.items) == len(h.items);
+    assert [i for i in mine.items[:8] if i.slot == "explore"];
+}

@@ -313,19 +313,28 @@ def build_feed(
     }
     matches = [r for r in matches if r.slot != "favorite"];
     others = [r for r in others if r.slot != "favorite"];
-    while matches or others {
+    # Two orders over the same leftovers: least-shown first for the exploration
+    # slots, best fit first for everything else once the matches run out.
+    by_fit = _by_band(others);
+    used: list[str] = [];
+    while matches or len(used) < len(others) {
         position = len(feed) + 1;
         explore_turn = explore_every > 0 and position % explore_every == 0;
-        if others and (explore_turn or not matches) {
-            pick = others.pop(0);
-            pick.slot = "explore" if explore_turn else "more";
-            if pick.slot == "explore" {
-                pick.reasons = ["Something different"] + pick.reasons;
-            }
+        left = [r for r in others if r.candidate.offer_id not in used];
+        if left and explore_turn {
+            pick = left[0];
+            pick.slot = "explore";
+            pick.reasons = ["Something different"] + pick.reasons;
+            used.append(pick.candidate.offer_id);
             feed.append(pick);
-        } else {
+        } elif matches {
             pick = matches.pop(0);
             pick.slot = "match";
+            feed.append(pick);
+        } else {
+            pick = [r for r in by_fit if r.candidate.offer_id not in used][0];
+            pick.slot = "more";
+            used.append(pick.candidate.offer_id);
             feed.append(pick);
         }
     }

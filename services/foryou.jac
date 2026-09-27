@@ -11,13 +11,17 @@ rotation. Tastes reorder the feed; the only things that remove a deal are the
 filters the student taps on the page.
 """
 
+import os;
 import time;
+import random;
 import from datetime { datetime }
 import from zoneinfo { ZoneInfo }
 import from services.models { Restaurant, Location, MenuItem, Offer, Redemption, HasLocation, Serves, Publishes, ClaimedAs }
 import from services.qr_catalog { _ensure_seed }
 import from services.session { _actor_id }
-import from services.promo { OfferView, _view, _state, _find_offer, _restaurant_of }
+import from services.promo { OfferView, _view, _state, _find_offer, _restaurant_of, _lock, _unlock }
+import from services.importer { import_restaurant }
+import from services.taste_sandbox { Company, make_companies }
 import from services.taste {
     CATEGORIES,
     DIETS,
@@ -376,12 +380,113 @@ def _home(actor: str, price_range: str, window: str, diets: str, now: float) -> 
 }
 
 
+# -------------------------------------------------------- demo catalog ---
+
+# Presentation aid: a server operator may set this to a number (for example 30)
+# to add that many random fictional companies to the catalog. Never client-set.
+glob DEMO_COMPANIES_ENV: str = "MLOCAL_DEMO_COMPANIES";
+
+glob DEMO_HOODS: list[str] = ["State Street", "Kerrytown", "Main Street", "South University", "North Campus"];
+
+
+def demo_company_count(text: str) -> int {
+    try {
+        value = int(text.strip());
+    } except ValueError {
+        return 0;
+    }
+    return value if value > 0 and value <= 200 else 0;
+}
+
+
+def _company_record(c: Company, index: int) -> dict[str, any] {
+    rng = random.Random(index);
+    offers: list[dict[str, any]] = [];
+    menu: list[dict[str, any]] = [];
+    for (j, o) in enumerate(c.offers) {
+        item = f"{c.category.capitalize()} special {j + 1}";
+        menu.append({"name": item, "price": o.regular_cents / 100, "dietary": o.dietary});
+        offers.append({
+            "title": f"{item} for ${o.price_cents // 100}" + ("" if o.price_cents % 100 == 0 else f".{o.price_cents % 100:02d}"),
+            "description": "Fictional demo deal.",
+            "price": o.price_cents / 100,
+            "regular_price": o.regular_cents / 100,
+            "start_in_h": -1,
+            "end_in_h": o.ends_in_hours if o.ends_in_hours > 1.0 else 1.0,
+            "quantity": o.remaining + 5,
+            "eligibility": "Students with a valid university ID",
+            "terms": "One per student. Fictional demo deal.",
+            "dietary": o.dietary,
+            "menu_item": item
+        });
+    }
+    return {
+        "slug": "sandbox-" + str(index),
+        "name": c.name,
+        "cuisine": c.category.capitalize(),
+        "blurb": "Fictional demo business generated for testing.",
+        "is_demo": True,
+        "source": "sandbox",
+        "location": {"address": f"{100 + index} Example Ave, Ann Arbor (fictional)", "neighborhood": rng.choice(DEMO_HOODS)},
+        "menu": menu,
+        "offers": offers
+    };
+}
+
+
+"""Add random fictional companies to the shared catalog, once."""
+def _seed_demo_companies(count: int) -> int {
+    have = [r.slug for r in [root.shared -->[?:Restaurant]]];
+    added = 0;
+    for (i, c) in enumerate(make_companies(count, 442)) {
+        if "sandbox-" + str(i) in have {
+            continue;
+        }
+        r = import_restaurant(_company_record(c, i));
+        if jid(root) != jid(root.shared) {
+            root.shared ++> r;
+        }
+        for o in [r ->:Publishes:->] {
+            o.qr_ready = True;
+        }
+        added += 1;
+    }
+    return added;
+}
+
+
+def _demo_companies_present -> int {
+    return len([r for r in [root.shared -->[?:Restaurant]] if r.slug.startswith("sandbox-")]);
+}
+
+
 # ---------------------------------------------------------- endpoints ---
 
 """The home page: favorites strip plus every live deal, ordered for the caller."""
 def:pub home_feed(price_range: str = "", window: str = "any", diets: str = "") -> HomeView {
     _ensure_seed();
     return _home(_actor_id(), price_range, window, diets, time.time());
+}
+
+
+"""Presentation aid. Adds the random fictional companies the server operator
+asked for with MLOCAL_DEMO_COMPANIES, and returns how many exist. It takes no
+input, only ever adds demo-flagged places, and does nothing when the setting
+is absent. Kept out of home_feed so reading the feed never writes."""
+def:pub prepare_demo_catalog() -> int {
+    _ensure_seed();
+    count = demo_company_count(os.environ.get(DEMO_COMPANIES_ENV, ""));
+    if count == 0 {
+        return _demo_companies_present();
+    }
+    fd = _lock();
+    try {
+        _seed_demo_companies(count);
+        present = _demo_companies_present();
+    } finally {
+        _unlock(fd);
+    }
+    return present;
 }
 
 

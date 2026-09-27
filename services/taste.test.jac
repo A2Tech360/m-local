@@ -173,3 +173,23 @@ test "urgent deals say so" {
     later = score(Candidate(offer_id="d", place="p", categories=["pizza"], price_cents=700, regular_cents=1000, remaining=10, starts_in_hours=3.0, ends_in_hours=6.0), Taste());
     assert "Starts later" in later.reasons and later.score < calm.score;
 }
+
+
+test "when matches run out, the rest follows by fit, not by chance" {
+    taste = Taste(categories=["sushi"], diets=["vegetarian"], price_range="under5");
+    menu = [
+        _deal("fit-both", "a", ["coffee"], 300, 500, ["vegetarian"], rotation=900),
+        _deal("fit-diet", "b", ["bowls"], 900, 1200, ["vegetarian"], rotation=500),
+        _deal("fit-none", "c", ["bbq"], 1400, 1800, [], rotation=1),
+        _deal("match", "d", ["sushi"], 400, 600, ["vegetarian"], rotation=700)
+    ];
+    feed = build_feed(menu, taste);
+    assert _ids(feed) == ["match", "fit-both", "fit-diet", "fit-none"], _ids(feed);
+    assert [r.slot for r in feed] == ["match", "more", "more", "explore"];
+    many = menu + [_deal(f"extra-{i}", f"e{i}", ["bbq"], 1500, 1900, [], rotation=i + 2) for i in range(6)];
+    long = build_feed(many, taste);
+    assert _ids(long)[:3] == ["match", "fit-both", "fit-diet"];
+    assert [r.slot for r in long][3] == "explore" and [r.slot for r in long][7] == "explore";
+    assert long[3].candidate.offer_id == "fit-none";
+    assert len(set(_ids(long))) == len(many);
+}
