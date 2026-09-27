@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {METRIC_KEYS, normalizeInsights, selectCutoff, chartSeries, resolvedRate, createRequestGate, recapPayload, buildRecapHtml} from '../../client/insights-support.mjs';
+import {METRIC_KEYS, SALES_KEYS, salesSummary, salesChart, salesPeak, normalizeInsights, selectCutoff, chartSeries, resolvedRate, createRequestGate, recapPayload, buildRecapHtml} from '../../client/insights-support.mjs';
 
 export function fixture() {
   const zero = () => Object.fromEntries(METRIC_KEYS.map(key => [key, 0]));
@@ -90,4 +90,71 @@ test('out-of-order responses, replay, range switches and unmount invalidate old 
   assert.equal(gate.accepts(refreshed), true);
   gate.invalidate();
   assert.equal(gate.accepts(refreshed), false);
+});
+
+const names = {morning:'Morning', lunch:'Lunch', dinner:'Dinner', late:'Late night'};
+export function sales(source = fixture()) {
+  const days = source.frames.slice(1).map((frame, index) => {
+    const lunch = {redemptions: index % 2 ? 2 : 1, value_cents: index % 2 ? 1000 : 500}, late = {redemptions: index === 3 ? 1 : 0, value_cents: index === 3 ? 300 : 0};
+    return {date: frame.date, morning: {redemptions: 0, value_cents: 0}, lunch, dinner: {redemptions: 0, value_cents: 0}, late,
+      total: {redemptions: lunch.redemptions + late.redemptions, value_cents: lunch.value_cents + late.value_cents}, actor_id: 'SECRET-PERSON'};
+  });
+  return {blocks: SALES_KEYS.map(key => ({key, label: names[key], hours: 'Fixture hours'})), days,
+    offers: [{id: 'SECRET-OFFER-ID', title: 'Lunch bowl', schedule: 'Sep 27, 11 AM to 2 PM', claims: 12, redemptions: 10, value_cents: 5000, busiest: 'Lunch', customer_email: 'secret@example.test',
+      blocks: SALES_KEYS.map(key => ({key, label: names[key], claims: key === 'lunch' ? 12 : 0, redemptions: key === 'lunch' ? 10 : 0, value_cents: key === 'lunch' ? 5000 : 0}))}]};
+}
+
+test('sales pass through with only known fields, and are optional', () => {
+  assert.equal(normalizeInsights(fixture(), 7).sales, null);
+  const data = normalizeInsights({...fixture(), sales: sales()}, 7);
+  assert.deepEqual(data.sales.blocks.map(block => block.key), SALES_KEYS);
+  assert.equal(data.sales.days.length, 7);
+  assert.deepEqual(Object.keys(data.sales.days[0]).sort(), ['date','dinner','late','lunch','morning','total']);
+  assert.deepEqual(Object.keys(data.sales.offers[0]).sort(), ['blocks','busiest','claims','redemptions','schedule','title','value_cents']);
+  assert.equal(JSON.stringify(data.sales).includes('SECRET'), false);
+  assert.equal(JSON.stringify(data.sales).includes('secret@'), false);
+});
+
+test('sales reject malformed, misdated and non-adding summaries', () => {
+  const frames = normalizeInsights(fixture(), 7).frames;
+  const broken = [
+    summary => { summary.blocks.reverse(); },
+    summary => { summary.days.pop(); },
+    summary => { summary.days[0].date = '2020-01-01'; },
+    summary => { summary.days[1].lunch.value_cents = -1; },
+    summary => { summary.days[2].total.value_cents += 1; },
+    summary => { summary.days[2].total.redemptions += 1; },
+    summary => { summary.days[3].late.redemptions = 1.5; },
+    summary => { summary.offers[0].redemptions = '3'; },
+    summary => { summary.offers[0].blocks = summary.offers[0].blocks.slice(1); },
+    summary => { delete summary.offers; },
+  ];
+  for (const damage of broken) {
+    const summary = sales();
+    damage(summary);
+    assert.throws(() => salesSummary(summary, frames));
+  }
+  assert.equal(salesSummary(undefined, frames), null);
+});
+
+test('sales charts total, scale and hide days beyond the replay date', () => {
+  const data = normalizeInsights({...fixture(), sales: sales()}, 7);
+  const all = salesChart(data.sales, 'total', 7), lunch = salesChart(data.sales, 'lunch', 7, salesPeak(data.sales, 7)), late = salesChart(data.sales, 'late', 7, salesPeak(data.sales, 7));
+  assert.equal(all.value_cents, 5300);
+  assert.equal(all.redemptions, 11);
+  assert.equal(lunch.value_cents + late.value_cents, all.value_cents);
+  assert.equal(all.maximum, 1300);
+  assert.equal(lunch.maximum, 1000);
+  assert.equal(late.maximum, 1000, 'time-of-day charts share one scale');
+  assert.equal(all.bars.length, 7);
+  assert.equal(all.best_date, data.sales.days[3].date);
+  assert.ok(all.bars.every(bar => bar.x >= 12 && bar.x + bar.width <= 708 && bar.y >= 12 && bar.y + bar.height === 132));
+  assert.equal(late.bars.filter(bar => bar.height > 0).length, 1);
+  const early = salesChart(data.sales, 'total', 2);
+  assert.equal(early.value_cents, 1500);
+  assert.equal(early.bars.filter(bar => bar.height > 0).length, 2);
+  assert.equal(salesChart(data.sales, 'total', 0).value_cents, 0);
+  assert.equal(salesChart(data.sales, 'total', 0).best_date, '');
+  assert.equal(salesChart(data.sales, 'total', 999).value_cents, 5300);
+  assert.equal(salesChart(data.sales, 'morning', 7).maximum, 1);
 });

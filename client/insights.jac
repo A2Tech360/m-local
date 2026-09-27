@@ -4,7 +4,7 @@ import from "react" { useEffect }
 import from .ui { uiFont }
 import from "./insights-support.mjs" {
     PERIODS, normalizeInsights, selectCutoff, chartSeries, money, count,
-    displayDate, createRequestGate, buildRecapHtml
+    displayDate, createRequestGate, buildRecapHtml, salesChart, salesPeak
 }
 
 
@@ -24,10 +24,39 @@ obj InsightFrame {
         offers: list[InsightOffer];
 }
 
+obj SalesBlock {
+    has key: str, label: str, hours: str;
+}
+
+obj SalesOfferBlock {
+    has key: str, label: str, claims: int, redemptions: int, value_cents: int;
+}
+
+obj SalesOffer {
+    has title: str, schedule: str, claims: int, redemptions: int,
+        value_cents: int, busiest: str, blocks: list[SalesOfferBlock];
+}
+
+obj InsightSales {
+    has blocks: list[SalesBlock], days: list[any], offers: list[SalesOffer];
+}
+
+obj SalesBar {
+    has day: int, date: str, value: int, x: float, width: float, y: float,
+        height: float;
+}
+
+obj SalesChartData {
+    has key: str, maximum: int, bars: list[SalesBar], shown: int,
+        value_cents: int, redemptions: int, best_date: str,
+        best_value_cents: int;
+}
+
 obj InsightData {
     has business_name: str, is_demo: bool, period_days: int, timezone: str,
         start_date: str, end_date: str, as_of: float, coverage_start_date: str,
-        warnings: list[str], frames: list[InsightFrame];
+        warnings: list[str], frames: list[InsightFrame],
+        sales: InsightSales | None = None;
 }
 
 obj InsightRate {
@@ -55,6 +84,7 @@ obj InsightGate {
 
 glob insightStyles: str = """.bi-metric{padding:18px;border:1px solid var(--ml-border);border-radius:16px;background:var(--ml-surface);min-width:0}.bi-metric:first-child{border-top:4px solid var(--ml-maize);padding-top:15px}.bi .bi-metrics{gap:12px}.bi .bi-timeline{border-radius:20px}.bi .bi-metric strong{font-weight:800}
 .bi{--bi-ink:var(--ml-ink);--bi-muted:var(--ml-muted);--bi-orange:var(--ml-accent);--bi-rule:var(--ml-border);--bi-paper:var(--ml-surface);color:var(--bi-ink);font:14px/1.5 Figtree,system-ui,sans-serif;min-width:0;padding:8px 0 24px}.bi *{box-sizing:border-box}.bi button,.bi select{font:700 13px Figtree,system-ui;min-height:42px;border:1px solid var(--bi-rule);border-radius:8px;background:var(--bi-paper);color:var(--bi-ink);padding:8px 13px;cursor:pointer}.bi button:hover:not(:disabled){border-color:var(--ml-accent)}.bi button:disabled{opacity:.5;cursor:default}.bi button:focus-visible,.bi select:focus-visible,.bi input:focus-visible,.bi summary:focus-visible{outline:3px solid var(--ml-focus);outline-offset:3px}.bi .bi-primary{background:var(--bi-orange);color:var(--ml-accent-text);border-color:var(--bi-orange)}.bi-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--bi-rule);padding-bottom:20px}.bi-eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--bi-orange);margin:0 0 8px}.bi h2{font:800 clamp(29px,4vw,38px)/1.1 Figtree,system-ui;margin:0 0 8px}.bi h3{font-size:16px;margin:0 0 12px;letter-spacing:-.01em}.bi p{margin:0}.bi-note{color:var(--bi-muted);font-size:12px;line-height:1.55}.bi-toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin:20px 0}.bi-periods{display:flex;gap:4px;flex-wrap:wrap;padding:4px;background:var(--ml-sunken);border-radius:10px}.bi-periods button{border-color:transparent;background:transparent;min-height:38px;padding:8px 12px}.bi-periods button[aria-pressed=true]{background:var(--ml-accent);color:var(--ml-accent-text);box-shadow:0 1px 3px var(--ml-shadow)}.bi-actions{display:flex;gap:8px;flex-wrap:wrap}.bi-badge{display:inline-block;border:1px solid var(--ml-border);padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700;color:var(--ml-warn);margin-bottom:6px}.bi-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:8px 0 26px}.bi-metric strong{display:block;font-size:clamp(28px,3.7vw,40px);line-height:1.2;letter-spacing:-.045em;font-weight:650;font-variant-numeric:tabular-nums;margin:4px 0 8px;overflow-wrap:anywhere}.bi-metric h3{font-size:12px;line-height:1.4;color:var(--bi-muted);font-weight:600;margin:0}.bi-timeline{padding:22px;background:var(--bi-paper);border:1px solid var(--bi-rule);border-radius:14px}.bi-timeline-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.bi-timeline h3{font:800 24px/1.2 Figtree,system-ui;margin-bottom:5px}.bi-chart{width:100%;height:auto;display:block;overflow:visible;margin:8px 0}.bi-chart-meta{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:var(--bi-muted)}.bi-chart-toggle{display:flex;gap:3px}.bi-chart-toggle button{font-size:11px;padding:6px 10px;min-height:34px}.bi-chart-toggle button[aria-pressed=true]{color:var(--bi-orange);background:var(--ml-accent-soft);border-color:var(--ml-accent)}.bi-seek{width:100%;accent-color:var(--bi-orange);min-height:32px;margin:12px 0 6px;cursor:pointer}.bi-transport{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.bi-transport .bi-progress{margin-left:auto;font-variant-numeric:tabular-nums}.bi-snapshot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--bi-muted);margin:12px 0 22px}.bi-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;padding:4px 0 20px}.bi-outcome{margin-bottom:12px}.bi-outcome-line{display:flex;gap:8px;justify-content:space-between;font-size:12px;margin-bottom:6px}.bi-outcome-bar{height:7px;border-radius:5px;background:var(--ml-sunken);overflow:hidden}.bi-outcome-bar span{display:block;height:100%;border-radius:5px}.bi-rate{font-size:28px;line-height:1.2;font-weight:650;letter-spacing:-.035em;margin:0 0 12px}.bi-offers{list-style:none;margin:0;padding:0}.bi-offers li{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--bi-rule)}.bi-offers li:first-child{padding-top:0}.bi-offer-title{font-size:13px;min-width:0;overflow-wrap:anywhere}.bi-offer-amount{text-align:right;white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums}.bi-offer-amount strong{display:block}.bi-story{border-top:1px solid var(--bi-rule);padding:22px 0}.bi-story blockquote{font:600 22px/1.45 Figtree,system-ui;margin:0 0 12px;max-width:760px}.bi-footer{border-top:1px solid var(--bi-rule);padding-top:16px}.bi-footer summary{cursor:pointer;font-size:12px;font-weight:650;min-height:32px}.bi-footer ul{padding-left:20px;font-size:12px;line-height:1.6;color:var(--bi-muted)}.bi-notice{padding:14px 16px;border:1px solid var(--ml-border);border-radius:10px;background:var(--ml-warn-soft);font-size:13px;margin:0 0 18px}.bi-error{border-color:var(--ml-bad);background:var(--ml-bad-soft);color:var(--ml-bad)}.bi-empty{padding:34px 22px;border:1px dashed var(--ml-border);border-radius:12px;text-align:center;margin-bottom:20px}.bi-empty h3{font:700 23px Figtree,system-ui,sans-serif;margin-bottom:10px}.bi-loading{padding:42px 18px;border-block:1px solid var(--bi-rule);color:var(--bi-muted)}.bi-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@media(max-width:620px){.bi-periods{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%}.bi-periods button{padding:8px 4px;white-space:nowrap}.bi-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 16px}.bi-columns{grid-template-columns:minmax(0,1fr);gap:26px}.bi-timeline{padding:16px}.bi-actions{width:100%}.bi-actions button{flex:1}.bi-story blockquote{font-size:22px}.bi-transport .bi-progress{width:100%;margin:3px 0 0}.bi-header h2{font-size:34px}}@media(prefers-reduced-motion:reduce){.bi *{scroll-behavior:auto;transition:none!important;animation:none!important}}
+.bi-sales{display:grid;gap:16px;margin:20px 0}.bi-sales-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.bi-sales-chart{padding:16px;border:1px solid var(--ml-border);border-radius:16px;background:var(--ml-surface);min-width:0}.bi-sales-chart.bi-sales-all{border-top:4px solid var(--ml-maize)}.bi-sales-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:8px}.bi-sales-top h3{margin:0}.bi-sales-total{text-align:right;display:flex;flex-direction:column;flex-shrink:0}.bi-sales-total strong{font-size:22px;font-weight:800;line-height:1.1}.bi-sales-offers li{align-items:flex-start}.bi-sales-offers .bi-offer-amount{display:flex;flex-direction:column;align-items:flex-end;text-align:right;flex-shrink:0}.bi-sales-offers .bi-note{display:block}
 """;
 
 
@@ -80,6 +110,71 @@ def RedemptionChart(data: InsightData, cutoff: int, mode: str) -> JsxElement {
         </svg>
         <div className="bi-chart-meta"><span>{displayDate(data.start_date)}</span><span>{"0–" + count(series.maximum) + " redemptions"}</span><span>{displayDate(data.end_date)}</span></div>
     </>;
+}
+
+
+def SalesChart(
+    data: InsightData, sales: InsightSales, part: str, title: str, hours: str,
+    cutoff: int, ceiling: int
+) -> JsxElement {
+    chart = salesChart(sales, part, cutoff, ceiling) as SalesChartData;
+    spoken = title + " sales through your offers: " + money(chart.value_cents) + " from " + count(chart.redemptions) + " redemptions";
+    return <section className={"bi-sales-chart" + (" bi-sales-all" if part == "total" else "")} data-part={part} aria-label={title + " sales"}>
+        <div className="bi-sales-top">
+            <div><h3>{title}</h3><p className="bi-note">{hours}</p></div>
+            <div className="bi-sales-total"><strong>{money(chart.value_cents)}</strong><span className="bi-note">{count(chart.redemptions) + " redeemed"}</span></div>
+        </div>
+        <svg className="bi-chart" viewBox="0 0 720 146" role="img" aria-label={spoken}>
+            {[<line key={y} x1="12" x2="708" y1={y} y2={y} stroke="var(--ml-border)" strokeDasharray={None if y == 132 else "3 5"} /> for y in [12, 72, 132]]}
+            {[
+                <rect key={bar.day} x={bar.x} y={bar.y} width={bar.width} height={bar.height} rx="1" fill="var(--ml-accent)" />
+                for bar in chart.bars if bar.height > 0
+            ]}
+        </svg>
+        <div className="bi-chart-meta"><span>{displayDate(data.start_date)}</span><span>{"Top of chart: " + money(chart.maximum)}</span><span>{displayDate(data.end_date)}</span></div>
+        <p className="bi-note">{("Best day: " + displayDate(chart.best_date) + " with " + money(chart.best_value_cents) + ".") if chart.best_date else "No redemptions recorded here yet."}</p>
+    </section>;
+}
+
+
+def SalesCharts(data: InsightData, cutoff: int) -> JsxElement {
+    sales = data.sales;
+    if sales is None {
+        return <></>;
+    }
+    peak = salesPeak(sales, cutoff) as int;
+    return <section className="bi-sales" aria-label="Sales through your offers">
+        <div>
+            <h3>Sales through your offers</h3>
+            <p className="bi-note">The recorded price of every redeemed offer, by day, in Ann Arbor time. The four time-of-day charts share one scale so they can be compared. Extras bought in store are not recorded.</p>
+        </div>
+        <SalesChart data={data} sales={sales} part="total" title="All day" hours="Every redemption" cutoff={cutoff} ceiling={0} />
+        <div className="bi-sales-grid">
+            {[
+                <SalesChart key={block.key} data={data} sales={sales} part={block.key} title={block.label} hours={block.hours} cutoff={cutoff} ceiling={peak} />
+                for block in sales.blocks
+            ]}
+        </div>
+        {(<div>
+            <h3>What each offer did, and when</h3>
+            <p className="bi-note">The whole period, including dates beyond the replay date.</p>
+            <ol className="bi-offers bi-sales-offers">{[
+                <li key={str(index) + "-" + offer.title}>
+                    <span className="bi-offer-title">
+                        {offer.title}
+                        {(<span className="bi-note">{"Current schedule: " + offer.schedule}</span>) if offer.schedule else None}
+                        <span className="bi-note">{" · ".join([part.label + ": " + count(part.claims) + " claimed, " + count(part.redemptions) + " redeemed" for part in offer.blocks if part.claims or part.redemptions]) or "No activity in this period"}</span>
+                    </span>
+                    <span className="bi-offer-amount">
+                        <strong>{count(offer.redemptions) + " redeemed"}</strong>
+                        <span className="bi-note">{count(offer.claims) + " claimed · " + money(offer.value_cents)}</span>
+                        {(<span className="bi-note">{"Busiest: " + offer.busiest}</span>) if offer.busiest else None}
+                    </span>
+                </li>
+                for (index, offer) in enumerate(sales.offers[:8])
+            ]}</ol>
+        </div>) if len(sales.offers) else None}
+    </section>;
 }
 
 
@@ -279,6 +374,7 @@ def:pub BusinessInsights(getInsights: Callable[[int], any]) -> JsxElement {
                     <span className="bi-note bi-progress">{"Day " + str(cutoff) + " / " + str(data.period_days)}</span>
                 </div>
             </section>
+            <SalesCharts data={data} cutoff={cutoff} />
             <div className="bi-snapshot"><span>{"Updates paused while you explore. Return to latest to refresh." if frozen else "Refreshes every 30 seconds while this tab is visible."}</span><span>{"Collected " + collected + " · Ann Arbor time"}</span></div>
             <div className="bi-columns">
                 <Outcomes metrics={totals} rate={view.rate} />
@@ -303,6 +399,7 @@ def:pub BusinessInsights(getInsights: Callable[[int], any]) -> JsxElement {
                     <li>The redemption rate is redeemed claims divided by redeemed, cancelled, and expired claims.</li>
                     <li>A returning account redeemed at this business on an earlier Ann Arbor calendar date. Multiple redemptions on a first day do not create a returning account.</li>
                     <li>Redeemed offer value uses the price saved when the customer claimed the offer. It is not payment revenue. Discounts are included only when a regular price was recorded.</li>
+                    <li>Sales through your offers is the same redeemed offer value, shown by day. Morning is 6 AM to 11 AM, lunch 11 AM to 4 PM, dinner 4 PM to 9 PM and late night 9 PM to 6 AM, in Ann Arbor time.</li>
                     <li>Views, nearby selections, and verified visits are not yet included. Customer identities and travel paths are not shown or exported.</li>
                     <li>Downloads include this entire recorded period, including dates beyond the replay cursor, and contain business-level aggregate metrics and offer titles.</li>
                     {(<li>{"Earliest supported activity: " + displayDate(data.coverage_start_date, True) + "."}</li>) if data.coverage_start_date else None}
