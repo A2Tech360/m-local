@@ -3,6 +3,7 @@
 import from services.models { Restaurant }
 import from services.qr_auth { merchant_owner }
 import from services.qr_catalog { _ensure_seed }
+import from services.onboarding { verified_account, is_demo_student }
 
 obj SessionView {
     has authenticated: bool = False,
@@ -10,7 +11,8 @@ obj SessionView {
         role: str = "guest",
         restaurant_id: str = "",
         display_name: str = "",
-        is_demo: bool = False;
+        is_demo: bool = False,
+        email_verified: bool = False;
 }
 
 def _actor_id() -> str {
@@ -41,5 +43,14 @@ def:pub current_session() -> SessionView {
         return SessionView(authenticated=True, actor_id=actor, role="merchant",
             restaurant_id=jid(r), display_name=r.name, is_demo=r.is_demo);
     }
-    return SessionView(authenticated=True, actor_id=actor, role="student", display_name="Student");
+    account = verified_account(actor);
+    if account {
+        return SessionView(authenticated=True, actor_id=actor,
+            role="business" if account.get("kind") == "business" else "student",
+            display_name=str(account.get("name", "")), email_verified=True);
+    }
+    if is_demo_student(actor) {
+        return SessionView(authenticated=True, actor_id=actor, role="student", display_name="Demo student", is_demo=True);
+    }
+    return SessionView(authenticated=True, actor_id=actor, role="unverified", display_name="Email verification required");
 }

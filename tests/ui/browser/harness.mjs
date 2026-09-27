@@ -2,7 +2,7 @@
 import {createRequire} from 'node:module';
 import {readFileSync,readdirSync} from 'node:fs';
 import {resolve} from 'node:path';
-const root=resolve(import.meta.dirname,'../../..');
+const root=resolve(process.env.MLOCAL_UI_APP_ROOT || resolve(import.meta.dirname,'../../..'));
 const runtimeRequire=createRequire(resolve(process.env.MLOCAL_UI_TEST_MODULES || `${root}/.jac/ui-test-runtime/node_modules`, '../package.json'));
 const {JSDOM,VirtualConsole}=runtimeRequire('jsdom');
 const clientRequire=createRequire(`${root}/.jac/client/package.json`);
@@ -24,7 +24,7 @@ export function held(extra={}) {return offer({my_claim_id:'fixture-claim',my_sta
 export async function until(fn,message='condition',timeout=3000) {
  const end=Date.now()+timeout;while(Date.now()<end){if(fn())return;await new Promise(r=>setTimeout(r,10));}throw new Error(`Timed out: ${message}`);
 }
-export async function app({role='student',item=offer(),intercept}={}) {
+export async function app({role='student',verified=false,item=offer(),intercept}={}) {
  const errors=[],calls=[];let activeRole=role;
  const virtualConsole=new VirtualConsole();virtualConsole.on('jsdomError',e=>errors.push(e.message));
  const dom=new JSDOM(readFileSync(resolve(dist,'index.html'),'utf8'),{url:'http://localhost:8123',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole});
@@ -33,7 +33,7 @@ export async function app({role='student',item=offer(),intercept}={}) {
  w.ResizeObserver=class{observe(){}unobserve(){}disconnect(){}};
  w.TextEncoder=TextEncoder;w.TextDecoder=TextDecoder;w.Response=Response;w.Request=Request;w.Headers=Headers;
  if(role!=='guest')w.localStorage.setItem('jac_token','synthetic-ui-token');
- const session=()=>({authenticated:activeRole!=='guest',role:activeRole,actor_id:`fixture-${activeRole}`,restaurant_id:activeRole==='merchant'?'fixture-restaurant':'',display_name:`Fixture ${activeRole}`,is_demo:true});
+ const session=()=>({authenticated:activeRole!=='guest',role:activeRole,actor_id:`fixture-${activeRole}`,restaurant_id:activeRole==='merchant'?'fixture-restaurant':'',display_name:`Fixture ${activeRole}`,is_demo:!verified,email_verified:verified});
  const portal=()=>({ok:true,name:'Fixture Kitchen',cuisine:'Test cuisine',blurb:'Fixture profile',address:'Test address',neighborhood:'Test area',entrance_note:'',note_date:'',offers:[item],claims:[],is_demo:true,message:''});
  w.fetch=async (url,options={})=>{
   const name=String(url).split('/').at(-1),body=options.body?JSON.parse(options.body):{};

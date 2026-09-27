@@ -23,6 +23,8 @@ import from services.promo {
     ClaimView
 }
 import from services.session { current_session, SessionView }
+import from services.onboarding { request_email_code, verify_email_code }
+import from services.business_onboarding { get_business_draft, import_business_website, save_business_draft }
 
 import from "@jac/mobui" {
     View,
@@ -34,7 +36,8 @@ import from "@jac/mobui" {
 }
 import from .theme { C, buildStyles, statusColors, money }
 import from .services.session { SessionView }
-import from .client.session { signIn, signOut, loadSession }
+import from .client.session { signIn, signOut, loadSession, acceptEmailToken }
+import from "./client/onboarding.jsx" { EmailOnboarding, BusinessOnboarding }
 import from "./client/qr.jsx" { ClaimQr, ClaimScanner }
 import from "./client/scan-controller.mjs" { isClaimPayload }
 
@@ -139,6 +142,7 @@ def:pub app -> JsxElement {
         authOpen: bool = False,
         authBusy: bool = False,
         authMsg: str = "",
+        businessOpen: bool = False,
         sessionEpoch: Ref[int] = Ref(0),
         offerRequest: Ref[int] = Ref(0),
         detailRequest: Ref[int] = Ref(0),
@@ -228,23 +232,22 @@ def:pub app -> JsxElement {
         eTitle = ""; eDesc = ""; eTerms = ""; eMsg = "";
     }
 
-    async def login() {
-        if authRef.current { return; }
-        authRef.current = True; authBusy = True; authMsg = "";
+    async def finishSignIn(fresh: SessionView) {
+        clearPrivate(); session = fresh; authOpen = False; password = "";
+        businessOpen = fresh.role == "business";
+        await refresh();
+        if fresh.role == "merchant" { await openMerchant(); }
+    }
+
+    async def finishEmail(token: str) {
         fresh: SessionView | None = None;
-        try {
-            fresh = await signIn(email, password);
-            clearPrivate(); session = fresh; authOpen = False; password = "";
-            await refresh();
-            if fresh and fresh.role == "merchant" { await openMerchant(); }
-        } except Exception {
-            authMsg = "Sign-in failed. Check the provisioned email and password, and your connection.";
-        } finally { authBusy = False; authRef.current = False; }
+        fresh = await acceptEmailToken(token);
+        if fresh { await finishSignIn(fresh); }
     }
 
     def logout() {
         signOut(); clearPrivate(); session = None; password = "";
-        tab = "discover"; authOpen = False; authMsg = ""; refresh();
+        tab = "discover"; authOpen = False; businessOpen = False; authMsg = ""; refresh();
     }
 
     def pickBudget(v: str) { maxPrice = v; loadOffers(v, timeWin, diets); }
@@ -433,26 +436,26 @@ def:pub app -> JsxElement {
     def SessionPanel() -> JsxElement {
         return <View style={[styles.section, {"marginHorizontal": 20, "marginTop": 16}]}>
             {(
-                <View style={styles.rowBetween}>
+                <View style={{"gap": 12}}><View style={styles.rowBetween}>
                     <View style={styles.flex1}>
                         <Text style={styles.body}>{session.display_name or "Signed in"}</Text>
-                        <Text style={styles.small}>{session.role.capitalize() + (" · demo account" if session.is_demo else "")}</Text>
+                        <Text style={styles.small}>{("Email verified" if session.email_verified else session.role.capitalize()) + (" · demo account" if session.is_demo else "")}</Text>
                     </View>
                     <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={authBusy} onPress={lambda { logout(); }}><Text style={styles.btnGhostText}>Sign out</Text></Pressable>
+                </View>
+                {(<View style={{"gap": 12}}>
+                    <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { businessOpen = not businessOpen; }}><Text style={styles.btnGhostText}>{"Close business profile" if businessOpen else "Create a business profile"}</Text></Pressable>
+                    {(<BusinessOnboarding getDraft={get_business_draft} importWebsite={import_business_website} saveDraft={save_business_draft} />) if businessOpen else <View />}
+                </View>) if session.email_verified and session.role != "merchant" else <View />}
                 </View>
             ) if session and session.authenticated else (
                 <View style={{"gap": 12}}>
                     <Text style={styles.h2}>Sign in to claim or manage offers</Text>
-                    <Text style={styles.small}>Browse freely. Use your pre-provisioned student or restaurant account to continue.</Text>
+                    <Text style={styles.small}>Browse freely. Verify your email to create an account or sign back in.</Text>
                     {(
-                        <View style={{"gap": 12}}>
-                            <Text style={styles.label}>Email</Text>
-                            <TextInput ref={emailInput} accessibilityLabel="Email" autoFocus={True} style={styles.input} value={email} placeholder="Email" keyboardType="email-address" autoCapitalize="none" autoCorrect={False} onChangeText={lambda (v: str) { email = v; }} />
-                            <Text style={styles.label}>Password</Text>
-                            <TextInput accessibilityLabel="Password" style={styles.input} value={password} placeholder="Password" secureTextEntry={True} autoCapitalize="none" autoCorrect={False} onChangeText={lambda (v: str) { password = v; }} onSubmitEditing={lambda { login(); }} />
-                            <Pressable accessibilityRole="button" style={styles.btn} disabled={authBusy} onPress={lambda { login(); }}><Text style={styles.btnText}>{"Signing in..." if authBusy else "Sign in"}</Text></Pressable>
-                            <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={authBusy} onPress={lambda { authOpen = False; password = ""; }}><Text style={styles.btnGhostText}>Keep browsing</Text></Pressable>
-                        </View>
+                        <EmailOnboarding requestCode={request_email_code} verifyCode={verify_email_code}
+                            onVerified={finishEmail} legacySignIn={signIn} onLegacySession={finishSignIn}
+                            inputRef={emailInput} onCancel={lambda { authOpen = False; }} />
                     ) if authOpen else <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { openSignIn(); }}><Text style={styles.btnGhostText}>Open sign in</Text></Pressable>}
                     <Message text={authMsg} good={False} />
                 </View>

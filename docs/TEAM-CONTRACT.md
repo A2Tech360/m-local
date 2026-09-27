@@ -1,5 +1,12 @@
 # Shared implementation contract v2: QR redemption
 
+Email onboarding increment (2026-09-26): `SessionView` adds the default-false
+`email_verified` field and `business` / `unverified` roles. A verified U-M inbox
+or an explicit demo student root is required for a new claim. Business email
+verification permits a private pending profile, not merchant authority. Existing
+merchant provisioning and `OfferView`/access-context/QR shapes stay unchanged.
+See [onboarding](ONBOARDING.md) for new endpoints and required demo migration.
+
 This is the target agreed by the task split, not a description of the current code.
 Engineer 1 coordinates changes; Engineer 2 owns core API/schema decisions; Engineer
 3 owns context types; Engineer 4 consumes both. An owner proposes a changed signature
