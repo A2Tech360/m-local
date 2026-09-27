@@ -1,5 +1,10 @@
 # PromoPusher (prototype)
 
+**Stable team hosting:** [Open M-Local](https://mlocal.tail0d5ef8.ts.net/).
+Travis's laptop checks `main` every minute, deploys after checks and a rebuild,
+and preserves accounts and data. Refresh your phone after deployment.
+[Start/stop, update behavior, and troubleshooting](docs/HOSTING.md).
+
 **Open on phones:** on Windows, double-click **Start Phone Demo.cmd** for an HTTPS
 link. Keep the host awake; **Stop Phone Demo.cmd** closes sharing.
 [Setup, private demo logins, and troubleshooting](docs/PHONE-LINK.md).
