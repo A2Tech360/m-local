@@ -59,6 +59,24 @@ AccessNoticeView  { id, summary, publisher, source_url, checked_at, valid_from,
 Render rule from the contract: `none` is not an all-clear; only a `current`
 notice may show `entrance_instruction` as definitive.
 
+## Claim/redemption edge cases (real HTTP, commit 9c440e2)
+
+`python3 tests/integration/edge_cases_http.py` starts its own API-only server,
+registers fresh accounts and provisions two merchants. **42/42 passed** on
+Jac 0.37.23 (Apple Silicon, default worker count).
+
+| Case | What was proven |
+|---|---|
+| Last available offer | One unit: first student wins, second is refused as sold out with no QR; holder retry keeps the same QR; cancel returns the unit and kills the old QR; 12 simultaneous students give exactly one winner; merchant cannot cut quantity below held units |
+| Double redemption | Second redemption refused; preview reports redeemed; stock counted once; redeemed claim cannot be cancelled or re-claimed; 8 simultaneous scans redeem exactly once |
+| Expired claim | Hold deadline is capped at the offer end; after a real wait past that time, preview reports expired, redemption is refused (twice), the offer leaves discovery and refuses new claims, and merchant history shows expired, not redeemed |
+| Wrong merchant | Preview refused and reveals no terms; redemption refused; claim untouched; cannot pause the other restaurant's offer; claim absent from the other merchant's history; students and guests cannot redeem (guest 401) |
+| Restart | Redeemed stays redeemed, expired stays unredeemable, sold out stays sold out |
+
+Limit: the expired case waits out a short-lived offer (about two minutes).
+Expiry of the 20-minute hold itself is covered by the unit tests with an
+injected clock, not by a real 20-minute wait.
+
 ## Notes for other owners
 
 - Engineer 1: `tests/integration/qr_http.py` fails on Mac at its first line
