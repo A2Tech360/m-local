@@ -105,7 +105,7 @@ def Outcomes(metrics: InsightMetrics, rate: InsightRate) -> JsxElement {
 
 
 """The parent keys this component by the authenticated actor."""
-def:pub BusinessInsights(getInsights: Callable[[int], any]) -> JsxElement {
+def:pub BusinessInsights(getInsights: Callable[[int], any], showProvenance: bool = True) -> JsxElement {
     has period: int = 30,
         data: InsightData | None = None,
         cutoff: int = 0,
@@ -209,7 +209,7 @@ def:pub BusinessInsights(getInsights: Callable[[int], any]) -> JsxElement {
         exportError = "";
         if not data { return; }
         try {
-            blob = new(browser.Blob, [buildRecapHtml(data)], {"type": "text/html;charset=utf-8"});
+            blob = new(browser.Blob, [buildRecapHtml(data, showProvenance)], {"type": "text/html;charset=utf-8"});
             url = browser.URL.createObjectURL(blob);
             anchor = browserDocument.createElement("a");
             anchor.href = url;
@@ -233,7 +233,7 @@ def:pub BusinessInsights(getInsights: Callable[[int], any]) -> JsxElement {
         <style>{insightStyles}</style>
         <header className="bi-header">
             <div><p className="bi-eyebrow">Business insights</p><h2>{"Your year in review" if period == 365 else "See your business in motion"}</h2><p className="bi-note">Recorded activity, one day at a time.</p></div>
-            {(<div>{(<div className="bi-badge">Demo business · demo activity</div>) if data.is_demo else None}<p style={{"fontWeight": 650, "overflowWrap": "anywhere"}}>{data.business_name}</p></div>) if data else None}
+            {(<div>{(<div className="bi-badge">Demo business · demo activity</div>) if data.is_demo and showProvenance else None}<p style={{"fontWeight": 650, "overflowWrap": "anywhere"}}>{data.business_name}</p></div>) if data else None}
         </header>
         <div className="bi-toolbar">
             <div className="bi-periods" role="group" aria-label="Insights period">

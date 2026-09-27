@@ -12,6 +12,24 @@ const metric=(ui,title)=>[...ui.document.querySelectorAll('.bi-metric')].find(n=
 function setRange(ui,day){const range=ui.document.querySelector('#bi-replay-date');Object.getOwnPropertyDescriptor(ui.window.HTMLInputElement.prototype,'value').set.call(range,String(day));range.dispatchEvent(new ui.window.Event('input',{bubbles:true}));}
 const tick=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
+test('local activity stays separate from own merchant insights and hides fixture labels', async()=>{
+ const ui=await app({role:'merchant',verified:true,intercept(name,body){
+  if(name==='current_session')return rpc({authenticated:true,role:'merchant',actor_id:'fixture-merchant',restaurant_id:'fixture-restaurant',display_name:'Owner',email_verified:true,catalog_activity:true});
+  if(name==='merchant_insights')return rpc({...fixture(body.days,'Own Kitchen'),is_demo:false});
+  if(name==='local_activity')return rpc({...fixture(body.days,'Local Cafe'),warnings:[]});
+ }});
+ try {
+  await until(()=>ui.document.body.textContent.includes('Own Kitchen'));
+  ui.click('Explore local activity');
+  await until(()=>ui.document.body.textContent.includes('Local Cafe'));
+  assert.equal(ui.document.querySelector('.bi-badge'),null);
+  assert.equal(ui.document.body.textContent.includes('Own Kitchen'),false);
+  ui.click('Your business');
+  await until(()=>ui.document.body.textContent.includes('Own Kitchen'));
+  assert.equal(ui.document.body.textContent.includes('Local Cafe'),false);
+ } finally {ui.close();}
+});
+
 test('native Insights range, playback, freeze, stale-response isolation and recap export',async()=>{
  let holdNext=false,release,requestedPeriod,blob,downloadName,background;
  const ui=await app({role:'merchant',verified:true,configureWindow(w){

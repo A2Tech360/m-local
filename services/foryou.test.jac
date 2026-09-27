@@ -193,6 +193,17 @@ test "sample listings show only when the server turns demo mode on" {
     assert _home("", "", "any", "", time.time()).show_samples == demo_mode(os.environ.get(DEMO_MODE_ENV, ""));
 }
 
+test "hosted dataset replaces starter fixture discovery without deleting starter records" {
+    _ensure_seed();
+    original = [jid(r) for r in [root.shared -->[?:Restaurant]] if r.source == "demo-seed"];
+    with patch.dict(os.environ, {"MLOCAL_HOSTED_DATASET": "1"}) {
+        home = _home("", "", "any", "", time.time());
+        assert home.show_samples;
+        assert not [item for item in home.items if item.offer.restaurant.endswith(" (Demo)")];
+    }
+    assert [jid(r) for r in [root.shared -->[?:Restaurant]] if r.source == "demo-seed"] == original;
+}
+
 
 def _claim_fixture(slug: str, now: float) -> Offer {
     r = Restaurant(slug=slug, name="Claim visibility cafe", cuisine="Cafe", source="business_signup");

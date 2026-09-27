@@ -57,6 +57,13 @@ test('recap omits pending and unknown history rows', () => {
   assert.doesNotMatch(html, />\\d+ unknown/);
 });
 
+test('presentation can hide the visible provenance label without losing metadata', () => {
+  const clean = normalizeInsights({...fixture(), is_demo: true});
+  assert.match(buildRecapHtml(clean), /Demo business/);
+  assert.doesNotMatch(buildRecapHtml(clean, false), /Demo business/);
+  assert.equal(recapPayload(clean).is_demo, true);
+});
+
 test('normalization and export exclude unknown fields at every level', () => {
   const raw = fixture();
   raw.warnings = ['SECRET-PRIVATE-WARNING'];

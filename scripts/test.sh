@@ -35,7 +35,7 @@ elif [[ "$suite" == insights ]]; then
 else
     "$JAC_BIN" test services/promo.test.jac services/qr.test.jac services/session.test.jac services/business_onboarding.test.jac \
         services/taste.test.jac services/taste_sandbox.test.jac services/foryou.test.jac \
-        services/nearby.test.jac services/business_profile.test.jac
+        services/nearby.test.jac services/business_profile.test.jac services/hosted_dataset.test.jac services/dataset_activity.test.jac
 fi
 if [[ "$suite" == all ]]; then
     exit_code=0

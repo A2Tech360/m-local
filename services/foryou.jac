@@ -325,7 +325,8 @@ def _home(actor: str, price_range: str, window: str, diets: str, now: float) -> 
     for r in [root.shared -->[?:Restaurant]] {
         for o in [r ->:Publishes:->] {
             v = _view(o, now, actor);
-            discoverable = o.status != "paused" and now < o.end_ts;
+            starter_fixture = os.environ.get("MLOCAL_HOSTED_DATASET", "") == "1" and r.source == "demo-seed";
+            discoverable = o.status != "paused" and now < o.end_ts and not starter_fixture;
             if discoverable { total += 1; }
             # A live saved QR must remain reachable after offer edits or filter
             # changes. Only its owner bypasses discovery rules, until expiry.
@@ -383,7 +384,7 @@ def _home(actor: str, price_range: str, window: str, diets: str, now: float) -> 
     }
     personalized = bool(taste.categories or taste.diets or taste.price_range or taste.favorites or taste.history);
     return HomeView(
-        show_samples=demo_mode(os.environ.get(DEMO_MODE_ENV, "")),
+        show_samples=demo_mode(os.environ.get(DEMO_MODE_ENV, "")) or os.environ.get("MLOCAL_HOSTED_DATASET", "") == "1",
         signed_in=bool(actor),
         personalized=personalized,
         completed=p.completed if p is not None else False,

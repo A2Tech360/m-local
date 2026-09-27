@@ -4,6 +4,7 @@ import from services.models { Restaurant, Serves, Publishes }
 import from services.seed { seed_demo }
 import from services.money { money_to_cents }
 import from services.qr_auth { merchant_owner }
+import from services.hosted_dataset { ensure_hosted_dataset }
 
 """Bootstrap one catalog regardless of which authenticated root asks first.
 
@@ -24,6 +25,7 @@ def _ensure_seed {
             }
         }
     }
+    ensure_hosted_dataset();
     # Compatibility backfill for the unchanged importer and old durable catalog.
     # Once populated, cents are authoritative; float fields are display-only.
     for r in [root.shared -->[?:Restaurant]] {
