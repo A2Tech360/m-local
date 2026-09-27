@@ -118,3 +118,22 @@ test('the address is plain text under a Where label, not a box that looks like a
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
 });
+
+test('real catalog places carry the map credit, show fewer than four cards, and mark only fictional deals as samples',async()=>{
+ const real={ok:true,heading:'What now?',origin:'Fixture Kitchen',has_samples:false,sample_deals:true,from_catalog:true,note:'',
+  attribution:'Place data from OpenStreetMap contributors (ODbL). Distances are straight lines; walking times are estimates.',
+  groups:[{kind:'coffee',label:'Coffee',cards:[card('Real Cafe','coffee',{is_sample:false,distance:'200 ft',minutes:1,deal:'Deal on now: $3 oat latte',deal_offer_id:'listed-offer',sample_deal:true}),card('Second Cafe','coffee',{is_sample:false})]},
+   {kind:'bars',label:'Bars',cards:[card('Only Pub','bars',{is_sample:false,what:'Pub'})]}]};
+ const ui=await redeemed(name=>name==='nearby_after'?rpc(real):undefined);
+ try{
+  await until(()=>squares(ui).length===2,'only the kinds that have a nearby place');
+  assert.deepEqual(squares(ui).map(b=>b.getAttribute('aria-label').split(':')[0]),['Coffee','Bars']);
+  assert.ok(ui.text().includes('Sample deals'));assert.equal(ui.text().includes('Sample places'),false);
+  assert.ok(ui.text().includes('A short walk from Fixture Kitchen, nearest first.'));assert.equal(ui.text().includes('Demo suggestions'),false);
+  assert.ok(ui.document.querySelector('.ml-whatnow-source').textContent.includes('OpenStreetMap contributors'));
+  assert.ok(square(ui,'Coffee').textContent.includes('200 ft · 1 min walk'));assert.ok(square(ui,'Coffee').textContent.includes('1 of 2'));
+  assert.ok(square(ui,'Bars').textContent.includes('1 of 1'));
+  tap(ui,'Bars');await new Promise(r=>setTimeout(r,40));assert.ok(square(ui,'Bars').textContent.includes('Only Pub'));
+  assert.deepEqual(ui.errors,[]);
+ }finally{ui.close();}
+});

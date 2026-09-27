@@ -91,7 +91,7 @@ export async function setMaximumPrice(ui, value) {
 export async function openSignIn(ui, audience='student') {
  await until(()=>ui.find('Find local deals'));
  ui.click(audience==='business'?'List my business':'Find local deals');
- await until(()=>ui.document.querySelector('[placeholder="Your name"]'));
+ await until(()=>ui.document.querySelector('[placeholder="Your name"], [placeholder="Business Name"]'));
  ui.click('Sign in');
  await until(()=>!ui.document.querySelector('[placeholder="Your name"]'));
 }

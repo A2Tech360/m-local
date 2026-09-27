@@ -162,7 +162,7 @@ def:pub EmailOnboarding(
         </header>
         {(<Fragment>
             <p style={hint}>{"Start with your name and email. We’ll send a code to verify it." if mode == "signup" else "Enter your email. We’ll send a code to sign you in."}</p>
-            {(<InputField title="Your name" placeholder="Your name" autoComplete="name" maxLength={80} value={name} onChange={lambda (e: ChangeEvent) { name = e.target.value; }} required={True} disabled={busy}/>) if mode == "signup" else None}
+            {(<InputField title={"Business Name" if kind == "business" else "Your name"} placeholder={"Business Name" if kind == "business" else "Your name"} autoComplete={"organization" if kind == "business" else "name"} maxLength={80} value={name} onChange={lambda (e: ChangeEvent) { name = e.target.value; }} required={True} disabled={busy}/>) if mode == "signup" else None}
             {(<label style={label}>U-M email
                 <div style={{"display": "flex", "border": "1px solid var(--ml-border)", "borderRadius": 10, "overflow": "hidden", "minWidth": 0}}>
                     <input ref={inputRef or emailRef} aria-label="U-M uniqname" aria-describedby="umich-email-help" style={{**inputStyle, "border": 0, "borderRadius": 0, "flex": 1}} placeholder="uniqname" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={False} pattern="[A-Za-z][A-Za-z0-9]{1,31}" maxLength={32} value={value} onChange={lambda (e: ChangeEvent) { value = e.target.value; }} required={True} disabled={busy}/>

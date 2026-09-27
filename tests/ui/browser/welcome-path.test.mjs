@@ -37,12 +37,12 @@ test('valid sessions stay signed in, then logout returns every role to the share
  }
 });
 
-test('business bottom navigation uses the requested main labels and subtitles',async()=>{
+test('business bottom navigation uses the requested main labels without subtitles',async()=>{
  const ui=await app({role:'merchant',verified:true});
  try{
   const buttons=[...ui.document.querySelectorAll('[data-testid="app-tabbar"] button')];
   assert.deepEqual(buttons.map(button=>[...button.children].filter(child=>child.tagName!=='svg').map(child=>child.textContent)),[
-   ['Insights','Metrics'],['Manage','Offers'],['Redeem','Scan'],['Account','You']
+   ['Insights'],['Manage'],['Redeem'],['Account']
   ]);
  }finally{ui.close();}
 });
