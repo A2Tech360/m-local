@@ -1,0 +1,20 @@
+.jac/
+node_modules/
+dist/
+
+# Local credentials and environments
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# JacHammer assistant state and local artifacts
+.jac-ide/
+.jacbuilder/
+.jaccoder/
+*.log
+.DS_Store
+Thumbs.db

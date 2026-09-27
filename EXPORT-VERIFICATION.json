@@ -1,0 +1,60 @@
+{
+  "result": "PASS",
+  "files_verified": [
+    {
+      "path": "jac.toml",
+      "original_hash_matches": true
+    },
+    {
+      "path": "main.jac",
+      "original_hash_matches": true
+    },
+    {
+      "path": "theme.jac",
+      "original_hash_matches": true
+    },
+    {
+      "path": "README.md",
+      "original_hash_matches": true
+    },
+    {
+      "path": ".gitignore",
+      "original_hash_matches": true
+    },
+    {
+      "path": "AGENTS.md",
+      "original_hash_matches": true
+    },
+    {
+      "path": "services/models.jac",
+      "original_hash_matches": true
+    },
+    {
+      "path": "services/importer.jac",
+      "original_hash_matches": true
+    },
+    {
+      "path": "services/seed.jac",
+      "original_hash_matches": true
+    },
+    {
+      "path": "services/promo.jac",
+      "original_hash_matches": true
+    },
+    {
+      "path": "services/promo.test.jac",
+      "original_hash_matches": true
+    }
+  ],
+  "total_original_bytes": 83434,
+  "local_imports_resolved": [
+    "services/importer.jac",
+    "services/models.jac",
+    "services/promo.jac",
+    "services/seed.jac",
+    "theme.jac"
+  ],
+  "credential_pattern_findings": [],
+  "credential_scan_limit": "Bounded pattern scan, not a guarantee of no secrets. Demo merchant keys intentionally retained.",
+  "runtime_tests": "Not run; this verifies source extraction, not application behavior."
+}

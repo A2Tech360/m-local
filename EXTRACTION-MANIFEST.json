@@ -1,0 +1,105 @@
+{
+  "source": "https://jachammer.ai/project/prj_91a1ccd4ab324e15b8dac8ef0f6e03d7",
+  "projectName": "M-Local",
+  "applicationName": "PromoPusher",
+  "capturedAt": "2026-09-26T19:53:16.103Z",
+  "method": "Opened each file in the JacHammer Code UI; focused editor; Select All and Copy through browser clipboard. Two copies per file matched, and local UTF-8 text matched the copied string. Clipboard line endings were CRLF.",
+  "scope": "All 11 application/configuration/documentation files visible in the expanded project explorer. No .env, runtime database, build cache, or assistant metadata exported.",
+  "excludedVisiblePaths": [
+    ".env",
+    ".jaccoder/agent_journal.md",
+    ".jaccoder/build_plan.json"
+  ],
+  "files": [
+    {
+      "path": "jac.toml",
+      "bytes": 570,
+      "lineCount": 28,
+      "sha256": "f76a20fa112a5c87390850991a7695009869b7ba5ff3710af20edbaf485a5890",
+      "secondCopyMatched": true
+    },
+    {
+      "path": "main.jac",
+      "bytes": 28833,
+      "lineCount": 691,
+      "sha256": "92fc5f5611d216eae723d20efc5481431d3df32e76e3547bb31499a7fe8b47f9",
+      "secondCopyMatched": true
+    },
+    {
+      "path": "theme.jac",
+      "bytes": 11265,
+      "lineCount": 293,
+      "sha256": "1475cda8d785be2afc2131dcf33773d5c5834725067593cfee3f90a5cbba47ea",
+      "secondCopyMatched": true
+    },
+    {
+      "path": "README.md",
+      "bytes": 4041,
+      "lineCount": 86,
+      "sha256": "4bff1b995cf4f0c8a9becb9fc7fee3630b02ef3ed0b79a501112bbecf59a9fbe",
+      "secondCopyMatched": true
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 22,
+      "lineCount": 2,
+      "sha256": "665e6fa2e7ae16f66f3930daaee2ece1b81beaddfe4ef67c9df47cfc71cbaf29",
+      "secondCopyMatched": true
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 1370,
+      "lineCount": 31,
+      "sha256": "393f5a997df4f4b59ab66edf85f7c72aed8dcc3aa6d75fe13acddc5ef4b43f2a",
+      "secondCopyMatched": true
+    },
+    {
+      "path": "services/models.jac",
+      "bytes": 1846,
+      "lineCount": 73,
+      "sha256": "ecc8ddab4d6b9992d51dd205478fa66a124212c4a084b963cfc9a96c4c46e820",
+      "secondCopyMatched": true
+    },
+    {
+      "path": "services/importer.jac",
+      "bytes": 3090,
+      "lineCount": 87,
+      "sha256": "d6052fc073fd56776f006382227a30538e121f26f37e5ba73f3784ca6005fa2b",
+      "secondCopyMatched": true
+    },
+    {
+      "path": "services/seed.jac",
+      "bytes": 6439,
+      "lineCount": 160,
+      "sha256": "7decdb98b6b167f381d3e56a99ca131a0b9115aeb1ed7d3d78d6a2fb3ef19289",
+      "secondCopyMatched": true
+    },
+    {
+      "path": "services/promo.jac",
+      "bytes": 21951,
+      "lineCount": 768,
+      "sha256": "70974434e621be23adf48000aeed54df74d2ffbd85c7b6919f347b6511adee9d",
+      "secondCopyMatched": true
+    },
+    {
+      "path": "services/promo.test.jac",
+      "bytes": 4007,
+      "lineCount": 121,
+      "sha256": "94558e0385b3316edd00ed123cb53de9d45d745609b493f20b649289f1863f34",
+      "secondCopyMatched": true
+    }
+  ],
+  "originalSnapshotCommit": "715b4badee054af755beec1b5ab7d3274cd7d6c5",
+  "postExtractionChanges": [
+    {
+      "path": ".gitignore",
+      "reason": "Added credential, environment and local-artifact exclusions. Original content remains in the snapshot commit."
+    }
+  ],
+  "runtimeEvidence": {
+    "readmeReportedJac": "0.34.20",
+    "jacHammerSetting": "Default",
+    "localLabJac": "0.37.21",
+    "localApplicationExecution": "Not performed"
+  }
+}
