@@ -3,12 +3,17 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/runtime.sh"
 port="${MLOCAL_INSIGHTS_PORT:-8400}"
 api=$((port + 1))
 demo="${MLOCAL_INSIGHTS_DIR:-$(mktemp -d /tmp/m-local-insights-demo.XXXXXX)}"
+python3 scripts/insights-demo-guard.py "$demo" "$PROJECT_ROOT" "$port"
 git ls-files | tar -cf - -T - | tar -xf - -C "$demo"
-unset JAC_DB_URL MLOCAL_ONBOARDING_DIR MLOCAL_MERCHANT_OWNERS MLOCAL_DEMO_STUDENTS
+unset JAC_DB_URL MLOCAL_ONBOARDING_DIR MLOCAL_MERCHANT_OWNERS MLOCAL_DEMO_STUDENTS MLOCAL_HOSTED_DATASET
 cd "$demo"
 wait_up() {
     for _ in $(seq 1 240); do
-        if curl -s -o /dev/null "http://127.0.0.1:$api/functions" && curl -s -o /dev/null "http://localhost:$port/"; then return 0; fi
+        if ! kill -0 "$1" 2>/dev/null; then
+            echo "The demo process exited; refusing to use another server. See $demo/server.log" >&2
+            exit 1
+        fi
+        if curl -fsS -o /dev/null "http://127.0.0.1:$api/functions" 2>/dev/null && curl -fsS -o /dev/null "http://localhost:$port/" 2>/dev/null; then return 0; fi
         sleep 1
     done
     echo "The app did not start; see $demo/server.log" >&2
@@ -17,7 +22,8 @@ wait_up() {
 if [[ ! -f .jac/qr-demo-accounts.json ]]; then
     "$JAC_BIN" run --dev --host 127.0.0.1 --port "$port" < /dev/null > server.log 2>&1 &
     first=$!
-    wait_up
+    trap 'kill "$first" 2>/dev/null || true' EXIT
+    wait_up "$first"
     python3 scripts/provision-demo.py --api "http://localhost:$api"
     kill "$first" 2>/dev/null || true
     sleep 3
@@ -44,7 +50,7 @@ echo "Insights demo workspace: $demo"
 "$JAC_BIN" run --dev --host 127.0.0.1 --port "$port" < /dev/null > server.log 2>&1 &
 server=$!
 trap 'kill "$server" 2>/dev/null || true' EXIT
-wait_up
+wait_up "$server"
 echo "Simulating local activity through the real claim and redeem code. This takes a few minutes."
 python3 - "$api" <<'PY'
 import json, sys, urllib.request
