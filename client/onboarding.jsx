@@ -45,26 +45,19 @@ export function AudienceWelcome({onChoose}) {
  </main>;
 }
 
-export function EmailOnboarding({kind='student',initialMode='signin',onSwitchAudience,requestCode,verifyCode,onVerified,legacySignIn,onLegacySession,onCancel,inputRef}) {
+export function EmailOnboarding({kind='student',initialMode='signin',onSwitchAudience,requestCode,verifyCode,onVerified,onCancel,inputRef}) {
  const [name,setName]=useState(''),[value,setValue]=useState('');
  const [mode,setMode]=useState(initialMode);
  const [code,setCode]=useState(''),[challenge,setChallenge]=useState(null),[message,setMessage]=useState('');
- const [busy,setBusy]=useState(false),[cooldown,setCooldown]=useState(0),[demo,setDemo]=useState(false),[password,setPassword]=useState('');
+ const [busy,setBusy]=useState(false),[cooldown,setCooldown]=useState(0);
  const mounted=useRef(true),inFlight=useRef(false),codeRef=useRef(null);
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
- useEffect(()=>{setValue('');setCode('');setChallenge(null);setMessage('');setDemo(false);setPassword('');setCooldown(0);},[kind]);
+ useEffect(()=>{setValue('');setCode('');setChallenge(null);setMessage('');setCooldown(0);},[kind]);
  useEffect(()=>{if(cooldown<=0)return;const timer=setTimeout(()=>setCooldown(v=>Math.max(0,v-1)),1000);return()=>clearTimeout(timer);},[cooldown]);
- useEffect(()=>{if(challenge)codeRef.current?.focus();else inputRef?.current?.focus();},[challenge,kind,demo]);
+ useEffect(()=>{if(challenge)codeRef.current?.focus();else inputRef?.current?.focus();},[challenge,kind]);
  async function run(action){if(inFlight.current)return;inFlight.current=true;setBusy(true);setMessage('');try{await action();}catch{if(mounted.current)setMessage('Could not connect. Your entries are kept; please try again.');}finally{inFlight.current=false;if(mounted.current)setBusy(false);}}
  async function send(){await run(async()=>{const reply=await requestCode(value.trim(),kind,mode==='signup'?name.trim():'');if(!mounted.current)return;setMessage(reply.message);if(reply.ok){setChallenge(reply);setCode('');setCooldown(reply.retry_after||60);}});}
  async function verify(){await run(async()=>{const reply=await verifyCode(challenge.challenge,code);if(!mounted.current)return;if(!reply.ok){setMessage(reply.message);return;}await onVerified(reply.token);});}
- if(demo)return <form style={stack} onSubmit={e=>{e.preventDefault();run(async()=>{const session=await legacySignIn(value,password);if(mounted.current)await onLegacySession(session);});}}>
-  <p style={hint}>Use the provisioned credentials shared by the demo host.</p>
-  <Input title="Email" aria-label="Email" autoFocus placeholder="Email" type="email" autoComplete="username" value={value} onChange={e=>setValue(e.target.value)} required/>
-  <Input title="Password" aria-label="Password" placeholder="Password" type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} required/>
-  <button style={button} disabled={busy}>{busy?'Signing in...':'Sign in'}</button>
-  <button style={secondary} type="button" disabled={busy} onClick={()=>{setDemo(false);setValue('');setPassword('');setMessage('');}}>Back to email verification</button><Notice>{message}</Notice>
- </form>;
  return <form style={stack} onSubmit={e=>{e.preventDefault();challenge?verify():send();}}>
   {!challenge ? <>
    <h3 style={{fontSize:20,margin:0}}>{mode==='signup'?'Create your account':'Welcome back'}</h3>
@@ -89,7 +82,6 @@ export function EmailOnboarding({kind='student',initialMode='signin',onSwitchAud
   <Notice>{message}</Notice>
   <button style={secondary} type="button" disabled={busy} onClick={()=>{setMode(mode==='signup'?'signin':'signup');setChallenge(null);setCode('');setMessage('');setCooldown(0);}}>{mode==='signup'?'I already have an account':'Create an account'}</button>
   {!challenge&&<button style={secondary} type="button" disabled={busy} onClick={()=>onSwitchAudience(kind==='student'?'business':'student')}>{kind==='student'?'Switch to business':'Switch to U-M deals'}</button>}
-  {!challenge&&<button style={{...secondary,fontSize:13}} type="button" disabled={busy} onClick={()=>{setDemo(true);setValue('');setMessage('');}}>{kind==='student'?'Demo sign-in':'Existing restaurant sign-in'}</button>}
   <button style={secondary} type="button" disabled={busy} onClick={onCancel}>Keep browsing</button>
  </form>;
 }

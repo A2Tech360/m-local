@@ -37,7 +37,7 @@ import from "@jac/mobui" {
 }
 import from .theme { C, buildStyles, statusColors, money }
 import from .services.session { SessionView }
-import from .client.session { signIn, signOut, loadSession, acceptEmailToken }
+import from .client.session { signOut, loadSession, acceptEmailToken }
 import from "./client/onboarding.jsx" { EmailOnboarding, BusinessOnboarding, AudienceWelcome, readAudience, rememberAudience, audienceForSession }
 import from "./client/account-profile.jsx" { AccountProfile }
 import from "./client/offer-editor.jsx" { OfferEditor }
@@ -67,11 +67,6 @@ def StatusPill(state: str) -> JsxElement {
     return <View style={[styles.status, {"backgroundColor": cols[0]}]}>
         <Text style={[styles.statusText, {"color": cols[1]}]}>{state.upper()}</Text>
     </View>;
-}
-
-
-def DemoTag() -> JsxElement {
-    return <View style={styles.demo}><Text style={styles.demoText}>DEMO</Text></View>;
 }
 
 
@@ -117,8 +112,7 @@ def OfferCard(o: OfferView, onOpen: any) -> JsxElement {
     );
     return <Pressable accessibilityRole="button" style={[styles.card, {} if live or hasSavedClaim else styles.cardMuted]} onPress={onOpen}>
         <View style={styles.rowBetween}>
-            <Text style={styles.restaurant}>{o.restaurant.replace(" (Demo)", "")}</Text>
-            {(<DemoTag />) if o.is_demo else <View />}
+            <Text style={styles.restaurant}>{o.restaurant}</Text>
         </View>
         <Text style={styles.offerTitle}>{o.my_title if hasSavedClaim else o.title}</Text>
         <View style={styles.rowBetween}>
@@ -143,7 +137,6 @@ def:pub app -> JsxElement {
         sessionReady: bool = False,
         audience: str = readAudience(),
         email: str = "",
-        password: str = "",
         emailInput: Ref[HTMLInputElement] = Ref(),
         authOpen: bool = False,
         authMode: str = "signin",
@@ -206,7 +199,9 @@ def:pub app -> JsxElement {
         loadError = "";
         try {
             found = await list_offers(price, win, ",".join(ds));
-            if requestId == offerRequest.current and epoch == sessionEpoch.current { offers = found; }
+            if requestId == offerRequest.current and epoch == sessionEpoch.current {
+                offers = [offer for offer in found if not offer.is_demo];
+            }
         } except Exception {
             if requestId == offerRequest.current and epoch == sessionEpoch.current { loadError = "Could not load offers. Check your connection and tap Refresh offers."; }
         } finally {
@@ -278,7 +273,7 @@ def:pub app -> JsxElement {
     }
 
     async def finishSignIn(fresh: SessionView) {
-        clearPrivate(); session = fresh; authOpen = False; password = "";
+        clearPrivate(); session = fresh; authOpen = False;
         freshAudience = audienceForSession(fresh);
         if freshAudience { audience = freshAudience; rememberAudience(freshAudience); }
         businessOpen = fresh.role == "business";
@@ -293,7 +288,7 @@ def:pub app -> JsxElement {
     }
 
     def logout() {
-        signOut(); clearPrivate(); session = None; password = "";
+        signOut(); clearPrivate(); session = None;
         tab = "discover"; authOpen = False; businessOpen = False; authMsg = ""; refresh();
     }
 
@@ -494,7 +489,7 @@ def:pub app -> JsxElement {
                 <View style={{"gap": 12}}><View style={styles.rowBetween}>
                     <View style={styles.flex1}>
                         <Text style={styles.body}>{session.display_name or "Signed in"}</Text>
-                        <Text style={styles.small}>{("Email verified" if session.email_verified else session.role.capitalize()) + (" · demo account" if session.is_demo else "")}</Text>
+                        <Text style={styles.small}>{"Email verified" if session.email_verified else session.role.capitalize()}</Text>
                     </View>
                     <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={authBusy} onPress={lambda { logout(); }}><Text style={styles.btnGhostText}>Sign out</Text></Pressable>
                 </View>
@@ -512,7 +507,7 @@ def:pub app -> JsxElement {
                     <Text style={styles.small}>Browse freely. Verify your email to create an account or sign back in.</Text>
                     {(
                         <EmailOnboarding kind={audience} initialMode={authMode} onSwitchAudience={switchAudience} requestCode={request_email_code} verifyCode={verify_email_code}
-                            onVerified={finishEmail} legacySignIn={signIn} onLegacySession={finishSignIn}
+                            onVerified={finishEmail}
                             inputRef={emailInput} onCancel={lambda { authOpen = False; }} />
                     ) if authOpen else <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { openSignIn(); }}><Text style={styles.btnGhostText}>Open sign in</Text></Pressable>}
                     <Message text={authMsg} good={False} />
@@ -524,14 +519,14 @@ def:pub app -> JsxElement {
     def MerchantGate() -> JsxElement {
         return <View style={styles.section}>
             <Text style={styles.h2}>Restaurant session required</Text>
-            <Text style={styles.body}>{"Your account is a student account. Sign out and use the restaurant account to manage or redeem offers." if session and session.authenticated else "Sign in above with your pre-provisioned restaurant account to manage offers and scan claims."}</Text>
+            <Text style={styles.body}>{"Sign in with your business email to manage offers and scan claims."}</Text>
         </View>;
     }
 
     def Discover() -> JsxElement {
         return <View style={styles.content}>
             <View style={styles.header}>
-                <Text style={styles.brand}>PROMOPUSHER · ANN ARBOR</Text>
+                <Text style={styles.brand}>M-LOCAL · ANN ARBOR</Text>
                 <Text style={styles.title}>Hungry? Here is what is good nearby.</Text>
             </View>
             <ScrollView horizontal={True} showsHorizontalScrollIndicator={False} contentContainerStyle={styles.row}>
@@ -556,8 +551,8 @@ def:pub app -> JsxElement {
                 <View style={styles.msgBad}><Text style={styles.msgBadText}>{loadError}</Text><Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { refresh(); }}><Text style={styles.btnGhostText}>Refresh offers</Text></Pressable></View>
             ) if loadError else (
                 <View style={styles.empty}>
-                    <Text style={styles.h2}>Nothing matches yet</Text>
-                    <Text style={styles.small}>Try removing a filter.</Text>
+                    <Text style={styles.h2}>{"Nothing matches yet" if maxPrice != "" or timeWin != "any" or len(diets) > 0 else "Offers are on their way"}</Text>
+                    <Text style={styles.small}>{"Try removing a filter." if maxPrice != "" or timeWin != "any" or len(diets) > 0 else "Local businesses will share their offers here. Check back soon."}</Text>
                 </View>
             ) if not offers else <View style={{"gap": 12}}>
                 {[<OfferCard key={o.id} o={o} onOpen={lambda { openOffer(o.id); }} /> for o in offers]}
@@ -586,8 +581,7 @@ def:pub app -> JsxElement {
             </Pressable>
             <View style={styles.header}>
                 <View style={styles.row}>
-                    <Text style={styles.restaurant}>{o.restaurant.replace(" (Demo)", "")}</Text>
-                    {(<DemoTag />) if o.is_demo else <View />}
+                    <Text style={styles.restaurant}>{o.restaurant}</Text>
                 </View>
                 <Text style={styles.title}>{o.my_title if hasSavedClaim else o.title}</Text>
                 {(<Text style={styles.subtitle}>{o.description}</Text>) if not hasSavedClaim else <View />}

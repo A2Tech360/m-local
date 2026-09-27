@@ -12,9 +12,9 @@ const bundle=readFileSync(resolve(dist,readdirSync(dist).find(n=>/^client\..*\.j
 const executable=transformSync(bundle,{format:'iife',target:'es2022'}).code;
 export const qr='mlocal:v1:'+'A'.repeat(43);
 export function offer(extra={}) {return {
- id:'fixture-offer',title:'Current bowl',description:'Fictional UI test meal',restaurant:'Fixture Kitchen (Demo)',
+ id:'fixture-offer',title:'Current bowl',description:'Fictional UI test meal',restaurant:'Fixture Kitchen',
  price:9,regular_price:12,address:'Fictional test address',neighborhood:'Test area',state:'active',remaining:4,quantity:5,
- eligibility:'Student ID',terms:'Current offer terms',menu_item:'',dietary:[],reasons:[],is_demo:true,time_label:'Until tonight',
+ eligibility:'Student ID',terms:'Current offer terms',menu_item:'',dietary:[],reasons:[],is_demo:false,time_label:'Until tonight',
  my_status:'',my_claim_id:'',my_qr_payload:'',my_title:'',my_price_cents:0,my_terms:'',my_eligibility:'',my_expires:'',my_expires_ts:0,entrance_note:'',note_date:'',
  start_input:'2026-09-26 17:00',end_input:'2026-09-26 23:00', ...extra
 };}

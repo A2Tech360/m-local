@@ -18,6 +18,15 @@ async function serve(t, handler, options = {}) {
   return `http://127.0.0.1:${proxy.address().port}`;
 }
 
+test('public ingress refuses password sign-in and still forwards email verification', async t => {
+  const forwarded=[];
+  const origin=await serve(t,(req,res)=>{forwarded.push(req.url);res.end('{}');});
+  assert.equal((await fetch(origin+'/user/login',{method:'POST',body:'{}'})).status,403);
+  assert.equal((await fetch(origin+'/function/request_email_code',{method:'POST',body:'{}'})).status,200);
+  assert.equal((await fetch(origin+'/function/verify_email_code',{method:'POST',body:'{}'})).status,200);
+  assert.deepEqual(forwarded,['/function/request_email_code','/function/verify_email_code']);
+});
+
 test('host readiness reflects the backend and does not expose its diagnostics', async t => {
   let ready = false;
   const origin = await serve(t, (req, res) => {

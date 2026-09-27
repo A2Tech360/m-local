@@ -20,7 +20,7 @@ test('phone link forwards app/auth traffic but never development files or admin 
   for (const path of ['/', '/static/client.js?hash=abc', '/assets/index-Ab12.js', '/assets/index-Ab12.css']) {
     assert.equal((await fetch(origin + path)).status, 200, path);
   }
-  for (const path of ['/function/list_offers', '/function/current_session', '/user/login',
+  for (const path of ['/function/list_offers', '/function/current_session',
     '/function/request_email_code', '/function/verify_email_code', '/function/get_business_draft',
     '/function/import_business_website', '/function/save_business_draft',
     '/function/get_account_profile', '/function/save_account_profile']) {
@@ -31,7 +31,7 @@ test('phone link forwards app/auth traffic but never development files or admin 
   const before = seen.length;
   for (const path of ['/graph/data', '/docs', '/openapi.json', '/.env', '/@fs/etc/passwd',
     '/node_modules/foo', '/compiled/main.js', '/assets/private.map', '/assets/%2e%2e/.env',
-    '/function/internal_admin', '/user/register', '/user/delete']) {
+    '/function/internal_admin', '/user/login', '/user/register', '/user/delete']) {
     assert.equal((await fetch(origin + path, { method: 'POST', body: '{}' })).status, 403, path);
     assert.equal((await fetch(origin + path)).status, 403, path);
   }

@@ -19,7 +19,6 @@ def main():
     args = parser.parse_args()
     if args.workspace.name != 'onboarding-check':
         raise SystemExit('Only the disposable onboarding-check workspace is supported.')
-    accounts = json.loads((args.workspace / '.jac/qr-demo-accounts.json').read_text())
     receipt = json.loads((args.workspace / '.jac/account-post-check.json').read_text())
     args.screenshots.mkdir(parents=True, exist_ok=True)
     run = secrets.token_hex(4)
@@ -37,10 +36,13 @@ def main():
         page.get_by_role('button', name='I already have an account', exact=True).click()
         expect(page.get_by_placeholder('Your name')).to_have_count(0)
         page.screenshot(path=str(args.screenshots / 'business-signin-390.png'))
-        page.get_by_role('button', name='Existing restaurant sign-in', exact=True).click()
-        page.get_by_placeholder('Email', exact=True).fill(accounts['merchant_leaf']['email'])
-        page.get_by_placeholder('Password', exact=True).fill(accounts['merchant_leaf']['password'])
-        page.get_by_role('button', name='Sign in', exact=True).click()
+        expect(page.get_by_role('button', name='Existing restaurant sign-in', exact=True)).to_have_count(0)
+        expect(page.get_by_role('button', name='Demo sign-in', exact=True)).to_have_count(0)
+        expect(page.locator('input[type="password"]')).to_have_count(0)
+        # Restore the real verified business session created by the HTTP OTP
+        # acceptance test. This browser check does not send or intercept mail.
+        page.evaluate('(token) => localStorage.setItem("jac_token", token)', receipt['business_token'])
+        page.reload(wait_until='networkidle')
         expect(page.get_by_text('Manage', exact=True)).to_be_visible()
         page.get_by_text('Manage', exact=True).click()
         expect(page.get_by_text('New offer', exact=True)).to_be_visible()
@@ -69,7 +71,7 @@ def main():
         expect(page.get_by_text('Profile saved.', exact=True)).to_be_visible()
         page.reload(wait_until='networkidle')
         expect(page.get_by_text(name, exact=True)).to_be_visible()
-        print('PASS real merchant sign-in, retained offer draft, publication, reload and account-name persistence at 390px')
+        print('PASS email-only sign-in UI, verified merchant session, retained offer draft, publication and profile persistence at 390px')
         context.close()
 
         context = browser.new_context(viewport={'width': 390, 'height': 844})

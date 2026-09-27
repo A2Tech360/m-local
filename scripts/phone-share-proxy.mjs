@@ -1,4 +1,4 @@
-// Public demo ingress: compiled assets and the app's exact RPCs only.
+// Public app ingress: compiled assets and the app's exact RPCs only.
 // Never place the development relay or the raw Jac server behind a tunnel.
 import http from 'node:http';
 import {isIP} from 'node:net';
@@ -19,8 +19,7 @@ export function createShareProxy({ upstreamHost = 'localhost', upstreamPort = 82
     const read = ['GET', 'HEAD'].includes(req.method);
     const allowed = read && (path === '/' || path === '/index.html' || path === '/favicon.ico' || path === '/static/client.js'
       || /^\/assets\/[\w-]+\.(js|css|png|svg|ico|webp|woff2?)$/.test(path))
-      || req.method === 'POST' && (functions.has(path.replace(/^\/function\//, '')) && path.startsWith('/function/')
-        || path === '/user/login');
+      || req.method === 'POST' && functions.has(path.replace(/^\/function\//, '')) && path.startsWith('/function/');
     res.setHeader('x-content-type-options', 'nosniff');
     res.setHeader('referrer-policy', 'no-referrer');
     res.setHeader('permissions-policy', 'camera=(self), microphone=(), geolocation=()');
@@ -39,7 +38,7 @@ export function createShareProxy({ upstreamHost = 'localhost', upstreamPort = 82
       check.on('error', () => finish(false));
       return;
     }
-    if (!allowed) { res.writeHead(403); res.end('Not available through the team demo.'); return; }
+    if (!allowed) { res.writeHead(403); res.end('This endpoint is not available.'); return; }
     // The phone launcher uses a loopback cloudflared connection. Hosted callers
     // must explicitly opt into an edge that overwrites CF-Connecting-IP (Render).
     // A direct listener must not trust caller-supplied forwarding headers.

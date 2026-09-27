@@ -142,14 +142,6 @@ def:pub buildStyles(T: dict[str, str]) -> any {
                 "backgroundColor": T["goodSoft"]
             },
             "badgeText": {"fontSize": F["xs"], "fontWeight": "800", "color": T["good"]},
-            "demo": {
-                "paddingVertical": 2,
-                "paddingHorizontal": S["sm"],
-                "borderRadius": R["pill"],
-                "borderWidth": 1,
-                "borderColor": T["warn"]
-            },
-            "demoText": {"fontSize": 11, "fontWeight": "800", "color": T["warn"]},
             "note": {
                 "backgroundColor": T["warnSoft"],
                 "borderRadius": R["md"],

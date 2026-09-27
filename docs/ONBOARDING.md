@@ -20,6 +20,12 @@ switches to returning sign-in, which only needs your email. The server checks
 account existence after successful email verification. Returning sign-in never
 overwrites your saved name or changes your account type.
 
+Public sign-in uses email codes only. Demo/password sign-in controls and the
+public `/user/login` route have been removed. Internal provisioning tools still
+work against the loopback API for isolated tests. Existing data is preserved.
+Seeded sample offers are hidden from public browsing; new business offers appear
+normally. The feed shows an empty state when no real offers have been published.
+
 Signed-in members can open **Account** to edit their display name, cancel unsaved
 changes, and view their email and access status. Email and account type are not
 editable profile fields. Demo accounts may save a name without gaining verified

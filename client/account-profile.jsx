@@ -32,7 +32,7 @@ export function AccountProfile({getProfile,saveProfile,onSaved}) {
   {loading?<p role="status" style={hint}>Loading your account...</p>:profile?<form style={stack} onSubmit={save} noValidate>
    <label style={{...stack,gap:6,fontSize:14,fontWeight:600}}>Display name<input style={input} placeholder="Display name" autoComplete="name" value={name} maxLength={80} required disabled={busy} onChange={e=>setName(e.target.value)}/></label>
    <div style={stack}><div><strong style={{fontSize:14}}>Email</strong><p style={{...hint,overflowWrap:'anywhere'}}>{profile.email||'Not available for this account'}</p></div>
-    <p style={hint}>{profile.email_verified?'Email verified':'Email not verified'}{profile.is_demo?' · Provisioned demo account':''}</p>
+    <p style={hint}>{profile.email_verified?'Email verified':'Email not verified'}</p>
     <p style={hint}>{profile.role==='merchant'?'Business owner':profile.role==='business'?'Business account · finish your profile to start posting':profile.role==='student'?'U-M customer account':'Account access'}<br/>Your email and account access are managed by the sign-in service.</p>
    </div>
    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
