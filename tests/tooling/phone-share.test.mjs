@@ -26,7 +26,7 @@ test('phone link forwards app/auth traffic but never development files or admin 
     '/function/request_email_code', '/function/verify_email_code', '/function/get_business_draft',
     '/function/import_business_website', '/function/save_business_draft', '/function/get_business_profile',
     '/function/get_account_profile', '/function/save_account_profile', '/function/merchant_insights',
-    '/function/home_feed', '/function/taste_choices', '/function/save_taste', '/function/toggle_favorite']) {
+    '/function/home_feed', '/function/taste_choices', '/function/save_taste', '/function/toggle_favorite', '/function/nearby_after']) {
     const response = await fetch(origin + path, { method: 'POST', body: '{}', headers: { authorization: 'Bearer test-only' } });
     assert.equal(response.status, 200, path);
     assert.equal((await response.json()).authorization, 'Bearer test-only');

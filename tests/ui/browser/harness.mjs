@@ -52,7 +52,7 @@ export async function app({role='student',verified=false,audience='student',item
   if(name==='login'){activeRole='student';return Response.json({ok:true,data:{token:'synthetic-ui-token',root_id:'fixture-student'}});}
   const visibleItem=w.localStorage.getItem('jac_token') ? item : Object.fromEntries(Object.entries(item).map(([key,value])=>[key,key.startsWith('my_') ? (typeof value==='number'?0:'') : value]));
   const results={current_session:session(),list_offers:[visibleItem],get_offer:visibleItem,merchant_portal:portal(),merchant_insights:{ok:false,message:"No recorded insights in this fixture."},
-   home_feed:home([visibleItem],{signed_in:activeRole!=='guest'}),taste_choices:tastes(),save_taste:tastes(),toggle_favorite:tastes(),
+   home_feed:home([visibleItem],{signed_in:activeRole!=='guest'}),taste_choices:tastes(),save_taste:tastes(),toggle_favorite:tastes(),nearby_after:{ok:false,groups:[]},
    claim_offer:{ok:true,message:'Fixture claim accepted',claim_id:'fixture-claim',qr_payload:qr},
    cancel_claim:{ok:true,message:'Fixture cancellation accepted'},
    update_profile:portal(),save_offer:{ok:true,message:'Fixture offer saved',code:'fixture-offer'},
