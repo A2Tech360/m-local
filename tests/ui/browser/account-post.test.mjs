@@ -173,7 +173,7 @@ test('offer validation blocks invalid prices and confirmed publication appears i
   ui.fill('7.00','7.25');ui.fill('One per student. Dine-in only.','One per student.');ui.click('Publish offer');await until(()=>ui.find('Posted fixture lunch'));
   assert.equal(ui.document.querySelector('[placeholder="Lunch bowl for $7"]'),null);
   assert.equal(ui.calls.filter(c=>c.name==='save_offer').length,1);
-  ui.click('Offers');await until(()=>ui.find('Posted fixture lunch'));
+  ui.click('Manage');await until(()=>ui.find('Posted fixture lunch'));
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
 });
