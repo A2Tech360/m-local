@@ -163,3 +163,16 @@ build passed (the existing project still emits warnings). The isolated HTTP test
 proved actual runtime account/session creation, OTP replay rejection, student
 claims, denied business claims, per-account draft isolation and denied anonymous
 access. It did not send real mail, call a paid model, or test a physical phone.
+
+### Live email checkpoint (September 26, 2026)
+
+Resend is configured privately on the phone-demo host using a verified sending
+domain and encrypted SMTP on port 587. A real U-M verification message showed
+**Delivered** in Resend, its recipient supplied the code, and the live application
+created an **Email verified** session that survived a page refresh. Travis then
+confirmed successful login with two real U-M accounts. Addresses, codes, API keys,
+and private account state are excluded from this record and from Git.
+
+The repository remains unconfigured for fresh clones until a host runs sender
+setup. This checkpoint proves live email signup; it does not certify physical
+camera scanning, hosted AI extraction, or the business approval workflow.
