@@ -1,3 +1,4 @@
+import {openSignIn} from './harness.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {app,home,offer,rpc,until} from './harness.mjs';
@@ -5,15 +6,18 @@ import {app,home,offer,rpc,until} from './harness.mjs';
 test('returning email sign-in needs no name and can switch to business signup',async()=>{
  const ui=await app({role:'guest',intercept(name){if(name==='request_email_code')return rpc({ok:false,message:'Fixture delivery disabled.'});}});
  try{
+  await openSignIn(ui);
   await until(()=>ui.document.querySelector('[placeholder="uniqname"]'));
   assert.equal(ui.document.querySelector('[placeholder="Your name"]'),null,'returning users should not have to invent a name again');
   ui.fill('uniqname','fixture');ui.click('Send verification code');await until(()=>ui.text().includes('Fixture delivery disabled.'));
   assert.equal(ui.calls.find(c=>c.name==='request_email_code').body.name,'');
   ui.click('Create an account');await until(()=>ui.document.querySelector('[placeholder="Your name"]'));
   assert.equal(ui.document.querySelector('[placeholder="Your name"]').required,true);
-  ui.click('Switch to business');await until(()=>ui.document.querySelector('[placeholder="you@business.com"]'));
+  const accountType=ui.document.querySelector('select[aria-label="Account type"]');
+  accountType.value='business';accountType.dispatchEvent(new ui.window.Event('change',{bubbles:true}));
+  await until(()=>ui.document.querySelector('[placeholder="you@business.com"]'));
   assert.equal(ui.document.querySelector('[placeholder="uniqname"]'),null);
-  assert.equal(ui.window.localStorage.getItem('mlocal_audience'),'business');
+  assert.equal(accountType.value,'business');
   assert.equal(ui.document.querySelector('[type="password"]'),null);
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}

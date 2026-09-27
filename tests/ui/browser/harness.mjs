@@ -73,3 +73,25 @@ export async function app({role='student',verified=false,audience='student',item
  };
 }
 export const rpc=value=>Response.json({ok:true,type:'response',data:{result:value,reports:[]},error:null});
+
+// Apply filters through the visible dropdown, including React's native range event.
+export async function setMaximumPrice(ui, value) {
+ const trigger=ui.document.querySelector('.ml-filters button[aria-expanded]');
+ if(trigger.getAttribute('aria-expanded')!=='true')trigger.click();
+ await until(()=>ui.document.querySelector('[aria-label="Maximum price"]'));
+ const slider=ui.document.querySelector('[aria-label="Maximum price"]');
+ Object.getOwnPropertyDescriptor(ui.window.HTMLInputElement.prototype,'value').set.call(slider,String(value));
+ slider.dispatchEvent(new ui.window.Event('input',{bubbles:true}));
+ await until(()=>ui.document.querySelector('output').textContent===(value===20?'Any price':`$${value} or less`));
+ ui.click('Show deals');
+ await until(()=>trigger.getAttribute('aria-expanded')==='false');
+}
+
+// Auth tests enter via the same shared welcome screen as a signed-out visitor.
+export async function openSignIn(ui, audience='student') {
+ await until(()=>ui.find('Find local deals'));
+ ui.click(audience==='business'?'List my business':'Find local deals');
+ await until(()=>ui.document.querySelector('[placeholder="Your name"]'));
+ ui.click('Sign in');
+ await until(()=>!ui.document.querySelector('[placeholder="Your name"]'));
+}
