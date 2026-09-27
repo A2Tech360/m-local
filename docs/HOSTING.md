@@ -130,9 +130,9 @@ node --input-type=module -e 'import {createShareProxy} from "./scripts/phone-sha
 From another **Bash/WSL** terminal in the same fixture:
 
 ```bash
-python3 tests/integration/multi_user_http.py --api http://127.0.0.1:8241
+bash scripts/python.sh tests/integration/multi_user_http.py --api http://127.0.0.1:8241
 # After restarting the same disposable backend without replacing its store:
-python3 tests/integration/multi_user_http.py --api http://127.0.0.1:8241 --verify-restart
+bash scripts/python.sh tests/integration/multi_user_http.py --api http://127.0.0.1:8241 --verify-restart
 ```
 
 The HTTP test injects four local verification challenges and saves a private
