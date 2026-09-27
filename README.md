@@ -101,6 +101,12 @@ real authentication. See the verification record for browser/restart evidence.
 
 ## Deferred
 
-Payments, notifications, live routing, external data ingestion, garage-sale listings and
-real authentication. New community sources plug in by producing records for
+Payments, notifications, live routing, garage-sale listings and automatic business
+approval/publication. New community sources plug in by producing records for
 `import_restaurant`.
+
+## Email and business signup
+
+U-M email code verification and business website import are available in the
+onboarding flow. Email delivery needs a configured sender; AI extraction is
+optional. See [setup and current limits](docs/ONBOARDING.md).

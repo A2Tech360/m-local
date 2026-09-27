@@ -36,6 +36,7 @@ import from services.qr_catalog { _ensure_seed }
 import from services.qr { new_qr_payload, valid_qr_payload }
 import from services.money { money_to_cents }
 import from services.session { _actor_id, _merchant_for_actor }
+import from services.onboarding { student_can_claim }
 
 
 glob LOCK_PATH: str = os.path.join(tempfile.gettempdir(), "m-local-mutations.lock");
@@ -726,8 +727,8 @@ def:protect claim_offer(offer_id: str) -> ActionResult {
     fd = _lock();
     try {
         _ensure_seed();
-        if _merchant() is not None {
-            result = ActionResult(message="Use a student account to claim offers.");
+        if _merchant() is not None or not student_can_claim(_actor_id()) {
+            result = ActionResult(message="Verify your U-M email or use a provisioned demo student account to claim offers.");
         } else {
             result = _claim(offer_id, _actor_id(), time.time());
         }
