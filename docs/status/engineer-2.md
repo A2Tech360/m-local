@@ -1,6 +1,6 @@
 # Engineer 2 status: trusted offer transactions
 
-Branch: `feat/02-qr-fixes`, based on `feat/01-runtime-release` at bb8fa0f.
+Branches: `feat/02-qr-fixes` (merged, PR #3) and `feat/02-access-context` (on main).
 Runtime: Jac 0.37.23 (Apple Silicon Mac, official binary, checksum verified).
 
 ## What happened
@@ -39,13 +39,14 @@ reference; its proven lock pattern and HTTP suite are what this branch ports.
   (redeemed once), 20 simultaneous last-unit claims (one winner), 10
   simultaneous retries (one claim), cancel, and restart persistence.
 
-## Context handoff for Engineer 4 (agreed contract)
+## Context attached (Engineer 4 can render now)
 
-`OfferView.location_id` is populated now (the Location node id). Once
-Engineer 3's branch compiles and merges, Engineer 2 adds
-`access_context: AccessContextView` to `OfferView`, filled in `_view` with
-`get_access_context(location_id, time.time())` (server clock only). Shape,
-taken from `services/context_models.jac` on `feat/03-local-context`:
+`OfferView.access_context: AccessContextView` is populated in `_view` from
+`get_access_context(location_id, now)` with the server clock; `location_id`
+is the Location node id. Every `list_offers` / `get_offer` result carries it.
+Verified: the seeded demo notice appears only on the Noodle Lab offers, other
+restaurants report `none`, and a stale clock yields `needs_recheck` with no
+entrance instruction. Shape:
 
 ```text
 AccessContextView { state: "current" | "needs_recheck" | "none",
@@ -58,14 +59,23 @@ AccessNoticeView  { id, summary, publisher, source_url, checked_at, valid_from,
 Render rule from the contract: `none` is not an all-clear; only a `current`
 notice may show `entrance_instruction` as definitive.
 
-## Blocker in Engineer 3's lane (reported)
+## Claim/redemption edge cases (real HTTP, commit 9c440e2)
 
-`feat/03-local-context` does not compile on Jac 0.37.23: Python-style
-`if ...:` blocks without braces in `services/importer.jac` (lines 52-61),
-missing `;` in `services/context.jac:29` and `services/seed.jac:180`, an
-unclosed brace in `seed.jac:195`, and bare `dict` (needs `dict[str, any]`) in
-`services/context_models.jac:21-22`. Its tests fail. Until fixed, the
-access-context attachment cannot be added or verified.
+`python3 tests/integration/edge_cases_http.py` starts its own API-only server,
+registers fresh accounts and provisions two merchants. **42/42 passed** on
+Jac 0.37.23 (Apple Silicon, default worker count).
+
+| Case | What was proven |
+|---|---|
+| Last available offer | One unit: first student wins, second is refused as sold out with no QR; holder retry keeps the same QR; cancel returns the unit and kills the old QR; 12 simultaneous students give exactly one winner; merchant cannot cut quantity below held units |
+| Double redemption | Second redemption refused; preview reports redeemed; stock counted once; redeemed claim cannot be cancelled or re-claimed; 8 simultaneous scans redeem exactly once |
+| Expired claim | Hold deadline is capped at the offer end; after a real wait past that time, preview reports expired, redemption is refused (twice), the offer leaves discovery and refuses new claims, and merchant history shows expired, not redeemed |
+| Wrong merchant | Preview refused and reveals no terms; redemption refused; claim untouched; cannot pause the other restaurant's offer; claim absent from the other merchant's history; students and guests cannot redeem (guest 401) |
+| Restart | Redeemed stays redeemed, expired stays unredeemable, sold out stays sold out |
+
+Limit: the expired case waits out a short-lived offer (about two minutes).
+Expiry of the 20-minute hold itself is covered by the unit tests with an
+injected clock, not by a real 20-minute wait.
 
 ## Notes for other owners
 
@@ -75,7 +85,4 @@ access-context attachment cannot be added or verified.
   `theme.jac` declares `def:pub money`, which the placement solver serves as a
   public endpoint `/function/money`; harmless but should be a plain `def`
   (Engineer 4's file).
-- Engineer 3: `feat/03-local-context` conflicts with this base in
-  `services/importer.jac`. Once merged, Engineer 2 attaches
-  `get_access_context(location_id, now_ts)` to `OfferView` (`location_id`
-  needs adding to the view first).
+- Engineer 3: context integrated on main; nothing pending from Engineer 2.

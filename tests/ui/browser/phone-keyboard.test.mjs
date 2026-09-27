@@ -1,17 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {app,offer,rpc,until} from './harness.mjs';
+import {app,home,offer,rpc,until} from './harness.mjs';
 
 test('budget filter exposes native button semantics and applies the selection',async()=>{
  const ui=await app({intercept(name,body){
-  if(name==='list_offers'&&body.max_price==='8')return rpc([offer({title:'Keyboard budget result'})]);
+  if(name==='home_feed'&&body.price_range==='5to8')return rpc(home([offer({title:'Keyboard budget result'})]));
  }});
  try{
-  const control=ui.find('Under $8').closest('[tabindex="0"]');
+  const control=ui.find('$5 to $8').closest('[tabindex="0"]');
   // jsdom does not synthesize native keyboard clicks; Space is checked in the real browser.
   assert.equal(control.tagName,'BUTTON');
   assert.equal(control.getAttribute('role'),'button');
-  ui.click('Under $8');
+  ui.click('$5 to $8');
   await until(()=>ui.text().includes('Keyboard budget result'),'the button applies the selected budget');
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
