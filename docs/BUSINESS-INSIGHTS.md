@@ -48,10 +48,12 @@ All metric fields are nonnegative integers. Frames include a zero baseline at
 index 0 and one frame per local calendar day. Empty authorized businesses receive
 valid zero frames. Unauthorized callers receive `ok=false` and no private data.
 
-Claims/outcomes describe claims created within the selected period. Redemptions
-and value describe redemptions occurring in the period, including a claim carried
-over from before its start. Redemption rate uses `cohort_redeemed / (cohort_redeemed
-+ cancelled + expired)`; it excludes pending or historically unknown outcomes.
+Claims/outcomes describe claims created within the selected period. The company
+metrics page shows redeemed, cancelled, and expired outcomes; pending and legacy
+unknown outcomes are omitted from that display. Redemptions and value describe
+redemptions occurring in the period, including a claim carried over from before
+its start. Redemption rate uses `cohort_redeemed / (cohort_redeemed + cancelled
++ expired)`.
 Money uses immutable claim prices, not current offer prices. Known discount
 baselines contribute only when recorded and valid, with `savings_known` coverage.
 Returning customers are distinct accounts redeeming in this period that also

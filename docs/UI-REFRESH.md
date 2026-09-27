@@ -6,9 +6,10 @@ Branch: `codex/ui-refresh`. Reference: `Mobile app screens and flows.zip`,
 ## Current baseline and preservation
 
 The first visual pass mistakenly started from local `b8b15fd`, behind remote
-main. This is corrected: the branch now starts at fetched `origin/main`
-`e518692c5c665b195664418d3ad8b1a43a0fccd3` (13 newer commits). A second fetch
-confirmed the same remote tip during verification.
+main. This was corrected by rebuilding on fetched `origin/main`
+`e518692c5c665b195664418d3ad8b1a43a0fccd3` (13 newer commits). Before publication,
+`origin/main` advanced to `3bb922e`; that tip was merged normally, preserving the
+latest Insights outcome display and recap changes alongside this refresh.
 
 Before updating, the entire dirty tree was saved in stash
 `d0800d59caa90dba2688f705216ed1d8e5323c4d` and the frontend was copied to
@@ -81,6 +82,10 @@ Jac 0.37.23; isolated application copy: `/tmp/m-local-refresh-latest.wewax2`.
   keyboard slider input, combined filters/reset and the existing app screens.
   They use synthetic RPC responses and real compiled UI/assets. Screenshots,
   the report and test/build logs are under `.jac/refresh-latest-evidence/`.
+- After merging `3bb922e`, a clean archive of the staged tree at
+  `/tmp/m-local-publication.7L7keb` passed the source check, production build,
+  and all 112 compiled frontend/tooling/analytics helper tests. This copy
+  excluded unrelated untracked files and local working notes.
 
 The localhost:8155 preview runs this isolated copy. No shared demo database was
 reset. Real email delivery, physical cameras and physical phones were not tested.
