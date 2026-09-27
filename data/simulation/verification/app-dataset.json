@@ -1,0 +1,9 @@
+{
+  "places": 841,
+  "test_offers": 495,
+  "filtered_offers": 47,
+  "duplicate_offers": 0,
+  "guest_claim_denied": true,
+  "repeat_read_stable": true,
+  "student_claim_retry_cancel": true
+}
