@@ -2,9 +2,9 @@
 
 Places are grouped as activities, coffee, dessert and bars, each with its
 walking distance from the place the student just visited. Within a group the
-places are ordered by distance, then the starting place moves forward by one
-for every redemption the app has recorded, so no place is always shown first.
-A place with a live deal in the app says so and links to it.
+nearest place comes first and at most four are shown. A place with a live
+deal in the app says so and links to it; when one is within a walk but not
+among the nearest four, it takes the fourth spot.
 
 Sample places appear only when the server turns demo mode on. Reading this
 never writes anything and never records who looked.
@@ -14,7 +14,7 @@ import os;
 import math;
 import time;
 import hashlib;
-import from services.models { Restaurant, Publishes, Reserves }
+import from services.models { Restaurant, Publishes }
 import from services.qr_catalog { _ensure_seed }
 import from services.promo { _state, _remaining, _find_offer, _restaurant_of, _location_of }
 import from services.taste { categories_for }
@@ -26,6 +26,8 @@ glob:pub KINDS: list[list[str]] = [
 ];
 
 glob:pub MAX_METERS: float = 1300.0;
+
+glob:pub MAX_PER_KIND: int = 4;
 
 glob:pub METERS_PER_MINUTE: float = 80.0;
 
@@ -56,7 +58,6 @@ obj NearbyView {
         heading: str = "What now?",
         origin: str = "",
         has_samples: bool = False,
-        turn: int = 0,
         groups: list[NearbyGroup] = [],
         note: str = "";
 }
@@ -117,16 +118,6 @@ def kind_for(cuisine: str, title: str) -> str {
 }
 
 
-"""Move the starting place forward by turn, keeping the order after it."""
-def rotate(cards: list[NearbyCard], turn: int) -> list[NearbyCard] {
-    if not cards {
-        return [];
-    }
-    start = turn % len(cards);
-    return cards[start:] + cards[:start];
-}
-
-
 def _card(kind: str, what: str, name: str, meters: float, deal: str = "", offer_id: str = "", sample: bool = False) -> NearbyCard {
     return NearbyCard(
         name=name, kind=kind, what=what, meters=int(round(meters)), distance=distance_label(meters),
@@ -179,26 +170,34 @@ def listed_cards(origin_slug: str, lat: float, lng: float, now: float, samples: 
 }
 
 
-def redemptions_so_far -> int {
-    return len([s for r in [root.shared -->[?:Restaurant]] for o in [r ->:Publishes:->] for s in [o ->:Reserves:->] if s.status == "redeemed"]);
+"""The nearest places, with room kept for one that has a live deal."""
+def nearest(cards: list[NearbyCard], most: int) -> list[NearbyCard] {
+    kept = cards[:most];
+    if most > 0 and len(cards) > most and not [c for c in kept if c.deal_offer_id] {
+        listed = [c for c in cards[most:] if c.deal_offer_id];
+        if listed {
+            kept = kept[:most - 1] + [listed[0]];
+        }
+    }
+    return kept;
 }
 
 
-"""Group, keep what is within a walk, order by distance and rotate."""
-def build_groups(cards: list[NearbyCard], turn: int) -> list[NearbyGroup] {
+"""Group, keep what is within a walk, and put the nearest first."""
+def build_groups(cards: list[NearbyCard]) -> list[NearbyGroup] {
     out: list[NearbyGroup] = [];
     for pair in KINDS {
         mine = [c for c in cards if c.kind == pair[0] and c.meters <= MAX_METERS];
         mine = sorted(mine, key=lambda (c: NearbyCard) -> tuple[int, str] { return (c.meters, c.name); });
         if mine {
-            out.append(NearbyGroup(kind=pair[0], label=pair[1], cards=rotate(mine, turn)));
+            out.append(NearbyGroup(kind=pair[0], label=pair[1], cards=nearest(mine, MAX_PER_KIND)));
         }
     }
     return out;
 }
 
 
-def _nearby(offer_id: str, now: float, samples: bool, turn: int) -> NearbyView {
+def _nearby(offer_id: str, now: float, samples: bool) -> NearbyView {
     o = _find_offer(offer_id);
     r = _restaurant_of(o) if o is not None else None;
     if o is None or r is None {
@@ -210,12 +209,12 @@ def _nearby(offer_id: str, now: float, samples: bool, turn: int) -> NearbyView {
     if samples {
         cards += sample_cards(here[0], here[1]);
     }
-    groups = build_groups(cards, turn);
+    groups = build_groups(cards);
     if not groups {
-        return NearbyView(origin=r.name, turn=turn, note="No nearby places are listed yet.");
+        return NearbyView(origin=r.name, note="No nearby places are listed yet.");
     }
     return NearbyView(
-        ok=True, origin=r.name, turn=turn, groups=groups,
+        ok=True, origin=r.name, groups=groups,
         has_samples=any([c.is_sample for g in groups for c in g.cards]),
         note="Sample places with invented distances and deals." if samples else ""
     );
@@ -225,5 +224,5 @@ def _nearby(offer_id: str, now: float, samples: bool, turn: int) -> NearbyView {
 """Nearby places to go after the offer's place, for the What now? cards."""
 def:pub nearby_after(offer_id: str) -> NearbyView {
     _ensure_seed();
-    return _nearby(offer_id, time.time(), samples_on(os.environ.get(DEMO_MODE, "")), redemptions_so_far());
+    return _nearby(offer_id, time.time(), samples_on(os.environ.get(DEMO_MODE, "")));
 }

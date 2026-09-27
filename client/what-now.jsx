@@ -37,7 +37,7 @@ export function WhatNow({offerId,load,onOpenDeal}) {
    <h3 style={{fontSize:20,margin:0}}>{view.heading||'What now?'}</h3>
    {view.has_samples&&<span style={{fontSize:12,color:muted,fontWeight:700}}>Sample places</span>}
   </div>
-  <p style={{fontSize:13,margin:0,color:muted,lineHeight:1.4}}>A short walk from {plainName(view.origin)}. Tap a card to see the next place.</p>
+  <p style={{fontSize:13,margin:0,color:muted,lineHeight:1.4}}>A short walk from {plainName(view.origin)}, nearest first. Tap a card to see the next place.</p>
   <div style={grid}>
    {view.groups.map(group=>{
     const index=(at[group.kind]||0)%group.cards.length,place=group.cards[index];
