@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {app,offer,rpc,until} from './harness.mjs';
+import {app,home,offer,rpc,until} from './harness.mjs';
 
 test('returning email sign-in needs no name and can switch to business signup',async()=>{
  const ui=await app({role:'guest',intercept(name){if(name==='request_email_code')return rpc({ok:false,message:'Fixture delivery disabled.'});}});
@@ -155,7 +155,7 @@ test('offer validation blocks invalid prices and confirmed publication appears i
  const ui=await app({role:'merchant',intercept(name,body){
   if(name==='save_offer'){posted=offer({id:'new-post',title:body.title,price:Number(body.price)});return rpc({ok:true,message:'Offer published.',code:'new-post'});}
   if(name==='merchant_portal'&&posted)return rpc({ok:true,name:'Fixture Kitchen',cuisine:'Test cuisine',blurb:'Fixture profile',address:'Test address',neighborhood:'Test area',entrance_note:'',note_date:'',offers:[posted],claims:[],is_demo:true,message:''});
-  if(name==='list_offers'&&posted)return rpc([posted]);
+  if(name==='home_feed'&&posted)return rpc(home([posted]));
  }});
  try{
   ui.click('Manage');await until(()=>ui.find('New offer'));ui.click('New offer');

@@ -230,6 +230,29 @@ test "legacy consumed stock is never silently reopened by QR migration" {
 }
 
 
+test "offer views carry the location's access context with the server clock" {
+    _ensure_seed();
+    now = time.time();
+    noodle = _offer_by_title("Lunch noodle bowl for $7");
+    v = _view(noodle, now);
+    assert v.location_id != "";
+    assert v.access_context.state in ["current", "needs_recheck"], v.access_context.state;
+    assert len(v.access_context.notices) >= 1;
+    assert all([n.is_demo for n in v.access_context.notices]);
+    for n in v.access_context.notices {
+        if n.state != "current" {
+            assert n.entrance_instruction == "";
+        }
+    }
+    leaf = _offer_by_title("Harvest bowl for $8");
+    other = _view(leaf, now);
+    assert other.access_context.state == "none" and other.access_context.notices == [];
+    stale = _view(noodle, now + 10 * 86400.0);
+    assert stale.access_context.state == "needs_recheck";
+    assert all([n.entrance_instruction == "" for n in stale.access_context.notices]);
+}
+
+
 test "offer creation rejects invalid content without publishing any nodes" {
     _ensure_seed();
     r = _restaurant_by_slug("arbor-leaf-kitchen");

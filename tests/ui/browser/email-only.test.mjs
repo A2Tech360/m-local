@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {app,offer,rpc,until} from './harness.mjs';
+import {app,home,offer,rpc,until} from './harness.mjs';
 
 for (const audience of ['student','business']) {
  test(`${audience} sign-in uses email verification with no demo password entry`,async()=>{
@@ -39,20 +39,60 @@ test('account presentation uses verification status without demo branding',async
 
 test('public browsing keeps real offers and hides seeded sample listings',async()=>{
  const ui=await app({role:'guest',intercept(name){
-  if(name==='list_offers')return rpc([offer(),offer({id:'sample-offer',title:'Seeded sample lunch',is_demo:true})]);
+  if(name==='home_feed')return rpc(home([offer(),offer({id:'sample-offer',title:'Seeded sample lunch',restaurant:'Seeded sample cafe',is_demo:true})]));
  }});
  try{
+  assert.ok(ui.calls.some(call=>call.name==='home_feed'));
   assert.ok(ui.text().includes('Current bowl'));
   assert.equal(ui.text().includes('Seeded sample lunch'),false);
+  assert.equal(ui.text().includes('Seeded sample cafe'),false);
   assert.equal(/demo/i.test(ui.text()),false);
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
 });
 
-test('a sample-only feed has an honest empty state instead of a filter error',async()=>{
+test('visible deal count excludes sample rows and the unfiltered server total',async()=>{
+ const ui=await app({role:'guest',intercept(name){
+  if(name==='home_feed')return rpc(home([
+   offer(),
+   offer({id:'second-real',title:'Real evening bowl',is_demo:false}),
+   offer({id:'sample-offer',title:'Seeded sample lunch',is_demo:true})
+  ],{total_deals:83}));
+ }});
+ try{
+  assert.ok(ui.text().includes('Current bowl'));
+  assert.ok(ui.text().includes('Real evening bowl'));
+  assert.equal(ui.text().match(/Showing \d+(?: of \d+)? deals/)?.[0],'Showing 2 deals');
+  assert.equal(ui.text().includes('Seeded sample lunch'),false);
+  assert.deepEqual(ui.errors,[]);
+ }finally{ui.close();}
+});
+
+test('favorites retain real businesses and hide sample businesses even without a live offer',async()=>{
+ const favorite={slug:'real-favorite',name:'Favorite real cafe',cuisine:'Bowls',neighborhood:'Test area',labels:[],live_offers:1,best_offer_id:'real-favorite-offer',best_offer_title:'Favorite real lunch',best_price_cents:600,is_demo:false};
+ const ui=await app({role:'student',intercept(name){
+  if(name==='home_feed')return rpc(home([offer()],{signed_in:true,favorites:[
+   favorite,
+   {...favorite,slug:'sample-favorite',name:'Favorite sample cafe',best_offer_id:'sample-favorite-offer',best_offer_title:'Favorite sample lunch',is_demo:true},
+   {...favorite,slug:'sample-no-offer',name:'Dormant sample cafe',live_offers:0,best_offer_id:'',best_offer_title:'',best_price_cents:0,is_demo:true}
+  ]}));
+ }});
+ try{
+  assert.ok(ui.text().includes('Your favorites'));
+  assert.ok(ui.text().includes('Favorite real cafe'));
+  assert.ok(ui.text().includes('Favorite real lunch'));
+  assert.equal(ui.text().includes('Favorite sample cafe'),false);
+  assert.equal(ui.text().includes('Favorite sample lunch'),false);
+  assert.equal(ui.text().includes('Dormant sample cafe'),false);
+  assert.deepEqual(ui.errors,[]);
+ }finally{ui.close();}
+});
+
+for(const [description,items] of [['sample-only',[offer({id:'sample-offer',title:'Seeded sample lunch',is_demo:true})]],['empty',[]]]) {
+test(`a ${description} feed has an honest empty state instead of a filter error`,async()=>{
  let reads=0;
- const ui=await app({role:'guest',intercept(name,body){
-  if(name==='list_offers'&&reads++>0)return rpc([offer({id:'sample-offer',title:'Seeded sample lunch',is_demo:true})]);
+ const ui=await app({role:'guest',intercept(name){
+  if(name==='home_feed'&&reads++>0)return rpc(home(items));
  }});
  try{
   ui.click('Under $5');await until(()=>ui.text().includes('Nothing matches yet'));
@@ -62,3 +102,4 @@ test('a sample-only feed has an honest empty state instead of a filter error',as
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
 });
+}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {app,offer,held,until,rpc} from './harness.mjs';
+import {app,offer,held,until,rpc,home} from './harness.mjs';
 
 test('compiled student detail leads with saved claim terms after an offer edit',async()=>{
  const ui=await app({item:held()});
@@ -63,8 +63,8 @@ test('confirmed offer save survives a failed portal refresh and refresh can be r
 
 test('the newest filter response wins even when an earlier request arrives last',async()=>{
  let release;const slow=new Promise(r=>{release=r;});
- const ui=await app({intercept:async(name,body)=>{if(name==='list_offers'&&body.max_price==='5'){await slow;return rpc([offer({title:'Old delayed result'})]);}if(name==='list_offers'&&body.max_price==='8')return rpc([offer({title:'Latest filter result'})]);}});
- try{ui.click('Under $5');await until(()=>ui.calls.some(c=>c.name==='list_offers'&&c.body.max_price==='5'));ui.click('Under $8');await until(()=>ui.text().includes('Latest filter result'));release();await new Promise(r=>setTimeout(r,80));assert.equal(ui.text().includes('Old delayed result'),false);assert.ok(ui.text().includes('Latest filter result'));assert.deepEqual(ui.errors,[]);}finally{release();ui.close();}
+ const ui=await app({intercept:async(name,body)=>{if(name==='home_feed'&&body.price_range==='under5'){await slow;return rpc(home([offer({title:'Old delayed result'})]));}if(name==='home_feed'&&body.price_range==='5to8')return rpc(home([offer({title:'Latest filter result'})]));}});
+ try{ui.click('Under $5');await until(()=>ui.calls.some(c=>c.name==='home_feed'&&c.body.price_range==='under5'));ui.click('$5 to $8');await until(()=>ui.text().includes('Latest filter result'));release();await new Promise(r=>setTimeout(r,80));assert.equal(ui.text().includes('Old delayed result'),false);assert.ok(ui.text().includes('Latest filter result'));assert.deepEqual(ui.errors,[]);}finally{release();ui.close();}
 });
 
 test('signout ignores a delayed private detail response',async()=>{

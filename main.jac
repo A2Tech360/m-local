@@ -23,6 +23,17 @@ import from services.promo {
     ClaimView
 }
 import from services.session { current_session, SessionView }
+import from services.foryou {
+    home_feed,
+    taste_choices,
+    save_taste,
+    toggle_favorite,
+    HomeView,
+    FeedItem,
+    FavoritePlace,
+    TasteView,
+    Choice
+}
 import from services.onboarding { request_email_code, verify_email_code }
 import from services.business_onboarding { get_business_draft, import_business_website, save_business_draft }
 import from services.account_profile { get_account_profile, save_account_profile }
@@ -52,6 +63,10 @@ glob DIETS: list[str] = ["vegetarian", "vegan", "gluten-free", "halal"];
 glob WINDOWS: list[list[str]] = [["any", "Any time"], ["now", "Right now"], ["today", "Today"]];
 
 glob BUDGETS: list[str] = ["", "5", "8", "10"];
+
+glob PRICE_CHIPS: list[list[str]] = [
+    ["", "Any price"], ["under5", "Under $5"], ["5to8", "$5 to $8"], ["8to12", "$8 to $12"], ["12plus", "$12 and up"]
+];
 
 
 
@@ -96,6 +111,80 @@ def Field(
             onChangeText={onChange}
         />
     </View>;
+}
+
+
+def DealCard(item: FeedItem, onOpen: any, onHeart: any) -> JsxElement {
+    o = item.offer;
+    hasSavedClaim = o.my_claim_id != "" and o.my_status in ["claimed", "redeemed"];
+    saving = o.regular_price - o.price;
+    live = o.state == "active";
+    status = (
+        "Your QR is ready" if o.my_qr_payload and o.my_status == "claimed"
+        else "Saved claim redeemed" if hasSavedClaim and o.my_status == "redeemed"
+        else "Open your saved claim" if hasSavedClaim
+        else o.time_label + "  ·  " + str(o.remaining) + " left" if live
+        else o.time_label if o.state == "scheduled" else o.state.capitalize()
+    );
+    return <Pressable accessibilityRole="button" style={[styles.card, {} if live or hasSavedClaim else styles.cardMuted]} onPress={onOpen}>
+        <View style={styles.rowBetween}>
+            <View style={[styles.row, styles.flex1]}>
+                <Text style={styles.restaurant}>{o.restaurant}</Text>
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel={("Remove " if item.is_favorite else "Add ") + o.restaurant + (" from favorites" if item.is_favorite else " to favorites")}
+                style={{"paddingHorizontal": 10, "paddingVertical": 4}} onPress={onHeart}>
+                <Text style={{"fontSize": 24, "lineHeight": 28, "color": C["accent"] if item.is_favorite else C["muted"]}}>{"♥" if item.is_favorite else "♡"}</Text>
+            </Pressable>
+        </View>
+        <Text style={styles.offerTitle}>{o.my_title if hasSavedClaim else o.title}</Text>
+        <View style={styles.rowBetween}>
+            <View style={styles.row}>
+                <Text style={styles.price}>{money(o.my_price_cents / 100) if hasSavedClaim else money(o.price)}</Text>
+                {(<Text style={styles.strike}>{money(o.regular_price)}</Text>) if saving > 0 and not hasSavedClaim else <View />}
+            </View>
+            {(
+                <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{"Save " + money(saving)}</Text>
+                </View>
+            ) if saving > 0 and not hasSavedClaim else <View />}
+        </View>
+        {(
+            <View style={styles.wrap}>
+                {[
+                    <View key={"l" + l} style={[styles.tag, {"backgroundColor": C["goodSoft"]}]}>
+                        <Text style={[styles.tagText, {"color": C["good"]}]}>{l}</Text>
+                    </View>
+                    for l in item.place_labels
+                ]}
+            </View>
+        ) if item.place_labels else <View />}
+        {(
+            <View style={styles.wrap}>
+                {[
+                    <View key={"r" + r} style={[styles.tag, {"backgroundColor": C["badSoft"] if r.startswith("Not marked") else C["accentSoft"]}]}>
+                        <Text style={[styles.tagText, {"color": C["bad"] if r.startswith("Not marked") else C["accent"]}]}>{r}</Text>
+                    </View>
+                    for r in item.reasons
+                ]}
+            </View>
+        ) if item.reasons else <View />}
+        <Text style={[styles.small, {"color": C["accent"], "fontWeight": "700"} if o.my_qr_payload else {}]}>{status}</Text>
+    </Pressable>;
+}
+
+
+def FavoriteChip(f: FavoritePlace, onOpen: any) -> JsxElement {
+    return <Pressable accessibilityRole="button" style={[styles.card, {"width": 190, "gap": 4, "paddingVertical": 12}]} onPress={onOpen}>
+        <View style={styles.row}>
+            <Text style={{"fontSize": 16, "color": C["accent"]}}>{"♥"}</Text>
+            <Text style={[styles.restaurant, styles.flex1]} numberOfLines={1}>{f.name}</Text>
+        </View>
+        <Text style={styles.small} numberOfLines={1}>{f.cuisine}</Text>
+        {(<Text style={[styles.tagText, {"color": C["good"]}]} numberOfLines={1}>{" · ".join(f.labels[:2])}</Text>) if f.labels else <View />}
+        <Text style={[styles.small, {"color": C["ink"], "fontWeight": "700"}]} numberOfLines={1}>
+            {(money(f.best_price_cents / 100) + " · " + f.best_offer_title) if f.best_offer_id else "No deal right now"}
+        </Text>
+    </Pressable>;
 }
 
 
@@ -186,21 +275,97 @@ def:pub app -> JsxElement {
         eDiets: str = "",
         eItem: str = "",
         eMsg: str = "",
-        detailError: str = "";
+        detailError: str = "",
+        home: HomeView | None = None,
+        tastes: TasteView | None = None,
+        tastesOpen: bool = False,
+        tastePrompted: bool = False,
+        tasteBusy: bool = False,
+        tasteMsg: str = "",
+        pickCats: list[str] = [],
+        pickDiets: list[str] = [],
+        pickRange: str = "";
 
     viewport = useWindowDimensions();
+
+    async def openTastes() {
+        found: TasteView | None = None;
+        tasteMsg = "";
+        try {
+            found = await taste_choices();
+            if found {
+                tastes = found;
+                pickCats = found.categories;
+                pickDiets = found.diets;
+                pickRange = found.price_range;
+                tastesOpen = True;
+            }
+        } except Exception {
+            tasteMsg = "Could not load the choices. Check your connection and try again.";
+        }
+    }
+
+    def togglePickCat(k: str) { pickCats = [x for x in pickCats if x != k] if k in pickCats else pickCats + [k]; }
+    def togglePickDiet(k: str) { pickDiets = [x for x in pickDiets if x != k] if k in pickDiets else pickDiets + [k]; }
+    def choosePickRange(k: str) { pickRange = "" if pickRange == k else k; }
+
+    async def submitTastes(blank: bool) {
+        if tasteBusy { return; }
+        tasteBusy = True; tasteMsg = "";
+        saved: TasteView | None = None;
+        try {
+            if blank { saved = await save_taste("", "", ""); }
+            else { saved = await save_taste(",".join(pickCats), ",".join(pickDiets), pickRange); }
+            if saved and saved.ok {
+                tastes = saved; tastesOpen = False;
+                await loadOffers(maxPrice, timeWin, diets);
+            } else {
+                tasteMsg = "Could not save. Sign in again and retry.";
+            }
+        } except Exception {
+            tasteMsg = "Could not save. Check your connection and try again.";
+        } finally {
+            tasteBusy = False;
+        }
+    }
+
+    async def toggleHeart(item: FeedItem) {
+        if not session or session.role != "student" { openSignIn(); return; }
+        try {
+            await toggle_favorite(item.place, "");
+            await loadOffers(maxPrice, timeWin, diets);
+        } except Exception {
+            loadError = "Could not update favorites. Check your connection and try again.";
+        }
+    }
+
+    async def dropFavorite(slug: str) {
+        try {
+            await toggle_favorite(slug, "");
+            await loadOffers(maxPrice, timeWin, diets);
+        } except Exception {
+            loadError = "Could not update favorites. Check your connection and try again.";
+        }
+    }
 
     async def loadOffers(price: str, win: str, ds: list[str]) {
         offerRequest.current = (offerRequest.current or 0) + 1;
         requestId = offerRequest.current;
         epoch = sessionEpoch.current;
-        found: list[OfferView] = [];
+        found: HomeView | None = None;
         loading = True;
         loadError = "";
         try {
-            found = await list_offers(price, win, ",".join(ds));
-            if requestId == offerRequest.current and epoch == sessionEpoch.current {
-                offers = [offer for offer in found if not offer.is_demo];
+            found = await home_feed(price, win, ",".join(ds));
+            if found and requestId == offerRequest.current and epoch == sessionEpoch.current {
+                found.items = [item for item in found.items if not item.offer.is_demo];
+                found.favorites = [place for place in found.favorites if not place.is_demo];
+                home = found;
+                offers = [i.offer for i in found.items];
+                if found.signed_in and not found.completed and not tastePrompted and session and session.role == "student" {
+                    tastePrompted = True;
+                    openTastes();
+                }
             }
         } except Exception {
             if requestId == offerRequest.current and epoch == sessionEpoch.current { loadError = "Could not load offers. Check your connection and tap Refresh offers."; }
@@ -523,16 +688,75 @@ def:pub app -> JsxElement {
         </View>;
     }
 
+    def Tastes() -> JsxElement {
+        return <View style={styles.content}>
+            <View style={styles.header}>
+                <Text style={styles.brand}>YOUR TASTES</Text>
+                <Text style={styles.title}>What do you like?</Text>
+                <Text style={styles.subtitle}>Pick anything that fits. We put those deals first, and you will still see everything else.</Text>
+            </View>
+            <View style={styles.section}>
+                <Text style={styles.label}>Food you like</Text>
+                <View style={styles.wrap}>
+                    {[
+                        <Chip key={"c" + c.key} label={c.label} on={c.key in pickCats} onPress={lambda { togglePickCat(c.key); }} />
+                        for c in (tastes.all_categories if tastes else [])
+                    ]}
+                </View>
+            </View>
+            <View style={styles.section}>
+                <Text style={styles.label}>How you eat</Text>
+                <View style={styles.wrap}>
+                    {[
+                        <Chip key={"d" + d.key} label={d.label} on={d.key in pickDiets} onPress={lambda { togglePickDiet(d.key); }} />
+                        for d in (tastes.all_diets if tastes else [])
+                    ]}
+                </View>
+            </View>
+            <View style={styles.section}>
+                <Text style={styles.label}>What you usually spend</Text>
+                <View style={styles.wrap}>
+                    {[
+                        <Chip key={"p" + r.key} label={r.label} on={pickRange == r.key} onPress={lambda { choosePickRange(r.key); }} />
+                        for r in (tastes.all_price_ranges if tastes else [])
+                    ]}
+                </View>
+            </View>
+            <Message text={tasteMsg} good={False} />
+            <Pressable accessibilityRole="button" style={styles.btn} disabled={tasteBusy} onPress={lambda { submitTastes(False); }}>
+                <Text style={styles.btnText}>{"Saving..." if tasteBusy else "Save my tastes"}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={tasteBusy} onPress={lambda { submitTastes(True); }}>
+                <Text style={styles.btnGhostText}>Skip for now</Text>
+            </Pressable>
+        </View>;
+    }
+
     def Discover() -> JsxElement {
+        if tastesOpen { return Tastes(); }
+        studentSession = session and session.authenticated and session.role == "student";
         return <View style={styles.content}>
             <View style={styles.header}>
                 <Text style={styles.brand}>M-LOCAL · ANN ARBOR</Text>
-                <Text style={styles.title}>Hungry? Here is what is good nearby.</Text>
+                <Text style={styles.title}>{"Picked for you, plus everything else." if home and home.personalized else "Hungry? Here is what is good nearby."}</Text>
             </View>
+            {(
+                <View style={{"gap": 8}}>
+                    <View style={styles.rowBetween}>
+                        <Text style={styles.label}>Your favorites</Text>
+                        <Pressable accessibilityRole="button" onPress={lambda { openTastes(); }}><Text style={styles.link}>Edit my tastes</Text></Pressable>
+                    </View>
+                    {(
+                        <ScrollView horizontal={True} showsHorizontalScrollIndicator={False} contentContainerStyle={styles.row}>
+                            {[<FavoriteChip key={f.slug} f={f} onOpen={lambda { openOffer(f.best_offer_id) if f.best_offer_id else dropFavorite(f.slug); }} /> for f in home.favorites]}
+                        </ScrollView>
+                    ) if home and len(home.favorites) > 0 else <Text style={styles.small}>{"Tap the heart on a place to keep it here."}</Text>}
+                </View>
+            ) if studentSession else <View />}
             <ScrollView horizontal={True} showsHorizontalScrollIndicator={False} contentContainerStyle={styles.row}>
                 {[
-                    <Chip key={"b" + b} label={"Any price" if b == "" else "Under $" + b} on={maxPrice == b} onPress={lambda { pickBudget(b); }} />
-                    for b in BUDGETS
+                    <Chip key={"b" + b[0]} label={b[1]} on={maxPrice == b[0]} onPress={lambda { pickBudget(b[0]); }} />
+                    for b in PRICE_CHIPS
                 ]}
             </ScrollView>
             <ScrollView horizontal={True} showsHorizontalScrollIndicator={False} contentContainerStyle={styles.row}>
@@ -554,8 +778,9 @@ def:pub app -> JsxElement {
                     <Text style={styles.h2}>{"Nothing matches yet" if maxPrice != "" or timeWin != "any" or len(diets) > 0 else "Offers are on their way"}</Text>
                     <Text style={styles.small}>{"Try removing a filter." if maxPrice != "" or timeWin != "any" or len(diets) > 0 else "Local businesses will share their offers here. Check back soon."}</Text>
                 </View>
-            ) if not offers else <View style={{"gap": 12}}>
-                {[<OfferCard key={o.id} o={o} onOpen={lambda { openOffer(o.id); }} /> for o in offers]}
+            ) if not offers or not home else <View style={{"gap": 12}}>
+                {[<DealCard key={i.offer.id} item={i} onOpen={lambda { openOffer(i.offer.id); }} onHeart={lambda { toggleHeart(i); }} /> for i in home.items]}
+                <Text style={styles.small}>{"Showing " + str(len(home.items)) + " deals. Your tastes change the order, never what you can see."}</Text>
             </View>}
         </View>;
     }

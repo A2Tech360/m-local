@@ -21,6 +21,12 @@ export function offer(extra={}) {return {
 export function held(extra={}) {return offer({my_claim_id:'fixture-claim',my_status:'claimed',my_qr_payload:qr,
  my_title:'Saved bowl',my_price_cents:300,my_terms:'Saved meal terms',my_eligibility:'Saved ID condition',
  my_expires:'8:00 PM',my_expires_ts:Date.now()/1000+1200,...extra});}
+export function feedItem(o,extra={}) {return {offer:o,place:'fixture-kitchen',place_labels:[],categories:[],price_cents:Math.round((o.price||0)*100),
+ regular_cents:Math.round((o.regular_price||0)*100),price_range:'',reasons:[],slot:'more',is_favorite:false,...extra};}
+export function home(items,extra={}) {return {signed_in:false,personalized:false,completed:true,price_range:'',favorites:[],
+ items:items.map(i=>i.offer?i:feedItem(i)),total_deals:items.length,note:'',...extra};}
+const tastes=()=>({ok:true,message:'',signed_in:true,completed:true,categories:[],diets:[],price_range:'',favorites:[],
+ all_categories:[{key:'pizza',label:'Pizza'}],all_diets:[{key:'vegetarian',label:'Vegetarian'}],all_price_ranges:[{key:'5to8',label:'$5 to $8'}]});
 export async function until(fn,message='condition',timeout=3000) {
  const end=Date.now()+timeout;while(Date.now()<end){if(fn())return;await new Promise(r=>setTimeout(r,10));}throw new Error(`Timed out: ${message}`);
 }
@@ -45,6 +51,7 @@ export async function app({role='student',verified=false,audience='student',item
   if(name==='login'){activeRole='student';return Response.json({ok:true,data:{token:'synthetic-ui-token',root_id:'fixture-student'}});}
   const visibleItem=w.localStorage.getItem('jac_token') ? item : Object.fromEntries(Object.entries(item).map(([key,value])=>[key,key.startsWith('my_') ? (typeof value==='number'?0:'') : value]));
   const results={current_session:session(),list_offers:[visibleItem],get_offer:visibleItem,merchant_portal:portal(),
+   home_feed:home([visibleItem],{signed_in:activeRole!=='guest'}),taste_choices:tastes(),save_taste:tastes(),toggle_favorite:tastes(),
    claim_offer:{ok:true,message:'Fixture claim accepted',claim_id:'fixture-claim',qr_payload:qr},
    cancel_claim:{ok:true,message:'Fixture cancellation accepted'},
    update_profile:portal(),save_offer:{ok:true,message:'Fixture offer saved',code:'fixture-offer'},
