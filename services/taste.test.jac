@@ -60,6 +60,10 @@ test "choices are cleaned to known values" {
 test "place labels say whether everything or only some items qualify" {
     assert place_labels([["vegetarian", "vegan"], ["vegetarian"]]) == ["Vegetarian", "Vegan options"];
     assert place_labels([["halal"], []]) == ["Halal options"];
+    assert place_labels([["vegan", "gluten-free"], ["vegan"]]) == ["Vegetarian", "Vegan", "Gluten-free options"];
+    assert with_implied(["vegan"]) == ["vegan", "vegetarian"] and with_implied(["halal"]) == ["halal"];
+    veg = score(Candidate(offer_id="x", place="p", categories=["bowls"], dietary=["vegan"]), Taste(diets=["vegetarian"]));
+    assert "Not marked vegetarian" not in veg.reasons and "Vegetarian" in veg.reasons;
     assert place_labels([[], []]) == [];
     assert place_labels([]) == [];
 }
@@ -166,4 +170,6 @@ test "urgent deals say so" {
     calm = score(_deal("c", "p", ["pizza"]), Taste());
     assert "Ending soon" in soon.reasons and "Almost gone" in few.reasons;
     assert calm.reasons == [] and soon.score > calm.score;
+    later = score(Candidate(offer_id="d", place="p", categories=["pizza"], price_cents=700, regular_cents=1000, remaining=10, starts_in_hours=3.0, ends_in_hours=6.0), Taste());
+    assert "Starts later" in later.reasons and later.score < calm.score;
 }

@@ -85,6 +85,7 @@ obj Candidate {
         price_cents: int = 0,
         regular_cents: int = 0,
         remaining: int = 1,
+        starts_in_hours: float = 0.0,
         ends_in_hours: float = 4.0,
         rotation: int = 0;
 }
@@ -144,6 +145,12 @@ def clean_choices(values: list[str], allowed: list[str]) -> list[str] {
 }
 
 
+"""Dietary tags with what they imply: anything vegan is also vegetarian."""
+def with_implied(tags: list[str]) -> list[str] {
+    return tags + ["vegetarian"] if "vegan" in tags and "vegetarian" not in tags else tags;
+}
+
+
 """A place's dietary labels from everything it sells: "Vegetarian" when every
 item qualifies, "Vegetarian options" when only some do."""
 def place_labels(items: list[list[str]]) -> list[str] {
@@ -152,7 +159,7 @@ def place_labels(items: list[list[str]]) -> list[str] {
         return out;
     }
     for d in DIETS {
-        has_it = [d in tags for tags in items];
+        has_it = [d in with_implied(tags) for tags in items];
         name = d.capitalize();
         if all(has_it) {
             out.append(name);
@@ -207,7 +214,7 @@ def score(c: Candidate, taste: Taste) -> Ranked {
     }
     total += learned;
     if taste.diets {
-        missing = [d for d in taste.diets if d not in c.dietary];
+        missing = [d for d in taste.diets if d not in with_implied(c.dietary)];
         if not missing {
             total += 2.0;
             reasons.append(taste.diets[0].capitalize() if len(taste.diets) == 1 else "Fits your diet");
@@ -232,7 +239,10 @@ def score(c: Candidate, taste: Taste) -> Ranked {
     if c.regular_cents > c.price_cents and c.regular_cents > 0 {
         total += min((c.regular_cents - c.price_cents) / c.regular_cents, 1.0);
     }
-    if c.ends_in_hours <= 2.0 or c.remaining <= 3 {
+    if c.starts_in_hours > 0 {
+        total -= 1.5;
+        reasons.append("Starts later");
+    } elif c.ends_in_hours <= 2.0 or c.remaining <= 3 {
         total += 0.5;
         reasons.append("Ending soon" if c.ends_in_hours <= 2.0 else "Almost gone");
     }
