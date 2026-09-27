@@ -38,6 +38,7 @@ import from services.onboarding { request_email_code, verify_email_code }
 import from services.business_onboarding { get_business_draft, import_business_website, save_business_draft }
 import from services.account_profile { get_account_profile, save_account_profile }
 import from services.analytics { merchant_insights }
+import from services.nearby { nearby_after }
 
 import from "@jac/mobui" {
     View,
@@ -55,6 +56,7 @@ import from "./client/account-profile.jsx" { AccountProfile }
 import from "./client/offer-editor.jsx" { OfferEditor }
 import from "./client/qr.jsx" { ClaimQr, ClaimScanner }
 import from "./client/insights.jsx" { BusinessInsights }
+import from "./client/what-now.jsx" { WhatNow }
 # Include the JSX helper explicitly for Jac 0.37.23.
 import from "./client/insights-support.mjs" { normalizeInsights }
 import from "./client/scan-controller.mjs" { isClaimPayload }
@@ -937,6 +939,7 @@ def:pub app -> JsxElement {
                     <Text style={styles.small}>{o.terms or "No additional terms."}</Text>
                 </View>) if not hasSavedClaim else <View />}
             </View>
+            {(<WhatNow key={o.my_claim_id} offerId={o.id} load={nearby_after} onOpenDeal={openOffer} />) if o.my_claim_id and o.my_status == "redeemed" else <View />}
         </View>;
     }
 
