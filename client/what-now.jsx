@@ -42,9 +42,9 @@ export function WhatNow({offerId,load,onOpenDeal}) {
   <style>{css}</style>
   <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:8,flexWrap:'wrap'}}>
    <h2 id="ml-whatnow-title" style={{fontSize:18,fontWeight:800,margin:0,color:ink,fontFamily:font}}>{view.heading||'What now?'}</h2>
-   {view.has_samples&&<span style={{fontSize:12,color:muted,fontWeight:700,letterSpacing:.8,textTransform:'uppercase'}}>Sample places</span>}
+   {(view.has_samples||view.sample_deals)&&<span style={{fontSize:12,color:muted,fontWeight:700,letterSpacing:.8,textTransform:'uppercase'}}>{view.has_samples?'Sample places':'Sample deals'}</span>}
   </div>
-  <p style={{fontSize:13,margin:0,color:muted,lineHeight:'19px'}}>Demo suggestions around {plainName(view.origin)}. Tap a card to see the next place.</p>
+  <p style={{fontSize:13,margin:0,color:muted,lineHeight:'19px'}}>{view.from_catalog?'A short walk from ':'Demo suggestions around '}{plainName(view.origin)}{view.from_catalog?', nearest first':''}. Tap a card to see the next place.</p>
   {view.note&&<p style={{fontSize:13,margin:0,color:muted,lineHeight:'19px'}}>{view.note}</p>}
   <ul className="ml-whatnow-grid" style={{...grid,listStyle:'none',margin:0,paddingLeft:0}}>
    {view.groups.map(group=>{
@@ -69,5 +69,6 @@ export function WhatNow({offerId,load,onOpenDeal}) {
     </li>;
    })}
   </ul>
+  {view.attribution&&<p className="ml-whatnow-source" style={{fontSize:12,margin:0,color:muted,lineHeight:'17px'}}>{view.attribution}</p>}
  </section>;
 }
