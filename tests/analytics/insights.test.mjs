@@ -50,6 +50,13 @@ test('normalization rejects malformed metrics, wrong range and missing chronolog
   assert.throws(() => normalizeInsights({ok:false,message:'Access denied.'}), /Access denied/);
 });
 
+test('recap omits pending and unknown history rows', () => {
+  const html = buildRecapHtml(normalizeInsights(fixture()));
+  assert.match(html, /Claim outcomes/);
+  assert.doesNotMatch(html, />\\d+ pending/);
+  assert.doesNotMatch(html, />\\d+ unknown/);
+});
+
 test('normalization and export exclude unknown fields at every level', () => {
   const raw = fixture();
   raw.warnings = ['SECRET-PRIVATE-WARNING'];

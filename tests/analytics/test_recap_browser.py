@@ -49,6 +49,8 @@ def main() -> None:
             page.route("https://**/*", lambda route: route.abort())
             page.goto(artifact.as_uri())
             assert page.locator("#redemptions").inner_text() == "7"
+            assert "pending" not in page.locator("#outcomes").inner_text().lower()
+            assert "unknown" not in page.locator("#outcomes").inner_text().lower()
             assert page.locator("#offers img").count() == 0
             assert page.evaluate("window.PWNED || null") is None
             page.get_by_role("button", name="Reset", exact=True).click()

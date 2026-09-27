@@ -109,7 +109,7 @@ function mountRecap() {
     for (const key of ['claims', 'redemptions', 'returning_customers']) byId(key).textContent = fmt(m[key]);
     byId('value_cents').textContent = cash(m.value_cents);
     const denominator = m.cohort_redeemed + m.cancelled + m.expired;
-    byId('outcomes').textContent = (denominator ? Math.round(m.cohort_redeemed / denominator * 100) + '% of resolved claims redeemed. ' : 'No resolved claims yet. ') + fmt(m.cohort_redeemed) + ' redeemed · ' + fmt(m.cancelled) + ' cancelled · ' + fmt(m.expired) + ' expired · ' + fmt(m.pending) + ' pending · ' + fmt(m.unknown_outcomes) + ' unknown';
+    byId('outcomes').textContent = (denominator ? Math.round(m.cohort_redeemed / denominator * 100) + '% of resolved claims redeemed. ' : 'No resolved claims yet. ') + fmt(m.cohort_redeemed) + ' redeemed · ' + fmt(m.cancelled) + ' cancelled · ' + fmt(m.expired) + ' expired';
     const history = data.frames.slice(0, cutoff + 1), maximum = Math.max(1, ...history.map(f => f.totals.redemptions));
     byId('line').setAttribute('points', history.map((f, index) => (12 + index / data.period_days * 696) + ',' + (154 - f.totals.redemptions / maximum * 132)).join(' '));
     byId('chart').setAttribute('aria-label', 'Cumulative redemptions through this date: ' + m.redemptions);
