@@ -1,7 +1,7 @@
 """What now? checks. Run: jac test services/nearby.jac"""
 
 import from services.promo { _claim, _redeem }
-import from services.models { ClaimedAs }
+import from services.models { ClaimedAs, Offer, Publishes }
 import from services.foryou { _home }
 
 def _offer_at(slug: str, now: float) -> str {
@@ -23,7 +23,8 @@ def _place(slug: str) -> Restaurant {
 
 
 test "distances read in miles and walking minutes" {
-    assert distance_label(100.0) == "under 0.1 mi" and distance_label(161.0) == "0.1 mi";
+    assert distance_label(100.0) == "350 ft" and distance_label(161.0) == "0.1 mi";
+    assert distance_label(3.0) == "50 ft" and distance_label(60.0) == "200 ft" and distance_label(155.0) == "500 ft";
     assert distance_label(402.0) == "0.2 mi" and distance_label(1609.344) == "1.0 mi";
     assert walk_minutes(10.0) == 1 and walk_minutes(400.0) == 5 and walk_minutes(1000.0) == 12;
     assert abs(meters_between(42.0, -83.0, 43.0, -83.0) - 111195.0) < 100.0;
@@ -180,4 +181,125 @@ test "unverified real locations never produce walking suggestions" {
         cafe.is_demo = original_cafe_demo;
         origin.is_demo = original_origin_demo;
     }
+}
+
+
+def _add_place(identity: str, name: str, category: str, lat: float, lon: float, flags: list[str] = []) -> Place {
+    p = Place(
+        place_id=identity, name=name, category=category, lat=lat, lon=lon, source_id=identity, source_type="node",
+        source_url="https://www.openstreetmap.org/" + identity, coordinate_method="osm_node",
+        retrieved_at="2026-09-27T00:00:00Z", categories=[category], quality_flags=flags
+    );
+    root.shared ++> p;
+    return p;
+}
+
+
+def _clear_places {
+    for r in [root.shared -->[?:Restaurant]] {
+        for loc in [r ->:HasLocation:->] {
+            for e in [edge loc ->:LocatedAt:->] {
+                del e;
+            }
+        }
+    }
+    for p in [root.shared -->[?:Place]] {
+        del p;
+    }
+}
+
+
+def _link(slug: str, p: Place) {
+    loc = _location_of(_place(slug));
+    assert loc is not None;
+    loc +>:LocatedAt():+> p;
+}
+
+
+test "a restaurant linked to a catalog place gets real places measured from its recorded position" {
+    _ensure_seed();
+    _clear_places();
+    now = time.time();
+    _link("maize-noodle-lab", _add_place("osm:node:1", "Noodle Lab Building", "restaurant", 42.2800, -83.7400));
+    _add_place("osm:node:2", "Near Cafe", "cafe", 42.2805, -83.7400);
+    _add_place("osm:node:3", "Far Cafe", "cafe", 42.2860, -83.7400);
+    _add_place("osm:node:4", "Too Far Cafe", "cafe", 42.3000, -83.7400);
+    _add_place("osm:node:5", "Closed Campus Cafe", "cafe", 42.2801, -83.7400, ["restricted_access_tag"]);
+    _add_place("osm:node:6", "Corner Bookshop", "bookshop", 42.2810, -83.7410);
+    _add_place("osm:node:7", "Tree Park", "park", 42.2790, -83.7390);
+    _add_place("osm:node:8", "Gelato Stop", "ice_cream", 42.2803, -83.7395);
+    _add_place("osm:node:9", "Old Pub", "pub", 42.2795, -83.7405);
+    _add_place("osm:node:10", "City Hall", "townhall", 42.2801, -83.7401);
+    _add_place("osm:node:11", "Another Restaurant", "restaurant", 42.2802, -83.7402);
+    for samples in [False, True] {
+        view = _nearby(_offer_at("maize-noodle-lab", now), now, samples);
+        assert view.ok and view.from_catalog and not view.has_samples and not view.sample_deals, samples;
+        assert view.attribution == ATTRIBUTION and "OpenStreetMap" in view.attribution and view.note == "";
+        names = {g.kind: [c.name for c in g.cards] for g in view.groups};
+        assert [g.kind for g in view.groups] == ["activity", "coffee", "dessert", "bars"];
+        assert names["coffee"] == ["Near Cafe", "Far Cafe"], names;
+        assert sorted(names["activity"]) == ["Corner Bookshop", "Tree Park"];
+        assert names["dessert"] == ["Gelato Stop"] and names["bars"] == ["Old Pub"];
+        everyone = [c.name for g in view.groups for c in g.cards];
+        for hidden in ["Noodle Lab Building", "City Hall", "Another Restaurant", "Too Far Cafe", "Closed Campus Cafe"] {
+            assert hidden not in everyone, hidden;
+        }
+        assert not [c for g in view.groups for c in g.cards if c.is_sample or c.name.endswith("(Sample)")];
+    }
+    view = _nearby(_offer_at("maize-noodle-lab", now), now, False);
+    near = [c for g in view.groups for c in g.cards if c.name == "Near Cafe"][0];
+    assert abs(near.meters - 56) <= 2 and near.distance == "200 ft" and near.minutes == 1 and near.what == "Cafe", near;
+    far = [c for g in view.groups for c in g.cards if c.name == "Far Cafe"][0];
+    assert abs(far.meters - 667) <= 3 and far.distance == "0.4 mi" and far.minutes == 8, far;
+    tavern = [c for g in view.groups for c in g.cards if c.name == "Old Pub"][0];
+    assert tavern.adults_only and tavern.what == "Pub";
+    _clear_places();
+}
+
+
+test "a catalog place whose restaurant has a live deal names it, and demo deals need demo mode" {
+    _ensure_seed();
+    _clear_places();
+    now = time.time();
+    _link("maize-noodle-lab", _add_place("osm:node:1", "Noodle Lab Building", "restaurant", 42.2800, -83.7400));
+    _link("arbor-leaf-kitchen", _add_place("osm:node:20", "Arbor Leaf Cafe Building", "cafe", 42.2840, -83.7400));
+    for i in range(5) {
+        _add_place(f"osm:node:{30 + i}", f"Closer Cafe {i}", "cafe", 42.2802 + i * 0.0002, -83.7400);
+    }
+    shown = _nearby(_offer_at("maize-noodle-lab", now), now, True);
+    coffee = [g for g in shown.groups if g.kind == "coffee"][0];
+    assert [c.name for c in coffee.cards] == ["Closer Cafe 0", "Closer Cafe 1", "Closer Cafe 2", "Arbor Leaf Cafe Building"], [c.name for c in coffee.cards];
+    assert coffee.cards[3].deal.startswith("Deal on now: ") and coffee.cards[3].deal_offer_id != "";
+    assert coffee.cards[3].sample_deal and shown.sample_deals and not shown.has_samples;
+    assert len([c for g in shown.groups for c in g.cards if c.deal_offer_id]) == 1;
+    hidden = _nearby(_offer_at("maize-noodle-lab", now), now, False);
+    quiet = [g for g in hidden.groups if g.kind == "coffee"][0];
+    assert [c.name for c in quiet.cards] == ["Closer Cafe 0", "Closer Cafe 1", "Closer Cafe 2", "Closer Cafe 3"];
+    assert not [c for c in quiet.cards if c.deal] and not hidden.sample_deals and hidden.from_catalog;
+    hosted = _nearby(_offer_at("maize-noodle-lab", now), now, False, True);
+    assert [c.name for c in [g for g in hosted.groups if g.kind == "coffee"][0].cards][3] == "Arbor Leaf Cafe Building" and hosted.sample_deals;
+    back = _nearby(_offer_at("arbor-leaf-kitchen", now), now, True);
+    assert back.from_catalog and "Arbor Leaf Cafe Building" not in [c.name for g in back.groups for c in g.cards];
+    _clear_places();
+}
+
+
+test "a linked restaurant with nothing in range says so, and an unlinked one keeps the earlier rules" {
+    _ensure_seed();
+    _clear_places();
+    now = time.time();
+    _link("maize-noodle-lab", _add_place("osm:node:1", "Noodle Lab Building", "restaurant", 42.2800, -83.7400));
+    _add_place("osm:node:50", "Distant Cafe", "cafe", 42.3300, -83.7400);
+    alone = _nearby(_offer_at("maize-noodle-lab", now), now, True);
+    assert not alone.ok and alone.groups == [] and alone.from_catalog and alone.note == "No places are recorded within a short walk.";
+    unlinked = _nearby(_offer_at("arbor-leaf-kitchen", now), now, True);
+    assert unlinked.ok and not unlinked.from_catalog and unlinked.has_samples and unlinked.attribution == "";
+    assert "Distant Cafe" not in [c.name for g in unlinked.groups for c in g.cards];
+    for dataset in [False, True] {
+        refused = _nearby(_offer_at("arbor-leaf-kitchen", now), now, False, dataset);
+        assert not refused.ok and refused.groups == [] and not refused.from_catalog, dataset;
+    }
+    _clear_places();
+    plain = _nearby(_offer_at("maize-noodle-lab", now), now, True);
+    assert plain.ok and not plain.from_catalog and plain.has_samples;
 }

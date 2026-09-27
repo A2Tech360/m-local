@@ -51,7 +51,7 @@ with sync_playwright() as p:
     assert 'home_feed' not in requests
     evidence=ROOT/'.jac/business-ui-evidence'; evidence.mkdir(parents=True,exist_ok=True)
     page.screenshot(path=str(evidence/'insights-mobile.png'))
-    page.get_by_role('button',name='Manage Offers',exact=True).click()
+    page.get_by_role('button',name='Manage',exact=True).click()
     expect(page.get_by_role('textbox',name='About',exact=True)).to_be_visible()
     for width in (320,390,430):
         page.set_viewport_size(dict(width=width,height=740))
@@ -61,7 +61,7 @@ with sync_playwright() as p:
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), width
         save=page.get_by_role('button',name='Save profile',exact=True)
         save.scroll_into_view_if_needed()
-        box=save.bounding_box(); nav=page.get_by_role('button',name='Insights Metrics',exact=True).bounding_box()
+        box=save.bounding_box(); nav=page.get_by_role('button',name='Insights',exact=True).bounding_box()
         assert box['y']+box['height']<=nav['y'], (width,box,nav)
     page.screenshot(path=str(evidence/'profile-mobile.png'))
     assert not errors,errors

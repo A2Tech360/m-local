@@ -78,7 +78,7 @@ test('business first visit sends a business code and leaves returning guests fre
   ui.click('List my business');await until(()=>ui.document.querySelector('input[placeholder="you@business.com"]'));
   assert.equal(ui.find('Find local deals'),undefined);
   assert.equal(ui.document.querySelector('input[placeholder="uniqname"]'),null);
-  ui.fill('Your name','Owner');ui.fill('you@business.com','owner@example.test');ui.click('Send verification code');
+  ui.fill('Business Name','Owner');ui.fill('you@business.com','owner@example.test');ui.click('Send verification code');
   await until(()=>ui.text().includes('Fixture delivery disabled.'));
   assert.deepEqual(ui.calls.find(c=>c.name==='request_email_code').body,{value:'owner@example.test',kind:'business',name:'Owner'});
   saved=ui.window.localStorage.getItem('mlocal_audience');assert.equal(saved,null);
