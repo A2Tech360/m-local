@@ -3,7 +3,7 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/runtime.sh"
 suite="${1:-core}"
 case "$suite" in
     core|context|insights|all) ;;
-    onboarding) python3 -m unittest discover -s tests/onboarding; exit $? ;;
+    onboarding) bash scripts/python.sh -m unittest discover -s tests/onboarding; exit $? ;;
     integration)
         node --test tests/ui/*.test.mjs tests/tooling/*.test.mjs
         accounts="$PROJECT_ROOT/.jac/qr-demo-accounts.json"

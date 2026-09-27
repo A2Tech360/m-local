@@ -55,3 +55,8 @@ Not yet verified here:
 - Baz review, event deadline confirmation, and deployment authorization.
 
 No public write-enabled pilot is authorized by this document.
+
+Python tests that import Jac services must use the pinned companion interpreter:
+`bash scripts/test.sh onboarding` or `bash scripts/python.sh tests/integration/onboarding_http.py`.
+The latter fixture requires its documented isolated local server and store; it must not target production.
+Plain system Python does not register Jac imports. `scripts/setup.sh` installs both executables together.

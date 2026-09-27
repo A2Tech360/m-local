@@ -43,7 +43,8 @@ def clean_url(value: str) -> str {
         if ip is not None and not ip.is_global {
             raise ValueError();
         }
-        return urlunsplit(("https", host, parsed.path or "/", parsed.query, ""));
+        parts: tuple[str, str, str, str, str] = ("https", host, parsed.path or "/", parsed.query, "");
+        return urlunsplit(parts);
     } except (ValueError, UnicodeError) {
         raise ValueError("Use a public https:// website address.") from None;
     }
@@ -52,10 +53,10 @@ def clean_url(value: str) -> str {
 
 def public_target(value: str) -> tuple[str, str, str] {
     url = clean_url(value);
-    host = urlsplit(url).hostname;
+    host = urlsplit(url).hostname or "";
     answers = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM);
-    addresses = {answer[4][0] for answer in answers};
-    if not addresses or any([not ipaddress.ip_address(ip).is_global for ip in addresses]) {
+    addresses = {str(answer[4][0]) for answer in answers};
+    if not addresses or `any([not ipaddress.ip_address(ip).is_global for ip in addresses]) {
         raise ValueError("That website resolves to a private or reserved address.");
     }
     return (url, host, sorted(addresses)[0]);
@@ -302,7 +303,7 @@ def parse_page(html: str, url: str) -> dict[str, any] {
 
 def collect_website(url: str, fetch: any = fetch_public) -> dict[str, any] {
     url = clean_url(url.strip());
-    host = urlsplit(url).hostname;
+    host = urlsplit(url).hostname or "";
     robots_url = f"https://{host}/robots.txt";
     (_, _, robot_data) = fetch(robots_url);
     robots = RobotFileParser();

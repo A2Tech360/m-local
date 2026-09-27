@@ -37,7 +37,7 @@ def account_email(value: str, kind: str) -> str {
 
 def validated_name(value: str) -> str {
     value = value.strip();
-    if not (1 <= len(value) <= 80) or any([ord(c) < 32 or 127 <= ord(c) < 160 for c in value]) {
+    if not (1 <= len(value) <= 80) or `any([ord(c) < 32 or 127 <= ord(c) < 160 for c in value]) {
         raise ValueError("Enter your name (up to 80 characters, without control characters).");
     }
     return value;
@@ -103,7 +103,7 @@ obj CodeStore {
         return hmac.new(self.key, (challenge + ":" + code).encode(), hashlib.sha256).hexdigest();
     }
 
-    def request(value: str, kind: str, name: str, send: any) -> dict {
+    def request(value: str, kind: str, name: str, send: any) -> dict[str, any] {
         email = account_email(value, kind);
         # Blank means returning sign-in; account existence is checked only after
         # inbox proof. Named requests keep the existing create-or-resume flow.
@@ -151,8 +151,8 @@ obj CodeStore {
         };
     }
 
-    def consume(challenge: str, code: str) -> dict {
-        result: dict | None = None;
+    def consume(challenge: str, code: str) -> dict[str, any] {
+        result: dict[str, any] | None = None;
         if len(challenge) > 128 or len(code) > 20 {
             raise ValueError("That code is invalid or expired. Request a new code.");
         }
@@ -185,7 +185,7 @@ obj CodeStore {
         }
     }
 
-    def provisioning(email: str, kind: str | None = None, name: str | None = None) -> dict {
+    def provisioning(email: str, kind: str | None = None, name: str | None = None) -> dict[str, any] {
         with self.transaction() as db {
             if kind is not None {
                 db.execute("INSERT OR IGNORE INTO provisioning VALUES (?,?,?,?)", (email, secrets.token_urlsafe(32), kind, name));
@@ -195,7 +195,7 @@ obj CodeStore {
         }
     }
 
-    def account(actor: str) -> dict {
+    def account(actor: str) -> dict[str, any] {
         with self.transaction() as db {
             row = db.execute("SELECT email,kind,name FROM accounts WHERE actor=?", (actor,)).fetchone();
             return dict(row) if row else {};
@@ -241,13 +241,13 @@ obj CodeStore {
         }
     }
 
-    def save_draft(actor: str, body: dict) -> None {
+    def save_draft(actor: str, body: dict[str, any]) -> None {
         with self.transaction() as db {
             db.execute("INSERT INTO drafts VALUES (?,?,?) ON CONFLICT(actor) DO UPDATE SET body=excluded.body,updated=excluded.updated", (actor, json.dumps(body), self.clock()));
         }
     }
 
-    def draft(actor: str) -> dict {
+    def draft(actor: str) -> dict[str, any] {
         with self.transaction() as db {
             row = db.execute("SELECT body FROM drafts WHERE actor=?", (actor,)).fetchone();
             return json.loads(row["body"]) if row else {};

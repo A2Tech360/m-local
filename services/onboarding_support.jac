@@ -30,7 +30,7 @@ def finish_account(proof: dict[str, any], users: any, state: any) -> dict[str, a
     if existing {
         root_id = str(existing.get("root_id", "")).replace("-", "");
         saved = state.account(root_id);
-        valid_email = any([
+        valid_email = `any([
             i.get("type") == "email" and i.get("value_normalized") == email and i.get("verified") is True
             for i in existing.get("identities", [])
         ]);
@@ -134,7 +134,7 @@ def validate_draft(raw: dict[str, any]) -> dict[str, any] {
         if not isinstance(value, str) or len(value) > limit {
             raise ValueError(f"Please shorten the {label} field.");
         }
-        if any([(ord(char) < 32 and char not in "\t\r\n") or 127 <= ord(char) < 160 for char in value]) {
+        if `any([(ord(char) < 32 and char not in "\t\r\n") or 127 <= ord(char) < 160 for char in value]) {
             raise ValueError(f"The {label} field contains unsupported control characters.");
         }
         result[key] = value.strip();
