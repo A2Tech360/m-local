@@ -689,7 +689,7 @@ def:pub app -> JsxElement {
     }
 
     def LogoutLink() -> JsxElement {
-        return <Pressable accessibilityRole="button" accessibilityLabel="Log out" style={styles.btnGhost} disabled={authBusy} onPress={lambda { logout(); }}><Text style={styles.btnGhostText}>Log out</Text></Pressable>;
+        return <View style={styles.row}><ThemeControl /><Pressable accessibilityRole="button" accessibilityLabel="Log out" style={styles.btnGhost} disabled={authBusy} onPress={lambda { logout(); }}><Text style={styles.btnGhostText}>Log out</Text></Pressable></View>;
     }
 
     def AuthScreen() -> JsxElement {
@@ -1049,12 +1049,11 @@ def:pub app -> JsxElement {
         </View>;
     }
 
-    def TabButton(id: str, label: str, sub: str) -> JsxElement {
+    def TabButton(id: str, label: str) -> JsxElement {
         on = bool(tab == id or (id == "insights" and tab == "discover" and session and session.role == "merchant"));
         return <Pressable accessibilityRole="button" accessibilityState={{"selected": on}} style={[styles.tab, styles.tabOn if on else {}]} disabled={busy} onPress={lambda { goTab(id); }}>
             <NavIcon name={id} active={on} />
             <Text style={[styles.tabText, styles.tabTextOn if on else {}]}>{label}</Text>
-            <Text style={styles.tabSub}>{sub}</Text>
         </Pressable>;
     }
 
@@ -1101,11 +1100,11 @@ def:pub app -> JsxElement {
             </ScrollView>
             {(
                 <View testID="app-tabbar" style={styles.tabbar}>
-                    {TabButton("discover", "Offers", "Nearby") if not company else <View style={styles.hidden} />}
-                    {TabButton("insights", "Insights", "Metrics") if role == "merchant" else <View style={styles.hidden} />}
-                    {TabButton("merchant", "Manage", "Offers") if role == "merchant" else <View style={styles.hidden} />}
-                    {TabButton("redeem", "Redeem", "Scan") if role == "merchant" else <View style={styles.hidden} />}
-                    {TabButton("account", "Account", "You")}
+                    {TabButton("discover", "Offers") if not company else <View style={styles.hidden} />}
+                    {TabButton("insights", "Insights") if role == "merchant" else <View style={styles.hidden} />}
+                    {TabButton("merchant", "Manage") if role == "merchant" else <View style={styles.hidden} />}
+                    {TabButton("redeem", "Redeem") if role == "merchant" else <View style={styles.hidden} />}
+                    {TabButton("account", "Account")}
                 </View>
             ) if signedIn and role != "business" else <View style={styles.hidden} />}
         </View>

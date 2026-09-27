@@ -46,7 +46,7 @@ def:pub buildStyles(T: dict[str, str]) -> any {
             "content": {
                 "paddingHorizontal": S["xl"],
                 "paddingTop": S["xl"],
-                "paddingBottom": 120,
+                "paddingBottom": 92,
                 "gap": S["lg"]
             },
             "header": {"gap": 8},
@@ -225,21 +225,20 @@ def:pub buildStyles(T: dict[str, str]) -> any {
                 "backgroundColor": T["surface"],
                 "borderTopWidth": 1,
                 "borderTopColor": T["border"],
-                "paddingVertical": S["sm"],
+                "paddingVertical": 4,
                 "paddingHorizontal": S["sm"]
             },
             "tab": {
-                "borderTopWidth": 3, "borderTopColor": "transparent", "minHeight": 64,
+                "borderTopWidth": 3, "borderTopColor": "transparent", "minHeight": 52,
                 "flex": 1,
                 "alignItems": "center",
-                "paddingVertical": S["sm"],
+                "paddingVertical": 4,
                 "borderRadius": 0,
-                "gap": 4
+                "gap": 2
             },
             "tabOn": {"backgroundColor": T["surface"], "borderTopColor": "var(--ml-maize)"},
             "tabText": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["sm"], "fontWeight": "700", "color": T["muted"]},
             "tabTextOn": {"color": T["accent"]},
-            "tabSub": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 11, "color": T["muted"]},
             "status": {
                 "paddingVertical": 3,
                 "paddingHorizontal": S["sm"],

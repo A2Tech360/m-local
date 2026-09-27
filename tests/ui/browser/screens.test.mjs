@@ -68,8 +68,7 @@ test('restaurant lands on Insights with business navigation and can log out',asy
   await until(()=>ui.calls.some(c=>c.name==='merchant_insights'),'private insights load on landing');
   assert.ok(has(ui,'Insights'));
   assert.equal(ui.calls.some(c=>c.name==='home_feed'),false,'business landing does not fetch the student feed');
-  const metricsTab=ui.find('Metrics').parentElement;
-  assert.equal(metricsTab.parentElement.querySelector('[role=button]').textContent,'InsightsMetrics');
+  assert.equal(ui.document.querySelector('[data-testid="app-tabbar"] [role=button]').textContent,'Insights');
   ui.click('Manage');await until(()=>has(ui,'New offer'));
   assert.ok(has(ui,'Manage'));assert.ok(has(ui,'Redeem'));assert.ok(has(ui,'Account'));
   assert.equal(has(ui,'Nearby'),false);assert.equal(has(ui,'Your favorites'),false);

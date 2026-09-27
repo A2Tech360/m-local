@@ -89,7 +89,7 @@ html,body,#root,#root *,#root *:before,#root *:after{transition:background-color
 #root button:disabled,#root [aria-disabled=true]{opacity:.55;cursor:default}
 #root input[type=checkbox]{accent-color:var(--ml-accent)}
 #root a{color:var(--ml-accent);text-underline-offset:3px}
-[data-testid=app-tabbar]{padding-bottom:max(10px,env(safe-area-inset-bottom))!important}
+[data-testid=app-tabbar]{padding-bottom:max(4px,env(safe-area-inset-bottom))!important}
 [data-testid=app-masthead]{padding-top:max(16px,env(safe-area-inset-top))!important}
 .ml-welcome-choice{position:relative}
 .ml-welcome-choice:first-child:after{content:'';position:absolute;right:22px;top:-7px;width:18px;height:18px;border-radius:3px;background:var(--ml-on-accent-mark)}
