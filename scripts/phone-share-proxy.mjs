@@ -9,7 +9,7 @@ import {validateHomeFeed} from '../client/feed-validation.mjs';
 const functions = new Set(['list_offers', 'get_offer', 'claim_offer', 'merchant_portal',
   'update_profile', 'save_offer', 'set_offer_status', 'resolve_claim', 'redeem_claim',
   'cancel_claim', 'offer_defaults', 'current_session', 'request_email_code', 'verify_email_code',
-  'get_business_draft', 'import_business_website', 'save_business_draft',
+  'get_business_draft', 'import_business_website', 'save_business_draft', 'get_business_profile',
   'get_account_profile', 'save_account_profile', 'merchant_insights',
   'home_feed', 'taste_choices', 'save_taste', 'toggle_favorite']);
 

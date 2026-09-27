@@ -52,9 +52,9 @@ export function OfferEditor({initial,onDraftChange,onBusyChange,saveOffer,onSave
   {text('eligibility','Eligibility *','Students with a valid ID',300,{required:true})}
   {multi('terms','Terms *','One per student. Dine-in only.')}
   {text('dietary','Dietary tags, separated by commas','vegetarian, vegan, gluten-free, halal',200)}
-  {message&&<p ref={errorRef} tabIndex={-1} role="alert" style={{...hint,color:'#B42318'}}>{message}</p>}
+  {message&&<p ref={errorRef} tabIndex={-1} role="alert" style={{...hint,color:'var(--ml-bad)'}}>{message}</p>}
   <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-   <button style={{...button,flex:'1 1 180px',background:'#02305C',borderColor:'#02305C',color:'#fff'}} disabled={busy}>{busy?'Saving...':draft.offer_id?'Save changes':'Publish offer'}</button>
+   <button style={{...button,flex:'1 1 180px',background:'var(--ml-accent)',borderColor:'var(--ml-accent)',color:'var(--ml-accent-text)'}} disabled={busy}>{busy?'Saving...':draft.offer_id?'Save changes':'Publish offer'}</button>
    <button style={{...button,flex:'1 1 120px'}} disabled={busy} type="button" onClick={onCancel}>Cancel</button>
   </div>
  </form>;

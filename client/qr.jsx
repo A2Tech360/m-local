@@ -4,7 +4,7 @@ import {BrowserQRCodeReader} from '@zxing/browser';
 import {createScanController, isClaimPayload} from './scan-controller.mjs';
 import {uiFont, formButton, formSecondary} from './ui.jsx';
 
-const box = {display:'flex',flexDirection:'column',gap:16,color:'#0B1F38',fontFamily:uiFont};
+const box = {display:'flex',flexDirection:'column',gap:16,color:'var(--ml-ink)',fontFamily:uiFont};
 const button = formButton;
 const secondary = formSecondary;
 const price = cents => '$'+(cents/100).toFixed(2);
@@ -13,14 +13,14 @@ const price = cents => '$'+(cents/100).toFixed(2);
 export function ClaimQr({payload, expiresTs}) {
   const [now,setNow] = useState(Date.now()/1000);
   useEffect(() => {const timer=setInterval(()=>setNow(Date.now()/1000),1000);return ()=>clearInterval(timer);},[]);
-  const notice = {margin:0,padding:14,borderRadius:12,background:'#FFF1CF',color:'#7A4A00',fontFamily:uiFont,lineHeight:1.5};
+  const notice = {margin:0,padding:14,borderRadius:12,background:'var(--ml-warn-soft)',color:'var(--ml-warn)',fontFamily:uiFont,lineHeight:1.5};
   if (!isClaimPayload(payload)) return <p role="alert" style={notice}>This claim QR is unavailable. Refresh the offer to try again.</p>;
   if (!expiresTs || now >= expiresTs) return <p role="status" style={notice}>This hold has expired. Refresh the offer to check availability.</p>;
   const seconds = Math.max(0,Math.ceil(expiresTs-now));
   const remaining = `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
-  return <div className="ml-qr-ticket" style={{background:'#F9F6F0',color:'#0B1F38',fontFamily:uiFont,padding:16,borderRadius:20,alignSelf:'center',width:'100%',maxWidth:280,boxSizing:'border-box'}}>
-    <QRCodeSVG data-testid="claim-qr" value={payload} size={240} level="M" marginSize={4} title="Show this M-Local claim QR to the restaurant" style={{display:'block',width:'100%',maxWidth:240,height:'auto'}} />
-    <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:8,paddingTop:14,borderTop:'1px solid #DDD5C7',marginTop:12}}><span style={{fontSize:13,color:'#5F6B7A'}}>Hold expires in</span><strong style={{fontSize:24,fontVariantNumeric:'tabular-nums',letterSpacing:.5}}>{remaining}</strong></div>
+  return <div className="ml-qr-ticket" style={{background:'var(--ml-bg)',color:'var(--ml-ink)',fontFamily:uiFont,padding:16,borderRadius:20,alignSelf:'center',width:'100%',maxWidth:280,boxSizing:'border-box'}}>
+    <QRCodeSVG data-testid="claim-qr" value={payload} bgColor="#FFFFFF" fgColor="#000000" size={240} level="M" marginSize={4} title="Show this M-Local claim QR to the restaurant" style={{display:'block',width:'100%',maxWidth:240,height:'auto',background:'#FFFFFF',colorScheme:'light',borderRadius:8}} />
+    <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:8,paddingTop:14,borderTop:'1px solid var(--ml-border)',marginTop:12}}><span style={{fontSize:13,color:'var(--ml-muted)'}}>Hold expires in</span><strong style={{fontSize:24,fontVariantNumeric:'tabular-nums',letterSpacing:.5}}>{remaining}</strong></div>
   </div>;
 }
 
@@ -53,7 +53,7 @@ export function ClaimScanner({resolveClaim, redeemClaim, onRedeemed}) {
       <div className="ml-scan-reticle" aria-hidden="true"/>
     </div>
     {state.message && <p role={state.phase==='error'?'alert':'status'} aria-live="polite" style={{margin:0,lineHeight:1.5}}>{state.message}</p>}
-    {state.preview && <div style={{...box,background:'#F9F6F0',padding:20,borderRadius:20,border:'1px solid #DDD5C7'}}>
+    {state.preview && <div style={{...box,background:'var(--ml-bg)',padding:20,borderRadius:20,border:'1px solid var(--ml-border)'}}>
       <strong>{state.preview.title_snapshot}</strong>
       <strong style={{fontSize:26}}>{price(state.preview.price_cents)}</strong>
       <span>{state.preview.restaurant}</span>

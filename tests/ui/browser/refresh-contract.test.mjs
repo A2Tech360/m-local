@@ -90,6 +90,8 @@ test('feed header keeps refresh and logout, drops the duplicate brand line, and 
   assert.equal(ui.text().includes('M-LOCAL · ANN ARBOR'),false);
   assert.ok(ui.find('Refresh offers'));
   assert.ok(ui.find('Log out'));
+  assert.ok(ui.document.querySelector('[data-testid="app-masthead"]').contains(ui.find('Log out')),'logout is beside the logo');
+  assert.ok(ui.document.querySelector('.ml-feed-toolbar').contains(ui.find('Refresh offers')),'refresh is beside compact filters');
   const tab=ui.find('Nearby')?.closest('[role=button]');
   assert.ok(tab,'the Offers tab is rendered');
   assert.equal(ui.window.getComputedStyle(tab).borderTopLeftRadius,'0px','selected tab indicator is a straight bar, not an arc');

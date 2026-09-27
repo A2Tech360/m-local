@@ -17,7 +17,7 @@ function Section({title, children}) {
   </fieldset>;
 }
 
-export function OfferFilters({price, time, diets, onApply}) {
+export function OfferFilters({price, time, diets, onApply, onRefresh, refreshing=false}) {
   const [open, setOpen] = useState(false);
   const [maximum, setMaximum] = useState(parseMaximum(price));
   const [when, setWhen] = useState(time || 'any');
@@ -27,7 +27,7 @@ export function OfferFilters({price, time, diets, onApply}) {
   const panelId = useId();
   const count = (price ? 1 : 0) + ((time && time !== 'any') ? 1 : 0) + (diets || []).length;
   const maximumLabel = maximum === PRICE_MAX ? 'Any price' : `$${maximum} or less`;
-  const summary = [price ? `$${parseMaximum(price)} or less` : 'Any price', TIMES.find(([key]) => key === time)?.[1] || 'Any time'].join(' · ');
+  const summary = [price ? `$${parseMaximum(price)} or less` : 'Any price', TIMES.find(([key]) => key === time)?.[1] || 'Any time', ...(diets||[])].join(' · ');
 
   function toggle() {
     // Each opening starts from the filters currently applied to the feed.
@@ -53,25 +53,27 @@ export function OfferFilters({price, time, diets, onApply}) {
   }}>
     <style>{`
       .ml-filter-option{box-sizing:border-box;display:flex;align-items:center;gap:6px;min-height:44px;padding:8px;border:1px solid ${ui.line};border-radius:10px;cursor:pointer;font-size:13px;background:${ui.white}}
-      .ml-filter-option:has(input:checked){border-color:${ui.navy};background:#E3ECF7;color:${ui.navy};font-weight:700}
+      .ml-filter-option:has(input:checked){border-color:${ui.navy};background:var(--ml-accent-soft);color:${ui.navy};font-weight:700}
       .ml-filter-option input{width:16px;height:16px;flex-shrink:0;accent-color:${ui.navy};margin:0}
       .ml-filter-time{justify-content:center;border:0;padding:8px 3px;background:transparent;font-size:13px;min-width:0;white-space:nowrap}
       .ml-filter-time input{position:absolute;width:1px;height:1px;opacity:0}
-      .ml-filter-time:has(input:checked){background:${ui.white};box-shadow:0 1px 4px #02305C12}
-      .ml-filter-time:focus-within{outline:3px solid #2365A0;outline-offset:1px}
+      .ml-filter-time:has(input:checked){background:${ui.white};box-shadow:0 1px 4px var(--ml-shadow)}
+      .ml-filter-time:focus-within{outline:3px solid var(--ml-focus);outline-offset:1px}
       .ml-price-slider{box-sizing:border-box;width:100%;height:44px;margin:0;accent-color:${ui.navy};cursor:pointer}
     `}</style>
-    <button ref={trigger} type="button" aria-expanded={open} aria-controls={panelId} onClick={toggle}
-      style={{...formSecondary, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, minHeight:50, padding:'12px 16px', borderRadius:open?'14px 14px 0 0':14}}>
-      <span style={{display:'flex', alignItems:'center', gap:10}}>
+    <div className="ml-feed-toolbar" style={{display:'flex',gap:10,alignItems:'stretch'}}>
+    <button ref={trigger} type="button" aria-expanded={open} aria-controls={panelId} aria-label={`Filters${count?`, ${count} active`:''}: ${summary}`} onClick={toggle}
+      style={{...formSecondary, flex:1, display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, minHeight:50, padding:'12px 10px', fontSize:14, borderRadius:14}}>
+      <span style={{display:'flex', alignItems:'center', gap:6}}>
         <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill={ui.white}/><circle cx="15" cy="17" r="3" fill={ui.white}/></svg>
         Filters
-        {count > 0 && <span style={{borderRadius:6, background:ui.maize, color:ui.navy, fontSize:12, padding:'2px 6px'}}>{count}<span style={{position:'absolute',width:1,height:1,overflow:'hidden'}}> active</span></span>}
+        {count > 0 && <span style={{borderRadius:6, background:ui.maize, color:ui.onMaize, fontSize:12, padding:'2px 6px'}}>{count}<span style={{position:'absolute',width:1,height:1,overflow:'hidden'}}> active</span></span>}
       </span>
-      <span style={{flex:1,minWidth:0,textAlign:'left',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,fontWeight:500,color:ui.muted}}>{summary}</span>
-      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{transform:open?'rotate(180deg)':undefined}}><path d="m6 9 6 6 6-6"/></svg>
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{flexShrink:0,transform:open?'rotate(180deg)':undefined}}><path d="m6 9 6 6 6-6"/></svg>
     </button>
-    {open && <div id={panelId} role="region" aria-label="Offer filters" style={{boxSizing:'border-box',position:'absolute',top:'100%',left:0,right:0,maxHeight:panelHeight,overflow:'hidden', border:`1px solid ${ui.line}`, borderTop:0, borderRadius:'0 0 14px 14px', boxShadow:'0 18px 40px -12px #02305C55', background:ui.white, display:'flex', flexDirection:'column'}}>
+    <button type="button" disabled={refreshing} onClick={()=>{setOpen(false);onRefresh?.();}} style={{...formSecondary,flex:1,minHeight:50,padding:'12px 8px',fontSize:14,whiteSpace:'nowrap'}}>{refreshing?'Refreshing...':'Refresh offers'}</button>
+    </div>
+    {open && <div id={panelId} role="region" aria-label="Offer filters" style={{boxSizing:'border-box',position:'absolute',top:'calc(100% + 8px)',left:0,right:0,maxHeight:panelHeight,overflow:'hidden', border:`1px solid ${ui.line}`, borderRadius:14, boxShadow:'0 18px 40px -12px var(--ml-shadow)', background:ui.white, display:'flex', flexDirection:'column'}}>
       <div style={{overflowY:'auto',minHeight:0,padding:16,display:'flex',flexDirection:'column',gap:16}}>
       <Section title="Maximum price">
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:12}}>

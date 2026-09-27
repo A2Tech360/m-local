@@ -7,23 +7,23 @@ import from "@jac/mobui" { StyleSheet }
 
 
 glob:pub C: dict[str, str] = {
-         "bg": "#F9F6F0",
-         "surface": "#ffffff",
-         "sunken": "#EFE9DE",
-         "border": "#DDD5C7",
-         "ink": "#0B1F38",
-         "text": "#3A4657",
-         "muted": "#5F6B7A",
-         "accent": "#02305C",
-         "accentSoft": "#E3ECF7",
-         "accentText": "#ffffff",
-         "brand": "#02305C",
-         "good": "#1E6B3F",
-         "goodSoft": "#E4F2E8",
-         "warn": "#7A4A00",
-         "warnSoft": "#FFF1CF",
-         "bad": "#B42318",
-         "badSoft": "#FDECEA"
+         "bg": "var(--ml-bg)",
+         "surface": "var(--ml-surface)",
+         "sunken": "var(--ml-sunken)",
+         "border": "var(--ml-border)",
+         "ink": "var(--ml-ink)",
+         "text": "var(--ml-text)",
+         "muted": "var(--ml-muted)",
+         "accent": "var(--ml-accent)",
+         "accentSoft": "var(--ml-accent-soft)",
+         "accentText": "var(--ml-accent-text)",
+         "brand": "var(--ml-accent)",
+         "good": "var(--ml-good)",
+         "goodSoft": "var(--ml-good-soft)",
+         "warn": "var(--ml-warn)",
+         "warnSoft": "var(--ml-warn-soft)",
+         "bad": "var(--ml-bad)",
+         "badSoft": "var(--ml-bad-soft)"
      },
      S: dict[str, int] = {"xs": 4, "sm": 8, "md": 12, "lg": 16, "xl": 20, "xxl": 28},
      R: dict[str, int] = {"sm": 8, "md": 12, "lg": 18, "pill": 999},
@@ -185,7 +185,7 @@ def:pub buildStyles(T: dict[str, str]) -> any {
                 "alignItems": "center"
             },
             "btnGhostText": {"color": T["ink"], "fontWeight": "700", "fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["sm"]},
-            "btnDisabled": {"backgroundColor": "#687787"},
+            "btnDisabled": {"backgroundColor": "var(--ml-disabled)"},
             "link": {"color": T["accent"], "fontWeight": "700", "fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["md"]},
             "msgGood": {
                 "backgroundColor": T["goodSoft"],
@@ -236,7 +236,7 @@ def:pub buildStyles(T: dict[str, str]) -> any {
                 "borderRadius": 0,
                 "gap": 4
             },
-            "tabOn": {"backgroundColor": T["surface"], "borderTopColor": "#FEC809"},
+            "tabOn": {"backgroundColor": T["surface"], "borderTopColor": "var(--ml-maize)"},
             "tabText": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": F["sm"], "fontWeight": "700", "color": T["muted"]},
             "tabTextOn": {"color": T["accent"]},
             "tabSub": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 11, "color": T["muted"]},
@@ -249,11 +249,11 @@ def:pub buildStyles(T: dict[str, str]) -> any {
             "masthead": {"paddingHorizontal": 20, "paddingTop": 16, "paddingBottom": 4, "flexDirection": "row", "alignItems": "center", "justifyContent": "space-between", "gap": 12},
             "sessionPanel": {"marginHorizontal": 20, "marginTop": 12, "padding": 16, "gap": 12, "borderRadius": 18, "backgroundColor": T["surface"], "borderWidth": 1, "borderColor": T["border"]},
             "filterPanel": {"padding": 14, "gap": 12, "backgroundColor": T["surface"], "borderRadius": 16, "borderWidth": 1, "borderColor": T["border"]},
-            "claimPass": {"backgroundColor": T["brand"], "padding": 20, "borderRadius": 24, "gap": 14},
-            "claimHeading": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 22, "fontWeight": "800", "color": "#F9F6F0", "letterSpacing": -0.3},
-            "claimBody": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 15, "color": "#F9F6F0", "lineHeight": 22},
-            "claimLabel": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 12, "fontWeight": "800", "color": "#FEC809", "letterSpacing": 0.7},
-            "claimPrice": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 32, "fontWeight": "800", "color": "#F9F6F0"},
+            "claimPass": {"backgroundColor": "var(--ml-ticket)", "padding": 20, "borderRadius": 24, "gap": 14},
+            "claimHeading": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 22, "fontWeight": "800", "color": "var(--ml-ticket-text)", "letterSpacing": -0.3},
+            "claimBody": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 15, "color": "var(--ml-ticket-text)", "lineHeight": 22},
+            "claimLabel": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 12, "fontWeight": "800", "color": "var(--ml-maize)", "letterSpacing": 0.7},
+            "claimPrice": {"fontFamily": "Figtree, system-ui, sans-serif", "fontSize": 32, "fontWeight": "800", "color": "var(--ml-ticket-text)"},
             "divider": {"height": 1, "backgroundColor": T["border"]}
         }
     );
@@ -269,7 +269,7 @@ def:pub statusColors(state: str) -> list[str] {
         return [C["warnSoft"], C["warn"]];
     }
     if state == "redeemed" {
-        return ["#e7f0fb", C["brand"]];
+        return [C["accentSoft"], C["brand"]];
     }
     return [C["badSoft"], C["bad"]];
 }
