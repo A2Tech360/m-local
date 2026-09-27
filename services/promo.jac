@@ -36,6 +36,8 @@ import from services.qr_catalog { _ensure_seed }
 import from services.qr { new_qr_payload, valid_qr_payload }
 import from services.money { money_to_cents }
 import from services.session { _actor_id, _merchant_for_actor }
+import from services.context_models { AccessContextView }
+import from services.context { get_access_context }
 
 
 glob LOCK_PATH: str = os.path.join(tempfile.gettempdir(), "m-local-mutations.lock");
@@ -93,7 +95,8 @@ obj OfferView {
         my_eligibility: str = "",
         my_expires_ts: float = 0.0,
         my_status: str = "",
-        my_expires: str = "";
+        my_expires: str = "",
+        access_context: AccessContextView = AccessContextView();
 }
 
 # Merchant history contains no actor identifier or redemption credential.
@@ -397,6 +400,7 @@ def _view(
         dietary=o.dietary,
         menu_item=o.menu_item,
         is_demo=o.is_demo,
+        access_context=get_access_context(jid(loc), now) if loc else AccessContextView(),
         fits=fits,
         reasons=reasons
     );
