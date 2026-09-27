@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {app,held,offer,rpc,until} from './harness.mjs';
 
 const card=(name,kind,extra={})=>({name,kind,what:'Fixture place',meters:300,distance:'0.2 mi',minutes:4,deal:'',deal_offer_id:'',is_sample:true,adults_only:kind==='bars',...extra});
-const nearby=()=>({ok:true,heading:'What now?',origin:'Fixture Kitchen (Demo)',has_samples:true,note:'',groups:[
+const nearby=()=>({ok:true,heading:'What now?',origin:'Fixture Kitchen (Demo)',has_samples:true,note:'Sample places with invented distances and deals.',groups:[
  {kind:'activity',label:'Activities',cards:[card('First Books (Sample)','activity'),card('Second Records (Sample)','activity',{distance:'0.4 mi',minutes:8}),card('Third Gallery (Sample)','activity')]},
  {kind:'coffee',label:'Coffee',cards:[card('Listed Cafe','coffee',{deal:'Deal on now: $3 oat latte',deal_offer_id:'listed-offer',is_sample:false}),card('Plain Coffee (Sample)','coffee')]},
  {kind:'dessert',label:'Dessert',cards:[card('Cone Stand (Sample)','dessert',{deal:'Sample deal: Free topping with a cone'})]},
@@ -38,7 +38,8 @@ test('a redeemed claim shows four cards, two to a line, one per kind, with dista
   assert.ok(square(ui,'Activities').textContent.includes('Fixture place'));assert.ok(square(ui,'Activities').textContent.includes('0.2 mi · 4 min walk'));
   assert.ok(square(ui,'Coffee').textContent.includes('Deal on now: $3 oat latte'));assert.ok(square(ui,'Dessert').textContent.includes('Sample deal: Free topping with a cone'));
   assert.ok(square(ui,'Bars').textContent.includes('Bars · 21+'));assert.equal(square(ui,'Coffee').textContent.includes('21+'),false);
-  assert.ok(ui.text().includes('Sample places'));assert.ok(ui.text().includes('A short walk from Fixture Kitchen, nearest first.'));
+  assert.ok(ui.text().includes('Sample places'));assert.ok(ui.text().includes('Demo suggestions around Fixture Kitchen.'));
+  assert.ok(ui.text().includes('Sample places with invented distances and deals.'));
   assert.deepEqual(ui.calls.filter(c=>c.name==='nearby_after').map(c=>c.body),[{offer_id:'fixture-offer'}]);
   assert.equal(ui.document.querySelector('button button'),null);
   const region=ui.document.querySelector('[data-testid="what-now"]');

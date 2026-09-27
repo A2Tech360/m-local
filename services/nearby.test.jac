@@ -123,7 +123,7 @@ test "sample places stay hidden unless demo mode is on" {
     assert not hidden.has_samples;
     assert not [c for g in hidden.groups for c in g.cards if c.is_sample];
     assert hidden.ok == (len(hidden.groups) > 0);
-    assert hidden.groups != [] or hidden.note == "No nearby places are listed yet.";
+    assert hidden.groups == [] and not hidden.ok;
     missing = _nearby("no-such-offer", now, True);
     assert not missing.ok and missing.groups == [] and missing.note == "That offer no longer exists.";
 }
@@ -142,4 +142,42 @@ test "reading the suggestions changes nothing" {
     }
     assert before == [[o.title, o.quantity, len([c for c in [o ->:ClaimedAs:->]])] for r in [root.shared -->[?:Restaurant]] for o in [r ->:Publishes:->]];
     assert places == len([r for r in [root.shared -->[?:Restaurant]]]);
+}
+
+test "unverified real locations never produce walking suggestions" {
+    _ensure_seed();
+    now = time.time();
+    oid = _offer_at("maize-noodle-lab", now);
+    cafe = _place("arbor-leaf-kitchen");
+    origin = _place("maize-noodle-lab");
+    cafe_offer = _find_offer(_offer_at("arbor-leaf-kitchen", now));
+    origin_offer = _find_offer(oid);
+    assert cafe_offer is not None and origin_offer is not None;
+    original_cafe_offer_demo = cafe_offer.is_demo;
+    original_origin_offer_demo = origin_offer.is_demo;
+    original_cafe_demo = cafe.is_demo;
+    original_origin_demo = origin.is_demo;
+    try {
+        cafe.is_demo = False;
+        live = _nearby(oid, now, False);
+        assert not live.ok and live.groups == [];
+        demo = _nearby(oid, now, True);
+        assert demo.ok;
+        assert cafe.name not in [c.name for g in demo.groups for c in g.cards];
+        cafe.is_demo = True;
+        cafe_offer.is_demo = False;
+        mixed = _nearby(oid, now, True);
+        assert jid(cafe_offer) not in [c.deal_offer_id for g in mixed.groups for c in g.cards];
+        origin_offer.is_demo = False;
+        assert not _nearby(oid, now, True).ok;
+        origin_offer.is_demo = original_origin_offer_demo;
+        origin.is_demo = False;
+        real_origin = _nearby(oid, now, True);
+        assert not real_origin.ok and real_origin.groups == [];
+    } finally {
+        cafe_offer.is_demo = original_cafe_offer_demo;
+        origin_offer.is_demo = original_origin_offer_demo;
+        cafe.is_demo = original_cafe_demo;
+        origin.is_demo = original_origin_demo;
+    }
 }

@@ -44,7 +44,8 @@ export function WhatNow({offerId,load,onOpenDeal}) {
    <h2 id="ml-whatnow-title" style={{fontSize:18,fontWeight:800,margin:0,color:ink,fontFamily:font}}>{view.heading||'What now?'}</h2>
    {view.has_samples&&<span style={{fontSize:12,color:muted,fontWeight:700,letterSpacing:.8,textTransform:'uppercase'}}>Sample places</span>}
   </div>
-  <p style={{fontSize:13,margin:0,color:muted,lineHeight:'19px'}}>A short walk from {plainName(view.origin)}, nearest first. Tap a card to see the next place.</p>
+  <p style={{fontSize:13,margin:0,color:muted,lineHeight:'19px'}}>Demo suggestions around {plainName(view.origin)}. Tap a card to see the next place.</p>
+  {view.note&&<p style={{fontSize:13,margin:0,color:muted,lineHeight:'19px'}}>{view.note}</p>}
   <ul className="ml-whatnow-grid" style={{...grid,listStyle:'none',margin:0,paddingLeft:0}}>
    {view.groups.map(group=>{
     const index=(at[group.kind]||0)%group.cards.length,place=group.cards[index];

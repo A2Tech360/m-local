@@ -6,7 +6,8 @@ nearest place comes first and at most four are shown. A place with a live
 deal in the app says so and links to it; when one is within a walk but not
 among the nearest four, it takes the fourth spot.
 
-Sample places appear only when the server turns demo mode on. Reading this
+All coordinates are invented: suggestions require server demo mode, a demo
+origin and demo destinations/offers. Real listings wait for verified locations. Reading this
 never writes anything and never records who looked.
 """
 
@@ -141,15 +142,15 @@ def _price(cents: int) -> str {
 }
 
 
-"""Listed places with a deal running right now, other than the one just
-visited. Sample listings are left out unless demo mode is on."""
+"""Demo places with a demo deal running now, other than the one just visited.
+Real businesses never receive invented coordinates for these cards."""
 def listed_cards(origin_slug: str, lat: float, lng: float, now: float, samples: bool) -> list[NearbyCard] {
     out: list[NearbyCard] = [];
     for r in [root.shared -->[?:Restaurant]] {
-        if r.slug == origin_slug or (r.is_demo and not samples) {
+        if not samples or not r.is_demo or r.slug == origin_slug {
             continue;
         }
-        live = [o for o in [r ->:Publishes:->] if _state(o, now) == "active" and _remaining(o, now) > 0 and (samples or not o.is_demo)];
+        live = [o for o in [r ->:Publishes:->] if _state(o, now) == "active" and _remaining(o, now) > 0 and o.is_demo];
         if not live {
             continue;
         }
@@ -202,6 +203,9 @@ def _nearby(offer_id: str, now: float, samples: bool) -> NearbyView {
     r = _restaurant_of(o) if o is not None else None;
     if o is None or r is None {
         return NearbyView(note="That offer no longer exists.");
+    }
+    if not samples or not r.is_demo or not o.is_demo {
+        return NearbyView(origin=r.name, note="Walking suggestions require verified locations. Demo cards are available only for demo offers.");
     }
     loc = _location_of(r);
     here = position_of(r.slug, loc.neighborhood if loc else "");
