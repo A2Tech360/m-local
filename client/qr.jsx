@@ -2,7 +2,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {QRCodeSVG} from 'qrcode.react';
 import {BrowserQRCodeReader} from '@zxing/browser';
 import {createScanController, isClaimPayload} from './scan-controller.mjs';
-import {uiFont, formButton, formSecondary} from './ui.jsx';
+import {uiFont, formButton, formSecondary} from './ui.js';
 
 const box = {display:'flex',flexDirection:'column',gap:16,color:'var(--ml-ink)',fontFamily:uiFont};
 const button = formButton;
@@ -48,8 +48,8 @@ export function ClaimScanner({resolveClaim, redeemClaim, onRedeemed}) {
   return <section aria-label="Scan a student claim" style={box}>
     <p style={{margin:0,lineHeight:1.5}}>Scan the student’s QR, review the saved offer, then confirm redemption.</p>
     <div className="ml-scan-window">
-      <video ref={video} muted playsInline aria-label="QR camera preview" style={{width:'100%',maxHeight:320,background:'#0E1622',display:active?'block':'none'}} />
-      {!active&&<div style={{textAlign:'center',padding:54,color:'#F9F6F0',lineHeight:1.5}}><strong style={{display:'block',fontSize:20,marginBottom:8}}>Scan a student’s QR</strong><span style={{fontSize:14,color:'#C9D4E2'}}>Review the saved offer before confirming.</span></div>}
+      <video ref={video} muted playsInline aria-label="QR camera preview" style={{width:'100%',maxHeight:320,background:'var(--ml-camera-bg)',display:active?'block':'none'}} />
+      {!active&&<div style={{textAlign:'center',padding:54,color:'var(--ml-camera-ink)',lineHeight:1.5}}><strong style={{display:'block',fontSize:20,marginBottom:8}}>Scan a student’s QR</strong><span style={{fontSize:14,color:'var(--ml-camera-muted)'}}>Review the saved offer before confirming.</span></div>}
       <div className="ml-scan-reticle" aria-hidden="true"/>
     </div>
     {state.message && <p role={state.phase==='error'?'alert':'status'} aria-live="polite" style={{margin:0,lineHeight:1.5}}>{state.message}</p>}
@@ -65,6 +65,6 @@ export function ClaimScanner({resolveClaim, redeemClaim, onRedeemed}) {
     </div>}
     {!active && !state.preview && <button style={button} type="button" onClick={()=>controller.current?.start(video.current)}>{state.phase==='success'?'Scan next claim':state.phase==='error'?'Retry camera scan':'Start camera scan'}</button>}
     {(active || state.preview) && <button style={secondary} type="button" disabled={confirming} onClick={()=>controller.current?.cancel()}>Cancel scan</button>}
-    <small style={{lineHeight:1.5}}>Camera access needs permission. A remote phone needs HTTPS; localhost on the merchant laptop is the first camera test path.</small>
+    <small style={{lineHeight:1.5,color:'var(--ml-muted)'}}>Allow camera access when prompted. Scanning an offer does not redeem it until you confirm.</small>
   </section>;
 }

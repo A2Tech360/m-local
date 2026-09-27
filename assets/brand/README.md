@@ -5,7 +5,7 @@ generator from the compact reference on 2026-09-27. Both app themes use this one
 master through a CSS alpha mask: navy/cream lettering and a maize destination
 square, with identical geometry and no baked-in background. The detached square
 occupies x=30–42%, y=0–32% of the canvas; the two complementary CSS clips in
-`client/ui.jsx` color it separately. Preserve that alignment when replacing the
+`client/ui.jac` color it separately. Preserve that alignment when replacing the
 master. The original PNGs remain available as source references.
 
 Final generation prompt (built-in image generation, transparent background):

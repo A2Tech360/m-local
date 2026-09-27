@@ -1,6 +1,7 @@
 # Themes, business pages, and compact phone controls
 
-Branch: `codex/themes-business-profile`, based on `main` at `0091778`.
+Branch: `codex/themes-business-profile`, initially based on `0091778` and now
+updated with `main` at `9a2980e`, including the Ann Arbor dataset increment.
 
 ## Intent and implementation plan
 
@@ -96,26 +97,63 @@ fixture setup against the public demo or shared account store.
 
 ## Jac language inventory
 
-The [official A2Tech guide](https://jachacks.org/a2tech-guide/), rechecked on
-2026-09-27, requires meaningful Jac use and at least 40% Jac, but does not define
-whether percentages use lines, bytes, or which test/tooling files count.
+Travis confirmed that GitHub's language bar is the acceptance measure. GitHub
+uses source bytes, not our earlier application-only or nonblank-line counts.
+The [official A2Tech guide](https://jachacks.org/a2tech-guide/) requires meaningful
+Jac use and at least 40% Jac. Recheck the actual submission commit.
 
-At `f8902d6`, counting tracked source files (excluding assets, dependencies, build
-output, data, and documentation):
+GitHub's main inventory at `9a2980e` is Jac 270,440 bytes, Python 281,317,
+JavaScript 212,112, PowerShell 32,634, Shell 18,575, and Batchfile 632: **33.15% Jac**.
+Our Git-blob inventory matches all six API totals exactly, including Python type
+stubs and Linguist's default exclusion of generated TypeScript declarations.
+`scripts/check-jac-share.py` records this repository-specific mapping and CI
+requires at least 40% on the actual commit being tested. Recheck the mapping when
+adding languages or vendored code. No Linguist classification overrides were added.
 
-| Scope | Jac nonblank lines / total | Jac by nonblank lines | Jac by bytes |
-| --- | ---: | ---: | ---: |
-| App: main/theme, client, services; excluding tests and declarations | 4,301 / 6,101 | 70.50% | 57.47% |
-| All source, including tests, declarations, and hosting/tooling scripts | 5,812 / 14,046 | 41.38% | 33.41% |
+The migration moves actual onboarding, account, business-page, offer-editor,
+filter, Insights, and shared presentation components into native Jac. Browser
+camera and theme adapters remain JavaScript. Authorization, graph models,
+offers, claims, and redemption retain their existing Jac implementation; email,
+storage, import, and analytics support remain Python. Tests and operational code
+continue to count. No tests were removed or source padded to change the ratio.
 
-Source extensions counted: `.jac`, `.jsx`, `.mjs`, `.js`, `.py`, `.ts`, `.tsx`,
-`.sh`, `.ps1`, `.cmd`, `.html`, `.css`. Nonblank lines include comments. App scope
-does not include `.test.*` or `.d.ts` files. Byte counts use the files on disk.
+Follow-up plan:
 
-Jac owns the entry point, graph models, authorization orchestration, offers,
-claims, redemption, and business-profile endpoint. JSX handles selected client
-components; Python supports email, onboarding storage, imports, and analytics.
-This demonstrates substantial Jac use, but is not an unconditional eligibility
-claim: the all-source byte share is below 40%. Confirm the organizer's counting
-method and rerun the inventory on the submission commit. Do not remove tests,
-pad source, or change file classification to manufacture a percentage.
+- [x] Convert onboarding/account, business profile, offer editor/filters, Insights,
+  and shared UI primitives into real Jac components.
+- [x] Audit shared theme use, including camera framing and the downloadable recap.
+- [x] Run source/build, compiled interaction suites, and responsive checks.
+- [x] Verify the final committed byte share exceeds 40% after latest main integration.
+
+The downloaded recap uses the same navy/maize palette and follows the viewer's
+device theme. It stays self-contained, with a system sans-serif fallback when
+Figtree is unavailable. Export data and replay behavior are unchanged.
+
+GitHub's visible repository language bar reflects its default branch; it will
+continue to show main's inventory until this branch is merged and Linguist
+refreshes it. The branch gate does not change that public bar.
+
+### Native Jac migration verification
+
+The final source tree contains **374,741 Jac bytes / 912,955 source bytes = 41.05%**.
+The Git-blob check includes the new dataset code from main. Reproduce with
+`python scripts/check-jac-share.py --min-jac 40` after checking out the commit.
+
+- Jac 0.37.23 project check and full production build passed. The final local
+  preview is `/tmp/m-local-jac-ui.jb0mt7`, served at `http://localhost:8155`.
+- All 129 compiled frontend, helper, tooling, and analytics tests passed. Native
+  Insights coverage includes range switches, replay, stale responses, retry,
+  retaining the last recording on failure, and full-period recap export.
+- The unchanged backend passed all 274 isolated core tests during this migration.
+  All 18 dataset tests also passed after incorporating latest main.
+- Final native UI: 132 screenshots at 320/390/1440 pixels across both themes,
+  with no page errors or horizontal/control overflow. Includes verification,
+  business onboarding, tastes, editor, scanner, and empty/error states.
+- Real CSS interpolation, fixed logo bounds, dark-card accent reversal, and
+  reduced-motion overrides passed. Downloaded recaps also passed phone-width
+  light/dark rendering plus reset/period-total interaction checks while offline.
+- Independent generated-code review caught and corrected a Jac string-comprehension
+  lowering issue in verification input before this branch was pushed. Existing
+  login/re-login tests verify the explicit character-loop replacement.
+
+Physical iPhone Safari and camera hardware remain separate device checks.

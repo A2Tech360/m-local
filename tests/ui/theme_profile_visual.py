@@ -10,7 +10,7 @@ from refresh_visual import analytics
 def run(url, output):
     output.mkdir(parents=True, exist_ok=True)
     errors, shots, requests = [], [], []
-    role = 'guest'
+    role, scenario = 'guest', 'normal'
     item = dict(id='visual-offer', title='Harvest bowl for $8', description='Roasted seasonal vegetables, warm grains and lemon tahini.',
                 restaurant='Arbor Leaf Kitchen', cuisine='Seasonal bowls', price=8, regular_price=12,
                 address='120 Example Street, Ann Arbor', neighborhood='Kerrytown', state='active', remaining=5, quantity=8,
@@ -35,15 +35,36 @@ def run(url, output):
             session = dict(authenticated=role!='guest', actor_id='visual-user', role=role,
                            restaurant_id='visual-node-id', display_name='Jordan Smith', is_demo=False, email_verified=role!='guest')
             tastes = dict(ok=True, message='', completed=True, signed_in=True, categories=[], diets=[], favorites=[], price_range='',
-                          all_categories=[], all_diets=[], all_price_ranges=[])
+                          all_categories=[dict(key='bowls',label='Bowls')], all_diets=[dict(key='vegan',label='Vegan')],
+                          all_price_ranges=[dict(key='5to8',label='$5 to $8')])
+            draft = dict(ok=True,message='',status='draft',name='',cuisine='',description='',address='',website='',
+                         menu_text='',menu_url='',image_url='',image_urls=[],menu_urls=[],sources=[])
             values = dict(current_session=session, get_business_profile=business, get_offer=item,
                           home_feed=dict(signed_in=True,personalized=True,completed=True,price_range='',favorites=[],show_samples=False,
                                          items=[dict(offer=item,place='arbor-leaf',place_labels=['Vegan'],categories=[],price_cents=800,
                                                      regular_cents=1200,price_range='',reasons=[],slot='more',is_favorite=False)],total_deals=1,note=''),
                           merchant_portal=dict(**{key:value for key,value in business.items() if key!='slug'},claims=[]),
                           get_account_profile=dict(ok=True,message='',display_name='Jordan Smith',email='jordan@example.test',role=role,email_verified=True,is_demo=False),
+                          get_business_draft=draft,
+                          request_email_code=dict(ok=True,challenge='synthetic-challenge',email='jordan@umich.edu',retry_after=60,message=''),
+                          verify_email_code=dict(ok=False,message='That code is invalid or expired.'),
                           taste_choices=tastes,save_taste=tastes,toggle_favorite=tastes,
-                          merchant_insights=analytics(30),offer_defaults=['2026-09-27 11:00','2026-09-27 15:00'])
+                          merchant_insights=analytics((route.request.post_data_json or {}).get('days',30)),
+                          offer_defaults=['2026-09-27 11:00','2026-09-27 15:00'])
+            if scenario=='empty-feed':
+                values['home_feed']=dict(values['home_feed'],items=[],total_deals=0)
+            if scenario=='profile-empty':
+                values['get_business_profile']=dict(business,offers=[])
+            if scenario=='profile-missing':
+                values['get_business_profile']=dict(ok=False,message='Not found.')
+            if scenario=='account-error':
+                values['get_account_profile']=dict(ok=False,message='Could not load your account. Try again.')
+            if scenario=='insights-empty':
+                data=values['merchant_insights']
+                for frame in data['frames']:
+                    frame['totals']=dict.fromkeys(frame['totals'],0)
+                    frame['daily']=dict.fromkeys(frame['daily'],0)
+                    frame['offers']=[]
             if name not in values:
                 errors.append('Unexpected RPC: '+name)
                 route.fulfill(status=500,json=dict(error='Unexpected fixture request'))
@@ -52,9 +73,9 @@ def run(url, output):
 
         page.route('**/function/**', rpc)
 
-        def load(next_role, theme):
-            nonlocal role
-            role = next_role
+        def load(next_role, theme, next_scenario='normal'):
+            nonlocal role, scenario
+            role, scenario = next_role, next_scenario
             page.goto(url)
             page.evaluate('([role,theme])=>{localStorage.clear();localStorage.setItem("mlocal_theme",theme);if(role!=="guest")localStorage.setItem("jac_token","synthetic-token")}', [role,theme])
             page.reload()
@@ -68,6 +89,7 @@ def run(url, output):
             logo = page.get_by_role('img',name='M Local',exact=True).first
             assert logo.is_visible(), 'Logo missing: '+name
             assert page.evaluate('''async()=>{const image=new Image();image.src='/static/assets/brand/logo-master.png';await image.decode();return image.naturalWidth>0;}'''), 'Logo mask failed: '+name
+            assert page.evaluate('''()=>[...document.querySelectorAll('button,input,select,textarea')].filter(el=>el.getBoundingClientRect().width>0).every(el=>getComputedStyle(el).fontFamily.includes('Figtree'))'''), 'Inconsistent control typography: '+name
             page.screenshot(path=str(output/f'{name}.png'), full_page=True)
             shots.append(name)
 
@@ -104,7 +126,21 @@ def run(url, output):
                 page.get_by_role('button',name='Find local deals').click()
                 page.get_by_placeholder('Your name').wait_for()
                 capture(prefix+'-signin')
+                page.get_by_placeholder('Your name').fill('Jordan Smith')
+                page.get_by_placeholder('uniqname').fill('jordan')
+                page.get_by_role('button',name='Send verification code',exact=True).click()
+                page.get_by_label('Verification code',exact=True).wait_for()
+                capture(prefix+'-verification')
+                page.get_by_label('Verification code',exact=True).fill('123456')
+                page.get_by_role('button',name='Verify and continue',exact=True).click()
+                page.get_by_text('That code is invalid or expired.',exact=True).wait_for()
+                capture(prefix+'-verification-error')
                 load('student',theme)
+                page.get_by_text(item['title'],exact=True).wait_for()
+                page.get_by_role('button',name='Edit my tastes',exact=True).click()
+                page.get_by_role('button',name='Save my tastes',exact=True).wait_for()
+                capture(prefix+'-tastes')
+                page.get_by_role('button',name='Save my tastes',exact=True).click()
                 page.get_by_text(item['title'],exact=True).wait_for()
                 toolbar=page.locator('.ml-feed-toolbar')
                 filter_button=toolbar.locator('button[aria-expanded]')
@@ -135,12 +171,39 @@ def run(url, output):
                 page.get_by_role('button',name='Manage Offers',exact=True).click()
                 page.get_by_role('button',name='View business page',exact=True).wait_for()
                 capture(prefix+'-manage')
+                page.get_by_role('button',name='New offer',exact=True).click()
+                page.get_by_placeholder('Lunch bowl for $7').wait_for()
+                capture(prefix+'-offer-editor')
+                page.get_by_role('button',name='Cancel',exact=True).click()
                 page.get_by_role('button',name='View business page',exact=True).click()
                 page.get_by_role('heading',name='Arbor Leaf Kitchen',exact=True).wait_for()
                 capture(prefix+'-owner-preview')
                 page.get_by_role('button',name='Account You',exact=True).click()
                 page.get_by_label('Appearance').wait_for()
                 capture(prefix+'-account')
+                page.get_by_role('button',name='Redeem Scan',exact=True).click()
+                page.get_by_role('button',name='Start camera scan',exact=True).wait_for()
+                capture(prefix+'-scanner')
+                load('business',theme)
+                business_trigger=page.get_by_role('button',name='Business profile',exact=True)
+                if business_trigger.count(): business_trigger.click()
+                page.get_by_placeholder('Business name').wait_for()
+                capture(prefix+'-business-onboarding')
+                load('student',theme,'empty-feed')
+                page.get_by_text('Offers are on their way',exact=True).wait_for()
+                capture(prefix+'-empty-feed')
+                for state in ('profile-empty','profile-missing'):
+                    load('student',theme,state)
+                    page.get_by_role('button',name='View Arbor Leaf Kitchen business profile',exact=True).click()
+                    page.get_by_text('No offers right now' if state=='profile-empty' else 'Business unavailable',exact=True).wait_for()
+                    capture(prefix+'-'+state)
+                load('merchant',theme,'insights-empty')
+                page.get_by_text('Your next redemption starts the story.',exact=True).wait_for()
+                capture(prefix+'-insights-empty')
+                load('student',theme,'account-error')
+                page.get_by_role('button',name='Account You',exact=True).click()
+                page.get_by_role('button',name='Retry account',exact=True).wait_for()
+                capture(prefix+'-account-error')
         assert not errors, errors
         (output/'report.json').write_text(json.dumps(dict(url=url,screenshots=shots,page_errors=errors,rpc_count=len(requests)),indent=2))
         browser.close()

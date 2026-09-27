@@ -51,20 +51,20 @@ import from "@jac/mobui" {
 import from .theme { C, buildStyles, statusColors, money }
 import from .services.session { SessionView }
 import from .client.session { signOut, loadSession, acceptEmailToken }
-import from "./client/onboarding.jsx" { EmailOnboarding, BusinessOnboarding, AudienceWelcome, audienceForSession }
-import from "./client/account-profile.jsx" { AccountProfile }
-import from "./client/offer-editor.jsx" { OfferEditor }
+import from .client.onboarding { EmailOnboarding, BusinessOnboarding, AudienceWelcome, audienceForSession }
+import from .client.account_profile { AccountProfile }
+import from .client.offer_editor { OfferEditor }
 import from "./client/qr.jsx" { ClaimQr, ClaimScanner }
-import from "./client/insights.jsx" { BusinessInsights }
+import from .client.insights { BusinessInsights }
 # Include the JSX helper explicitly for Jac 0.37.23.
 import from "./client/insights-support.mjs" { normalizeInsights }
 import from "./client/scan-controller.mjs" { isClaimPayload }
 import from "./client/feed-support.jsx" { useFeedRefresh }
 import from "./client/feed-validation.mjs" { validateHomeFeed }
-import from "./client/offer-filters.jsx" { OfferFilters }
-import from "./client/ui.jsx" { BrandLogo, UiFoundation, ThemeControl, NavIcon, StockBar }
+import from .client.offer_filters { OfferFilters }
+import from .client.ui { BrandLogo, UiFoundation, ThemeControl, NavIcon, StockBar }
 import from "./client/theme.mjs" { createThemeStore }
-import from "./client/business-profile.jsx" { BusinessProfile }
+import from .client.business_profile { BusinessProfile }
 
 
 glob styles = buildStyles(C);
@@ -1041,7 +1041,7 @@ def:pub app -> JsxElement {
     }
 
     def TabButton(id: str, label: str, sub: str) -> JsxElement {
-        on = tab == id or (id == "insights" and tab == "discover" and session and session.role == "merchant");
+        on = bool(tab == id or (id == "insights" and tab == "discover" and session and session.role == "merchant"));
         return <Pressable accessibilityRole="button" accessibilityState={{"selected": on}} style={[styles.tab, styles.tabOn if on else {}]} disabled={busy} onPress={lambda { goTab(id); }}>
             <NavIcon name={id} active={on} />
             <Text style={[styles.tabText, styles.tabTextOn if on else {}]}>{label}</Text>
