@@ -80,3 +80,19 @@ test('filter dropdown applies an actual maximum price, time and diet, then clear
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
 });
+
+test('feed header keeps refresh and logout, drops the duplicate brand line, and counts one deal correctly',async()=>{
+ const ui=await app({verified:true});
+ try{
+  await until(()=>ui.find('Current bowl'));
+  await until(()=>ui.text().includes('Showing 1 deal.'));
+  assert.equal(ui.text().includes('1 deals'),false);
+  assert.equal(ui.text().includes('M-LOCAL · ANN ARBOR'),false);
+  assert.ok(ui.find('Refresh offers'));
+  assert.ok(ui.find('Log out'));
+  const tab=ui.find('Nearby')?.closest('[role=button]');
+  assert.ok(tab,'the Offers tab is rendered');
+  assert.equal(ui.window.getComputedStyle(tab).borderTopLeftRadius,'0px','selected tab indicator is a straight bar, not an arc');
+  assert.deepEqual(ui.errors,[]);
+ }finally{ui.close();}
+});

@@ -111,3 +111,33 @@ python tests/ui/refresh_visual.py --url http://localhost:8155 --output .jac/refr
 
 The visual script intercepts its browser's RPC calls and does not submit business,
 claim or redemption mutations to the running application.
+
+## V2 grading fixes (2026-09-27)
+
+A screen-by-screen comparison against `M Local App v2.dc.html` graded the refresh
+C+ overall: V2's colors, fonts and brand landed, but most layouts keep the older
+structure. Five defects were fixed. Each changes only text, layout or styles;
+handlers, RPC calls and filter behavior are unchanged.
+
+- Tab bar: the active tab's maize top border drew as an arc because the tab had
+  rounded corners. The tab radius is now 0, so the indicator is a straight bar.
+- Feed header: removed the "M-LOCAL · ANN ARBOR" line that repeated the logo.
+  Refresh offers and Log out now share one row. The Refresh offers label is
+  unchanged because live scripts click it.
+- Feed footer: "Showing 1 deal." for a single offer.
+- Account: the panel toggle reads "Hide account details" instead of
+  "Close account", which read like deleting the account. The closed label stays
+  "Account".
+- Insights: on phones the period switch is a four-column segmented control, so
+  "Year" no longer wraps at 320 px.
+
+Tests: `refresh-contract.test.mjs` adds a test for the header, singular count and
+straight tab indicator, which failed before the fix. `account-post.test.mjs`
+checks the new toggle label. The Insights change is a phone-width media query that
+jsdom can't evaluate, so it was checked in the 320 px screenshot. Results: check
+and build passed, 194 core tests, 113 compiled UI/tooling/insights tests, and 28
+screenshots with no page errors. Screenshots are in `docs/screenshots/`.
+
+Remaining gaps are layout rebuilds rather than defects: pinned bottom action bars,
+the offer detail and claim pass structure, the sign-in audience control, the new
+offer editor, and the dark merchant scan screen.

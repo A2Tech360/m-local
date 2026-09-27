@@ -40,7 +40,8 @@ test('account edit persists on reopen, refreshes session name, and cannot edit e
   ui.fill('Display name','Updated fixture');ui.click('Save account');await until(()=>ui.text().includes('Account profile saved.'));
   await until(()=>ui.find('Updated fixture'));
   assert.deepEqual(ui.calls.find(c=>c.name==='save_account_profile').body,{display_name:'Updated fixture'});
-  ui.click('Close account');await until(()=>!ui.document.querySelector('[placeholder="Display name"]'));
+  assert.equal(ui.find('Close account'),undefined);
+  ui.click('Hide account details');await until(()=>!ui.document.querySelector('[placeholder="Display name"]'));
   ui.click('Account');await until(()=>ui.document.querySelector('[placeholder="Display name"]')?.value==='Updated fixture');
   ui.fill('Display name','Not saved');ui.click('Cancel changes');
   await until(()=>ui.document.querySelector('[placeholder="Display name"]')?.value==='Updated fixture');

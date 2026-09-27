@@ -706,7 +706,7 @@ def:pub app -> JsxElement {
                 {(<BusinessOnboarding key={session.actor_id} getDraft={get_business_draft} importWebsite={import_business_website} saveDraft={save_business_draft} onActivated={openActivatedBusiness} />) if businessOpen else <View style={styles.hidden} />}
             </View>) if session.email_verified and session.role == "business" else <View style={styles.hidden} />}
             <View style={styles.section}>
-                <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { accountOpen = not accountOpen; }}><Text style={styles.btnGhostText}>{"Close account" if accountOpen else "Account"}</Text></Pressable>
+                <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { accountOpen = not accountOpen; }}><Text style={styles.btnGhostText}>{"Hide account details" if accountOpen else "Account"}</Text></Pressable>
                 {(<AccountProfile key={session.actor_id} getProfile={get_account_profile} saveProfile={save_account_profile} onSaved={refreshAccount} />) if accountOpen else <View style={styles.hidden} />}
                 {(<Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { tab = "discover"; openTastes(); }}><Text style={styles.btnGhostText}>Edit my tastes</Text></Pressable>) if session.role == "student" else <View style={styles.hidden} />}
                 <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={authBusy} onPress={lambda { logout(); }}><Text style={styles.btnGhostText}>Log out of M-Local</Text></Pressable>
@@ -772,13 +772,10 @@ def:pub app -> JsxElement {
         return <View style={styles.content}>
             <View style={styles.header}>
                 <View style={[styles.rowBetween, {"flexWrap": "wrap", "gap": 8}]}>
-                    <Text style={styles.brand}>M-LOCAL · ANN ARBOR</Text>
-                    {(<Pressable accessibilityRole="button" onPress={lambda { openSignIn(); }}><Text style={styles.link}>Sign in</Text></Pressable>) if not signedIn else LogoutLink()}
-                </View>
-                <View style={styles.row}>
                     <Pressable accessibilityRole="button" style={styles.btnGhost} disabled={loading} onPress={lambda { refresh(); }}>
                         <Text style={styles.btnGhostText}>{"Refreshing..." if loading else "Refresh offers"}</Text>
                     </Pressable>
+                    {(<Pressable accessibilityRole="button" onPress={lambda { openSignIn(); }}><Text style={styles.link}>Sign in</Text></Pressable>) if not signedIn else LogoutLink()}
                 </View>
                 <Text style={styles.title}>{"Picked for you, plus everything else." if home and home.personalized else "Hungry? Here is what is good nearby."}</Text>
             </View>
@@ -812,7 +809,7 @@ def:pub app -> JsxElement {
                 </View>
             ) if not offers or not home else <View style={{"gap": 12}}>
                 {[<DealCard key={i.offer.id} item={i} onOpen={lambda { openOffer(i.offer.id); }} onHeart={lambda { toggleHeart(i); }} canHeart={not signedIn or studentSession} /> for i in home.items]}
-                <Text style={styles.small}>{"Showing " + str(len(home.items)) + " deals. Your tastes change the order, never what you can see."}</Text>
+                <Text style={styles.small}>{"Showing " + str(len(home.items)) + (" deal." if len(home.items) == 1 else " deals.") + " Your tastes change the order, never what you can see."}</Text>
             </View>}
         </View>;
     }

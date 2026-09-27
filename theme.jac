@@ -233,7 +233,7 @@ def:pub buildStyles(T: dict[str, str]) -> any {
                 "flex": 1,
                 "alignItems": "center",
                 "paddingVertical": S["sm"],
-                "borderRadius": R["md"],
+                "borderRadius": 0,
                 "gap": 4
             },
             "tabOn": {"backgroundColor": T["surface"], "borderTopColor": "#FEC809"},
