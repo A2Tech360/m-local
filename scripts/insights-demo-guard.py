@@ -19,6 +19,8 @@ def validate_ports(port: int) -> None:
         for candidate in (port, port + 1):
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sockets.append(sock)
+            if hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
             try:
                 sock.bind(('0.0.0.0', candidate))
             except OSError as exc:
