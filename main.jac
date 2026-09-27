@@ -37,9 +37,10 @@ import from services.foryou {
 import from services.onboarding { request_email_code, verify_email_code }
 import from services.business_onboarding { get_business_draft, import_business_website, save_business_draft }
 import from services.account_profile { get_account_profile, save_account_profile }
-import from services.analytics { merchant_insights }
+import from services.analytics { merchant_insights, local_activity }
 import from services.business_profile { get_business_profile }
 import from services.nearby { nearby_after }
+import from services.places { list_places, nearby_places }
 
 import from "@jac/mobui" {
     View,
@@ -242,6 +243,7 @@ def:pub app -> JsxElement {
         authBusy: bool = False,
         authMsg: str = "",
         businessOpen: bool = False,
+        localActivity: bool = False,
         profileOpen: bool = False,
         profileSlug: str = "",
         profileOfferId: str = "",
@@ -1038,8 +1040,12 @@ def:pub app -> JsxElement {
     def Insights() -> JsxElement {
         if not session or session.role != "merchant" { return <View style={styles.content}><MerchantGate /></View>; }
         return <View style={styles.content}>
-            <View style={styles.rowBetween}><Text style={styles.brand}>YOUR BUSINESS</Text></View>
-            <BusinessInsights key={session.actor_id} getInsights={merchant_insights} />
+            <View style={styles.rowBetween}><Text style={styles.brand}>{"LOCAL ACTIVITY" if localActivity and session.catalog_activity else "YOUR BUSINESS"}</Text></View>
+            {(<View style={styles.row}>
+                <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { localActivity = False; }}><Text style={styles.btnGhostText}>Your business</Text></Pressable>
+                <Pressable accessibilityRole="button" style={styles.btnGhost} onPress={lambda { localActivity = True; }}><Text style={styles.btnGhostText}>Explore local activity</Text></Pressable>
+            </View>) if session.catalog_activity else <View style={styles.hidden} />}
+            <BusinessInsights key={session.actor_id + ("-local" if localActivity and session.catalog_activity else "-own")} getInsights={local_activity if localActivity and session.catalog_activity else merchant_insights} showProvenance={False if localActivity and session.catalog_activity else True} />
         </View>;
     }
 

@@ -105,7 +105,6 @@ def:pub BusinessProfile(
                 <div className="ml-business-monogram" aria-hidden="true">{initials}</div>
                 <div style={{"display": "flex", "flexDirection": "column", "gap": 10}}><p className="ml-business-kicker">Meet the business</p><h1 tabIndex={-1} ref={heading}>{profile.name}</h1></div>
                 {if profile.cuisine or profile.neighborhood { <p style={{"fontSize": 15, "lineHeight": 1.5}}>{" · ".join([label for label in [profile.cuisine, profile.neighborhood] if label])}</p> }}
-                {if profile.is_demo { <p className="ml-business-kicker">Sample business</p> }}
             </header>
             if profile.blurb { <p className="ml-business-description">{profile.blurb}</p> }
             <div className="ml-business-grid">

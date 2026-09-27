@@ -1,5 +1,32 @@
 # Test the app with the Ann Arbor dataset
 
+## JacHammer testing deployment
+
+Set `MLOCAL_HOSTED_DATASET=1` on the hosted testing deployment and restart it.
+The next catalog request imports the committed 841-place snapshot and adds 495
+fictional offers. A persistent completion marker prevents re-import on restart.
+Stable restaurant slugs also prevent duplicate offers if an import is retried.
+Existing accounts, merchants, offers, inventory, claims and expiry dates are retained.
+This flag makes generated offers visible in the feed. Per the presentation request,
+listings use natural business names and promo copy without visible fixture labels.
+Internal `is_demo` flags and `dataset-test:` source identifiers retain provenance.
+These fictional deals do not establish actual business participation.
+The normal hosted email provider is unchanged; no local email capture is installed.
+The dataset's OSM provenance and attribution remain in `data/simulation/` and the
+place graph. The feed shows food offers, not all 841 places.
+
+Unset the flag to hide sample offers; it does not delete data or reset inventory.
+Promos span a month of simulated use: ended offers, active offers ending in six
+hours through 30 days, and upcoming offers. Ended offers remain in the graph but
+are omitted from the live feed. Dates are anchored at import and never renewed
+on restart. Merchant Insights includes **Explore local activity**, a separate
+30-day activity recording for a seeded business. Its deterministic claims,
+redemptions, cancellations and returning-customer identities are generated from
+the fixed import timestamp and never written into real accounts or claim graphs.
+**Your business** always returns the merchant's actual recorded activity.
+
+## Isolated local testing
+
 From this repository in PowerShell:
 
 ```powershell

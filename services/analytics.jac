@@ -1,7 +1,8 @@
 """Merchant-owned, aggregate-only analytics over canonical graph claims.
 
-There is no merchant-ID input and no alternate simulation data source. Traversal
-is separate from the portal's 30-item display limit. Private claim records stay
+Merchant insights has no merchant-ID input. The separately gated local activity
+endpoint uses only generated records. Traversal is separate from the portal's
+30-item display limit. Private claim records stay
 inside this server boundary; only daily summaries leave it.
 """
 
@@ -10,6 +11,23 @@ import from services.models { Restaurant, Publishes, ClaimedAs }
 import from services.session { _actor_id, _merchant_for_actor }
 import from services.qr_catalog { _ensure_seed }
 import from services.analytics_support { build_insights }
+import from services.hosted_dataset { hosted_dataset_enabled, HostedDatasetLoaded }
+import from services.dataset_activity { activity_records }
+
+def:protect local_activity(days: int = 30) -> dict[str, any] {
+    if not hosted_dataset_enabled() or days not in [7, 30, 90, 365] {
+        return {"ok": False, "message": "Local activity is unavailable."};
+    }
+    _ensure_seed();
+    places = [r for r in [root.shared -->[?:Restaurant]] if r.is_demo and r.slug.startswith("dataset-test-")];
+    markers = [root.shared -->[?:HostedDatasetLoaded]];
+    if not places or not markers {
+        return {"ok": False, "message": "Local activity is still loading."};
+    }
+    places.sort(key=lambda (r: Restaurant) -> str { return r.name; });
+    r = places[0];
+    return build_insights(activity_records(r.slug, markers[0].anchor_ts), r.name, True, days, time.time());
+}
 
 
 def _insights_for(r: Restaurant, days: int, now: float) -> dict[str, any] {

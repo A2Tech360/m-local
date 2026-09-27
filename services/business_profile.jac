@@ -30,7 +30,7 @@ obj BusinessProfileView {
 
 def _public_business(slug: str, offer_id: str, now: float) -> BusinessProfileView {
     target = slug.strip();
-    show_samples = demo_mode(os.environ.get(DEMO_MODE_ENV, ""));
+    show_samples = demo_mode(os.environ.get(DEMO_MODE_ENV, "")) or os.environ.get("MLOCAL_HOSTED_DATASET", "") == "1";
     r: Restaurant | None = None;
     if target {
         matches = [item for item in [root.shared -->[?:Restaurant]] if item.slug == target];

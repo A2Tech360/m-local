@@ -5,6 +5,7 @@ import from services.qr_auth { merchant_owner }
 import from services.qr_catalog { _ensure_seed }
 import from services.onboarding { verified_account, is_demo_student }
 import from services.onboarding_support { account_name }
+import from services.hosted_dataset { hosted_dataset_enabled }
 
 obj SessionView {
     has authenticated: bool = False,
@@ -13,7 +14,8 @@ obj SessionView {
         restaurant_id: str = "",
         display_name: str = "",
         is_demo: bool = False,
-        email_verified: bool = False;
+        email_verified: bool = False,
+        catalog_activity: bool = False;
 }
 
 def _actor_id() -> str {
@@ -44,7 +46,7 @@ def:pub current_session() -> SessionView {
     if r is not None {
         return SessionView(authenticated=True, actor_id=actor, role="merchant",
             restaurant_id=jid(r), display_name=account_name(actor, r.name), is_demo=r.is_demo,
-            email_verified=bool(account));
+            email_verified=bool(account), catalog_activity=hosted_dataset_enabled());
     }
     if account {
         return SessionView(authenticated=True, actor_id=actor,

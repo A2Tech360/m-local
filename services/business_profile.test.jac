@@ -120,6 +120,10 @@ test "demo mode gates sample businesses and offers for both lookup paths" {
         assert _public_business("", jid(sample), now).ok;
         assert len(_public_business(real.slug, "", now).offers) == 2;
     }
+    with patch.dict(os.environ, {DEMO_MODE_ENV: "0", "MLOCAL_HOSTED_DATASET": "1"}) {
+        assert _public_business(demo.slug, "", now).ok;
+        assert _public_business("", jid(demo_offer), now).ok;
+    }
 }
 
 

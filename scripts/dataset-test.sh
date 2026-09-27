@@ -25,7 +25,7 @@ p.write_text(p.read_text() + '\n' + Path('tools/simulation/test_delivery.py').re
 # materialized edges. Avoid building thousands of unused edges in this test app.
 p = Path('services/places.jac')
 text = p.read_text()
-needle = 'if validated { _rebuild_nearby(list(indexed.values())); }'
+needle = 'if validated and materialize_nearby { _rebuild_nearby(list(indexed.values())); }'
 assert text.count(needle) == 1
 p.write_text(text.replace(needle, '# Nearby queries remain computed from catalog coordinates.'))
 PY

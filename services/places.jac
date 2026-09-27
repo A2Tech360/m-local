@@ -122,7 +122,7 @@ Returns the number of records processed (including refreshes). Missing records
 are retained; an incomplete snapshot must not delete the last known catalog.
 No input-validation failure mutates the graph. Run under trusted system root.
 """
-def import_places(records: list[dict[str, any]]) -> int {
+def import_places(records: list[dict[str, any]], materialize_nearby: bool = True) -> int {
     validated = normalize_place_batch(records);
     catalog = [root.shared -->[?:Place]];
     indexed: dict[str, Place] = {};
@@ -161,7 +161,7 @@ def import_places(records: list[dict[str, any]]) -> int {
         p.website = rec["website"] as str | None;
         p.opening_hours = rec["opening_hours"] as str | None;
     }
-    if validated { _rebuild_nearby(list(indexed.values())); }
+    if validated and materialize_nearby { _rebuild_nearby(list(indexed.values())); }
     return len(validated);
 }
 
