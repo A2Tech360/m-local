@@ -26,10 +26,15 @@ jobs:
         run: ./scripts/test.sh core
       - name: Run onboarding security tests
         run: python3 -m unittest discover -s tests/onboarding
+      - name: Test deployment source and data separation
+        run: python3 -m unittest discover -s tests/tooling -p 'test_*.py'
       - name: Build compiled app and client dependencies
         run: ./scripts/build.sh
       - name: Run gateway and UI unit tests
         run: node --test tests/ui/*.test.mjs tests/tooling/*.test.mjs
+      - name: Test deployment safety with disposable Git repositories
+        shell: pwsh
+        run: ./tests/tooling/live-deploy.test.ps1
       - name: Install compiled UI test runtime
         run: npm install --prefix .jac/ui-test-runtime --no-save --package-lock=false jsdom@26.1.0
       - name: Check compiled onboarding and phone flows

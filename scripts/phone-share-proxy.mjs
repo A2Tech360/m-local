@@ -11,7 +11,8 @@ const functions = new Set(['list_offers', 'get_offer', 'claim_offer', 'merchant_
   'get_business_draft', 'import_business_website', 'save_business_draft',
   'get_account_profile', 'save_account_profile']);
 
-export function createShareProxy({ upstreamHost = 'localhost', upstreamPort = 8200 } = {}) {
+export function createShareProxy({ upstreamHost = 'localhost', upstreamPort = 8200,
+  trustCloudflare = true, trustFunnel = false, healthCheck = false } = {}) {
   const limit=createOnboardingLimit();
   return http.createServer((req, res) => {
     const path = req.url.split('?')[0];
@@ -24,11 +25,32 @@ export function createShareProxy({ upstreamHost = 'localhost', upstreamPort = 82
     res.setHeader('referrer-policy', 'no-referrer');
     res.setHeader('permissions-policy', 'camera=(self), microphone=(), geolocation=()');
     res.setHeader('cache-control', 'no-store');
+    if (healthCheck && read && path === '/healthz') {
+      const finish = ready => {
+        if (res.writableEnded) return;
+        res.writeHead(ready ? 200 : 503, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ ready }));
+      };
+      const check = http.get({ hostname: upstreamHost, port: upstreamPort, path: '/ready', timeout: 5000 }, response => {
+        response.resume();
+        finish(response.statusCode === 200);
+      });
+      check.on('timeout', () => check.destroy());
+      check.on('error', () => finish(false));
+      return;
+    }
     if (!allowed) { res.writeHead(403); res.end('Not available through the team demo.'); return; }
-    // Only cloudflared on this host reaches this loopback listener. Cloudflare
-    // overwrites CF-Connecting-IP at its edge. Never trust X-Forwarded-For.
+    // The phone launcher uses a loopback cloudflared connection. Hosted callers
+    // must explicitly opt into an edge that overwrites CF-Connecting-IP (Render).
+    // A direct listener must not trust caller-supplied forwarding headers.
     const cloudflareIp=req.headers['cf-connecting-ip'];
-    const client=typeof cloudflareIp==='string'&&isIP(cloudflareIp)?cloudflareIp:req.socket.remoteAddress;
+    const funnelIp=req.headers['x-forwarded-for'];
+    const loopback=['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
+    // Funnel's HTTP proxy replaces X-Forwarded-For. It does not sanitize CF IP.
+    // Trust one valid address only from the local daemon, never a forwarded list.
+    const client=trustFunnel
+      ? (loopback&&typeof funnelIp==='string'&&isIP(funnelIp)?funnelIp:req.socket.remoteAddress)
+      : (trustCloudflare&&typeof cloudflareIp==='string'&&isIP(cloudflareIp)?cloudflareIp:req.socket.remoteAddress);
     const retry=limit(client,path);
     if(retry){res.writeHead(429,{'content-type':'application/json','retry-after':String(retry)});res.end(JSON.stringify({ok:false,error:{code:'RATE_LIMITED',message:'Too many sign-in attempts. Please wait before retrying.'}}));return;}
     const upstream = http.request({ hostname: upstreamHost, port: upstreamPort,
