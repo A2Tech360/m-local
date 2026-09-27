@@ -39,7 +39,7 @@ test('phone link forwards app/auth traffic but never development files or admin 
   assert.equal(seen.length, before, 'blocked traffic never reaches Jac');
 });
 
-test('public signup limits one client even when recipients change', async t => {
+test('four simultaneous testers share a network while excess signup requests stay bounded', async t => {
   let reached=0;
   const upstream=http.createServer((req,res)=>{reached++;res.end('{}');}).listen(0,'127.0.0.1');
   await once(upstream,'listening');
@@ -47,10 +47,14 @@ test('public signup limits one client even when recipients change', async t => {
   await once(proxy,'listening');
   t.after(()=>{proxy.closeAllConnections();proxy.close();upstream.closeAllConnections();upstream.close();});
   const url=`http://127.0.0.1:${proxy.address().port}/function/request_email_code`;
-  for(let i=0;i<3;i++)assert.equal((await fetch(url,{method:'POST',body:JSON.stringify({value:`different${i}@example.test`})})).status,200);
+  const firstGroup=await Promise.all(Array.from({length:4},(_,i)=>fetch(url,{
+    method:'POST',body:JSON.stringify({value:`tester${i}@example.test`}),
+  })));
+  assert.deepEqual(firstGroup.map(response=>response.status),[200,200,200,200]);
+  for(let i=4;i<12;i++)assert.equal((await fetch(url,{method:'POST',body:JSON.stringify({value:`different${i}@example.test`})})).status,200);
   const blocked=await fetch(url,{method:'POST',body:'{}'});
   assert.equal(blocked.status,429);assert.ok(Number(blocked.headers.get('retry-after'))>0);
-  assert.equal(reached,3);
+  assert.equal(reached,12,'denied requests must not reach the mail sender');
 });
 
 test('offline app returns a recoverable 502 without filesystem details', async t => {

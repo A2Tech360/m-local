@@ -73,6 +73,33 @@ From **PowerShell** in the helper checkout:
 
 Stop an existing hosting launcher before changing startup options.
 
+## Testing with several people
+
+Everyone opens the same public URL and signs in with their own email address.
+Student accounts use their own U-M inbox; business testers use distinct business
+emails. A verified business can save its company profile and publish immediately.
+All devices share the published catalog, while account profiles, preferences,
+company ownership and claim credentials belong to each account. Unsaved form
+edits stay in that browser page. Refresh offers shows another tester's new post;
+the active offers page also refreshes automatically.
+
+On one computer, use separate browser profiles or private browser sessions for
+different people. Ordinary tabs in the same browser profile share login storage;
+two tabs are not two independent accounts. Signing into the same email on two
+devices intentionally opens the same account. Additional private windows may
+share a private session, depending on the browser; separate profiles are the
+clearest choice for manual tests.
+
+The gateway permits twelve email-code requests per minute and thirty per hour
+per trusted client IP, allowing four people behind one Wi-Fi connection to join
+together. Per-email limits remain one send per minute and five per hour, with
+five guesses per challenge. The entire app keeps its sixty-email/hour and
+three-hundred-email/day sending limits. Gateway-limited requests return HTTP 429
+with Retry-After; waiting or using an already signed-in session is appropriate.
+
+Do not start a separate backend/database for each visitor. The host owns the
+persistent database; each visitor needs only a browser and an independent login.
+
 ## Persistent state
 
 Never remove or relocate these during code updates:
@@ -90,6 +117,34 @@ running app and stable-link service, then stable-link login and publish. Sign-in
 and Funnel enablement must be completed for that account.
 
 ## Verification
+
+For repeatable multi-user acceptance, use the existing disposable
+`onboarding-check` fixture described in [onboarding](ONBOARDING.md), with the
+backend on 8240. In a second **Bash/WSL** terminal in that fixture, start the real
+gateway on loopback only:
+
+```bash
+node --input-type=module -e 'import {createShareProxy} from "./scripts/phone-share-proxy.mjs"; createShareProxy({upstreamHost:"127.0.0.1",upstreamPort:8240,trustCloudflare:false,healthCheck:true}).listen(8241,"127.0.0.1")'
+```
+
+From another **Bash/WSL** terminal in the same fixture:
+
+```bash
+python3 tests/integration/multi_user_http.py --api http://127.0.0.1:8241
+# After restarting the same disposable backend without replacing its store:
+python3 tests/integration/multi_user_http.py --api http://127.0.0.1:8241 --verify-restart
+```
+
+The HTTP test injects four local verification challenges and saves a private
+`.jac/multi-user-check.json` receipt. It checks concurrent account/company edits,
+shared publication, owner-only management, private QR access and exactly-once
+claim/redemption. It sends no email and rejects nonlocal API addresses.
+`tests/ui/live_multi_user.py --workspace <path-to-onboarding-check>` then uses
+Python Playwright with installed Chromium to keep four independent browser
+contexts open at 390px. It checks separate drafts, shared posts, account edits
+and logout isolation. Run this from an environment that can reach loopback
+8241; on Windows the workspace can be the fixture's WSL UNC path. Do not point
+either test at the public host. Physical-device testing remains separate.
 
 Public browser offers and distinct student/merchant sessions were verified.
 Private admin/schema/raw signup routes returned 403. Deployment tests use real
