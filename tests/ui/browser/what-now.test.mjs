@@ -9,10 +9,10 @@ const nearby=()=>({ok:true,heading:'What now?',origin:'Fixture Kitchen (Demo)',h
  {kind:'dessert',label:'Dessert',cards:[card('Cone Stand (Sample)','dessert',{deal:'Sample deal: Free topping with a cone'})]},
  {kind:'bars',label:'Bars',cards:[card('Blue Door Pub (Sample)','bars'),card('Tap Room (Sample)','bars')]}
 ]});
-const squares=ui=>[...ui.document.querySelectorAll('section[aria-label="What now?"] button.mlocal-next')];
+const squares=ui=>[...ui.document.querySelectorAll('[data-testid="what-now"] button.ml-whatnow-next')];
 const square=(ui,label)=>squares(ui).find(b=>b.getAttribute('aria-label').startsWith(label+':')).parentElement;
-const tap=(ui,label)=>square(ui,label).querySelector('button.mlocal-next').dispatchEvent(new ui.window.MouseEvent('click',{bubbles:true}));
-const spoken=(ui,label)=>square(ui,label).querySelector('button.mlocal-next').getAttribute('aria-label');
+const tap=(ui,label)=>square(ui,label).querySelector('button.ml-whatnow-next').dispatchEvent(new ui.window.MouseEvent('click',{bubbles:true}));
+const spoken=(ui,label)=>square(ui,label).querySelector('button.ml-whatnow-next').getAttribute('aria-label');
 async function redeemed(intercept) {
  const ui=await app({item:held({my_status:'redeemed',my_qr_payload:''}),intercept(name,body){
   if(intercept){const own=intercept(name,body);if(own!==undefined)return own;}
@@ -41,6 +41,12 @@ test('a redeemed claim shows four cards, two to a line, one per kind, with dista
   assert.ok(ui.text().includes('Sample places'));assert.ok(ui.text().includes('A short walk from Fixture Kitchen, nearest first.'));
   assert.deepEqual(ui.calls.filter(c=>c.name==='nearby_after').map(c=>c.body),[{offer_id:'fixture-offer'}]);
   assert.equal(ui.document.querySelector('button button'),null);
+  const region=ui.document.querySelector('[data-testid="what-now"]');
+  assert.equal(region.tagName,'SECTION');assert.equal(ui.document.getElementById(region.getAttribute('aria-labelledby')).textContent,'What now?');
+  assert.equal(region.querySelector('h2').textContent,'What now?');
+  assert.deepEqual([...region.querySelectorAll('ul.ml-whatnow-grid > li.ml-whatnow-card')].map(n=>n.dataset.kind),['activity','coffee','dessert','bars']);
+  assert.ok([...region.querySelectorAll('li.ml-whatnow-card')].every(n=>n.querySelectorAll('button.ml-whatnow-next').length===1),'one flip control per card');
+  assert.ok(region.style.fontFamily.startsWith('Figtree'),'uses the app typeface');
   assert.deepEqual(ui.errors,[]);
  }finally{ui.close();}
 });
@@ -68,7 +74,7 @@ test('a place with a live deal names it and opens that deal',async()=>{
  try{
   await until(()=>squares(ui).length===4);
   assert.equal(square(ui,'Dessert').querySelectorAll('button').length,1,'a sample deal has nothing to open');
-  assert.equal([...ui.document.querySelectorAll('section[aria-label="What now?"] button')].filter(b=>b.textContent==='See this deal').length,1);
+  assert.equal([...ui.document.querySelectorAll('[data-testid="what-now"] button')].filter(b=>b.textContent==='See this deal').length,1);
   assert.ok(square(ui,'Coffee').textContent.includes('See this deal'));
   ui.click('See this deal');
   await until(()=>ui.calls.some(c=>c.name==='get_offer'&&c.body.offer_id==='listed-offer'),'the listed deal opens');
@@ -80,7 +86,7 @@ test('nothing is suggested before redemption or when no places come back',async(
  const waiting=await app({item:held()});
  try{
   waiting.click('Saved bowl');await until(()=>waiting.text().includes('Saved meal terms'));
-  assert.equal(waiting.document.querySelector('section[aria-label="What now?"]'),null);
+  assert.equal(waiting.document.querySelector('[data-testid="what-now"]'),null);
   assert.equal(waiting.calls.some(c=>c.name==='nearby_after'),false);
   assert.deepEqual(waiting.errors,[]);
  }finally{waiting.close();}
@@ -88,7 +94,7 @@ test('nothing is suggested before redemption or when no places come back',async(
   const empty=await redeemed(name=>name==='nearby_after'?reply.clone():undefined);
   try{
    await until(()=>empty.calls.some(c=>c.name==='nearby_after'));await new Promise(r=>setTimeout(r,60));
-   assert.equal(empty.document.querySelector('section[aria-label="What now?"]'),null);
+   assert.equal(empty.document.querySelector('[data-testid="what-now"]'),null);
    assert.deepEqual(empty.errors,[]);
   }finally{empty.close();}
  }
